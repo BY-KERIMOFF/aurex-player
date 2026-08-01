@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="colorPrimaryCustom" format="color" />
+    <attr name="colorSidebarCustom" format="color" />
+    <attr name="colorAccentCustom" format="color" />
+    <attr name="colorGlassCustom" format="color" />
+</resources>

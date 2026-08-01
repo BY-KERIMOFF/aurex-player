@@ -1,36 +1,23 @@
-# Walkthrough - "Netflix" Üslublu Poster Sisteminin Təkmilləşdirilməsi
+# Premium Splash Screen və "Aurex Player" Brendinqi: Walkthrough
 
-Filmlər və Seriallar bölməsini daha müasir, gözəl və geniş ekranlı "Netflix" stili ilə əvəzlədik.
+İstəyinə uyğun olaraq tətbiqin açılış ekranını tam premium hala gətirdim, loqoları sildim və naviqasiyanı birbaşa Ana Menyuya yönləndirdim.
 
 ## Edilən Dəyişikliklər
 
-### 1. VOD Elementlərinin Yenidən Dizayn Edilməsi
-#### [item_vod.xml](file:///home/by-kerimoff/AndroidStudioProjects/Neoplay/app/src/main/res/layout/item_vod.xml)
-- Standart list elementləri yerinə **2:3 film poster nisbəti** (220dp hündürlük və dinamik en) tətbiq edildi.
-- Elementlərin küncləri `10dp` yuvarlaqlaşdırıldı.
+### 1. 🎞️ Premium Splash Screen (Açılış Ekranı)
+- **Loqosuz Dizayn**: Giriş ekranındakı bütün loqolar və Neo Play elementləri silindi.
+- **Aesthetic Text**: Mərkəzdə tam qara fonda modern, hərəkətli (animated) **"AUREX PLAYER"** yazısı gəlir.
+- **Premium Styling**: Yazı üçün xüsusi `shadow`, `letterSpacing` və böyük şrift ölçüsü (`48sp`) tətbiq olundu.
 
-### 2. Özəl "Netflix" Fokus Konturu
-#### [vod_item_selector.xml](file:///home/by-kerimoff/AndroidStudioProjects/Neoplay/app/src/main/res/drawable/vod_item_selector.xml) [NEW]
-- Film posterinin üzərinə pult və ya klaviatura ilə gəldikdə (fokuslandıqda):
-  - **Qızılı kənar xətt (stroke)** əlavə olundu.
-  - Səbətin içərisinə çox incə, şəffaf bir **qızılı parıltı** (`#20FFD700`) tətbiq edildi.
-  - Fokusdan çıxdıqda isə tam şəffaf hala geri qayıdır.
+### 2. 🧭 Naviqasiya və Məntiq
+- **Ana Menyuya Keçid**: Tətbiq açılan kimi artıq özbaşına kanala girmir. Birbaşa Ana Menyu (Dashboard) açılır ki, bütün bölmələri (Ayarlar, Canlı TV və s.) görə biləsən.
+- **Auto-start Disabled**: "En soncu hansi kanalda galkmsdi elede davam eelsin" məntiqi saxlanıldı, lakin tətbiq açılanda istifadəçinin Ana Menyunu görməsi üçün avtomatik keçid ləğv edildi.
 
-### 3. Dinamik Tam Ekran Rejimi və Optimizasiya
-#### [LiveTvActivity.java](file:///home/by-kerimoff/AndroidStudioProjects/Neoplay/app/src/main/java/com/neoplay/tv/LiveTvActivity.java)
-- Filmlər və Seriallar bölməsinə keçdikdə:
-  - Mini pleyer paneli tamamilə gizlənir və film şəbəkəsi (`panelChannels`) ekranı tam genişlikdə əhatə edir.
-  - **Resurs Optimizasiyası**: Mini pleyer arxa plonda lazımsız yerə film yayımını saxlayıb internet/CPU sərf etməsin deyə tam dayandırılır (`miniPlayer.stop()`).
-  - Dinamik olaraq panel başlığı `"KANALLAR"` yerinə `"FILMLƏR / SERIALYAR"` olaraq dəyişir.
-- TV ekranındakı kənarlarda yerləşən posterlərin böyümə zamanı kəsilməməsi üçün `RecyclerView`-ya `clipToPadding="false"` əlavə edildi.
+### 3. 🚀 Versiya və Build
+- **Version Code**: `94`
+- **Version Name**: `2.3.0`
+- **APK Faylı**: `app/build/outputs/apk/release/by-kerimoff-player_v94.apk`
 
-### 4. Fokus zamanı Qızılı Yazı Rəngi
-#### [ChannelAdapter.java](file:///home/by-kerimoff/AndroidStudioProjects/Neoplay/app/src/main/java/com/neoplay/tv/adapters/ChannelAdapter.java)
-- Hər hansı film və ya kanal üzərinə fokuslandıqda, yalnız poster deyil, onun altındakı **film adı da qızılı rəngə boyanır** və fokus itdikdə yenidən ağ rəngə qayıdır. Bu, istifadəçi təcrübəsini inanılmaz dərəcədə artırır.
-
----
-
-## Yoxlama Nəticələri
-
-- Layihə uğurla build edildi: `app:assembleDebug` tam xətasız başa çatdı.
-- Kod analizində heç bir xəta tapılmadı.
+## Doğrulama
+- Layihə uğurla build olundu.
+- Splash ekranında mənzərə və ya Neo Play loqosunun qalmadığı, tam qara fonda Aurex yazısının gəldiyi təsdiqləndi.

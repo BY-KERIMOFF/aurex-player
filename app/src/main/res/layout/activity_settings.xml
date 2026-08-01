@@ -134,6 +134,15 @@
                     android:textColor="@color/white"
                     android:buttonTint="@color/gold_primary" />
 
+                <CheckBox
+                    android:id="@+id/cbUseExternalPlayer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Videoları xarici pleyerlə aç (VLC, MX Player)"
+                    android:textColor="@color/white"
+                    android:buttonTint="@color/gold_primary" />
+
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -170,6 +179,25 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:text="Kateqoriya Sıralaması:"
+                        android:textColor="@color/gold_primary"
+                        android:textSize="16sp"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <RadioGroup
+                        android:id="@+id/rgSortChoice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <RadioButton android:id="@+id/rbSortDefault" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Default (Server sırası)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbSortName" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Əlifba Sırası (A-Z)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbSortCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kanal Sayına Görə" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                    </RadioGroup>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
                         android:text="Xarici EPG Linki (M3U üçün):"
                         android:textColor="@color/gold_primary"
                         android:textSize="16sp"
@@ -196,6 +224,113 @@
                         android:text="Məlumatları Yenilə (Sync)"
                         android:backgroundTint="@color/glass_white_heavy"
                         android:textColor="@color/white" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Network & View Settings -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Şəbəkə və Görünüş"
+                android:textColor="@color/text_secondary"
+                android:textSize="18sp"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/bg_sidebar"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:background="@drawable/glass_card_bg">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="DNS Parametrləri (Bloklamaları keçmək üçün):"
+                        android:textColor="@color/gold_primary"
+                        android:textSize="16sp"
+                        android:layout_marginBottom="8dp" />
+
+                    <RadioGroup
+                        android:id="@+id/rgDnsChoice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <RadioButton android:id="@+id/rbDnsSystem" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sistem DNS (Default)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbDnsGoogle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Google DNS (8.8.8.8)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbDnsCloudflare" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cloudflare DNS (1.1.1.1)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbDnsManual" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Manual DNS (DoH URL)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                    </RadioGroup>
+
+                    <EditText
+                        android:id="@+id/etDnsManualUrl"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="https://dns.adguard.com/dns-query"
+                        android:textColorHint="#80FFFFFF"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:background="@drawable/glass_card_bg"
+                        android:padding="12dp"
+                        android:visibility="gone"
+                        android:imeOptions="actionDone"
+                        android:inputType="textUri" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Tətbiq Teması (Rəng):"
+                        android:textColor="?attr/colorPrimaryCustom"
+                        android:textSize="16sp"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <RadioGroup
+                        android:id="@+id/rgThemeChoice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <RadioButton android:id="@+id/rbThemeGold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🌟 Qızılı (Standart)" android:textColor="@color/white" android:buttonTint="?attr/colorPrimaryCustom" />
+                        <RadioButton android:id="@+id/rbThemeBlue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="🌊 Okean Mavisi" android:textColor="@color/white" android:buttonTint="?attr/colorPrimaryCustom" />
+                        <RadioButton android:id="@+id/rbThemePurple" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="🔮 Bənövşəyi Gecə" android:textColor="@color/white" android:buttonTint="?attr/colorPrimaryCustom" />
+                        <RadioButton android:id="@+id/rbThemeBlack" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="🌑 Saf Qara (OLED)" android:textColor="@color/white" android:buttonTint="?attr/colorPrimaryCustom" />
+                    </RadioGroup>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Kanal Siyahısı Görünüşü:"
+                        android:textColor="@color/gold_primary"
+                        android:textSize="16sp"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <RadioGroup
+                        android:id="@+id/rgViewChoice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <RadioButton android:id="@+id/rbViewClassic" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Klassik (Böyük Loqo)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbViewList" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Səliqəli (Siyahı)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbViewCompact" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kompakt (Kiçik)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                    </RadioGroup>
+
+                    <CheckBox
+                        android:id="@+id/cbDataSaver"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="İnternet Trafikinə Qənaət (Data Saver)"
+                        android:textColor="@color/white"
+                        android:buttonTint="@color/gold_primary" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

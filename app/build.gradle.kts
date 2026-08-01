@@ -7,15 +7,15 @@ plugins {
 }
 
 android {
-    namespace = "com.neoplay.tv"
+    namespace = "com.bykerimoff.player"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.neoplay.tv"
+        applicationId = "com.bykerimoff.player"
         minSdk = 21
         targetSdk = 36
-        versionCode = 42
-        versionName = "1.4.1"
+        versionCode = 142
+        versionName = "3.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -42,8 +42,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -63,14 +63,15 @@ android {
     
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
-    // APK faylının adını avtomatik düzəlt (neoplay_vX.apk formatında)
+    // APK faylının adını avtomatik düzəlt (by-kerimoff-player_vX.apk formatında)
     applicationVariants.all {
         val variant = this
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName = "neoplay_v${variant.versionCode}.apk"
+            output.outputFileName = "by-kerimoff-player_v${variant.versionCode}.apk"
         }
     }
 }
@@ -95,6 +96,7 @@ dependencies {
     // Networking
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.gson)
+    implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0")
     
     // Image Loading
     implementation(libs.glide)

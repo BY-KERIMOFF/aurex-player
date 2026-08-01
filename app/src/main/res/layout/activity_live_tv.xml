@@ -31,13 +31,13 @@
             android:layout_weight="1.8"
             android:orientation="vertical"
             android:padding="12dp"
-            android:background="@color/bg_sidebar">
+            android:background="?attr/colorSidebarCustom">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="MENU"
-                android:textColor="@color/gold_primary"
+                android:textColor="?attr/colorPrimaryCustom"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.2"
@@ -48,7 +48,12 @@
                 android:id="@+id/rvCategories"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:focusable="true" />
+                android:focusable="true"
+                android:nextFocusRight="@+id/rvCategories"
+                android:nextFocusUp="@+id/rvCategories"
+                android:nextFocusDown="@+id/rvCategories"
+                android:nextFocusLeft="@+id/rvCategories"
+                android:descendantFocusability="afterDescendants" />
         </LinearLayout>
 
         <!-- Panel 2: Channels -->
@@ -90,7 +95,9 @@
                     android:textSize="14sp"
                     android:background="@android:color/transparent"
                     android:imeOptions="actionSearch"
-                    android:inputType="text" />
+                    android:inputType="text"
+                    android:nextFocusDown="@+id/rvChannels"
+                    android:nextFocusLeft="@+id/rvCategories" />
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -99,7 +106,12 @@
                 android:layout_height="match_parent"
                 android:focusable="true"
                 android:clipToPadding="false"
-                android:padding="8dp" />
+                android:padding="8dp"
+                android:nextFocusLeft="@+id/rvChannels"
+                android:nextFocusUp="@+id/rvChannels"
+                android:nextFocusDown="@+id/rvChannels"
+                android:nextFocusRight="@+id/rvChannels"
+                android:descendantFocusability="afterDescendants" />
         </LinearLayout>
 
         <!-- Panel 3: Mini Player & EPG -->
@@ -110,7 +122,7 @@
             android:layout_weight="3.4"
             android:orientation="vertical"
             android:padding="16dp"
-            android:background="@color/bg_sidebar">
+            android:background="?attr/colorSidebarCustom">
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
@@ -123,7 +135,10 @@
                     android:id="@+id/miniPlayerView"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    app:use_controller="false" />
+                    app:use_controller="false"
+                    app:use_artwork="false"
+                    app:surface_type="surface_view"
+                    android:keepScreenOn="true" />
             </androidx.cardview.widget.CardView>
 
             <LinearLayout
@@ -144,13 +159,24 @@
 
                 <TextView
                     android:id="@+id/tvCurrentChannel"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="Seçin..."
-                    android:textColor="@color/gold_primary"
+                    android:textColor="?attr/colorPrimaryCustom"
                     android:textSize="22sp"
                     android:textStyle="bold"
                     android:layout_marginStart="16dp" />
+
+                <Button
+                    android:id="@+id/btnBack"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="GERİ"
+                    android:backgroundTint="@color/glass_white_heavy"
+                    android:textColor="@color/white"
+                    android:layout_marginStart="8dp"
+                    android:focusable="true" />
             </LinearLayout>
 
             <TextView
@@ -174,4 +200,68 @@
         </LinearLayout>
 
     </LinearLayout>
+
+    <!-- Background Loading Indicator -->
+    <LinearLayout
+        android:id="@+id/mainLoadingLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone"
+        android:elevation="100dp">
+
+        <ProgressBar
+            android:id="@+id/mainLoadingProgress"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:indeterminateTint="?attr/colorPrimaryCustom" />
+
+        <TextView
+            android:id="@+id/tvMainLoadingText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Yüklənir..."
+            android:textColor="?attr/colorPrimaryCustom"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Bottom Right Test Countdown (Banner Style) -->
+    <LinearLayout
+        android:id="@+id/testBannerLive"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="24dp"
+        android:background="@drawable/glass_card_bg"
+        android:orientation="vertical"
+        android:gravity="end"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:visibility="gone"
+        android:elevation="10dp">
+
+        <TextView
+            android:id="@+id/testTitleLive"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🧪 TEST REJİMİ"
+            android:textColor="#60a5fa"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/testTimerLive"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⏱ 00:00:00"
+            android:textColor="#60a5fa"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="2dp" />
+    </LinearLayout>
+
 </FrameLayout>

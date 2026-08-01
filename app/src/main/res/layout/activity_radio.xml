@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Panoramic Background -->
+    <ImageView
+        android:id="@+id/ivAppBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/app_background"
+        android:scaleType="centerCrop" />
+
+    <!-- Dark Overlay -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#E6000000" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:padding="32dp">
+
+        <!-- Left Panel: List -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.2"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ONLAYN RADİO"
+                android:textColor="?attr/colorPrimaryCustom"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="24dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvRadios"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:focusable="true" />
+        </LinearLayout>
+
+        <!-- Right Panel: Player -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="40dp">
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="250dp"
+                android:layout_height="250dp"
+                app:cardCornerRadius="125dp"
+                app:cardElevation="20dp"
+                app:cardBackgroundColor="?attr/colorSidebarCustom">
+
+                <ImageView
+                    android:id="@+id/ivCurrentRadioLogo"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="24dp"
+                    android:scaleType="fitCenter"
+                    android:src="@android:drawable/ic_lock_silent_mode_off" />
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:id="@+id/tvCurrentRadioName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:text="Radio Seçin..."
+                android:textColor="@color/white"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Dayandırılıb"
+                android:textColor="?attr/colorPrimaryCustom"
+                android:textSize="18sp" />
+
+            <ProgressBar
+                android:id="@+id/radioBuffering"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="20dp"
+                android:visibility="gone"
+                android:indeterminateTint="@color/white" />
+
+            <Button
+                android:id="@+id/btnRetryRadio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="TƏKRAR YOXLA"
+                android:backgroundTint="@color/white"
+                android:textColor="@color/black"
+                android:visibility="gone" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Numeric Selection Overlay -->
+    <TextView
+        android:id="@+id/tvNumericInput"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/glass_card_bg"
+        android:paddingHorizontal="40dp"
+        android:paddingVertical="20dp"
+        android:textColor="@color/white"
+        android:textSize="80sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        android:elevation="30dp"
+        android:text="0" />
+
+    <LinearLayout
+        android:id="@+id/volumeLayout"
+        android:layout_width="400dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="120dp"
+        android:background="@drawable/glass_card_bg"
+        android:padding="20dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        android:elevation="20dp">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@android:drawable/ic_lock_silent_mode_off"
+            app:tint="@color/white"
+            android:layout_marginEnd="12dp" />
+
+        <ProgressBar
+            android:id="@+id/volumeProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="12dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progressDrawable="@drawable/volume_progress_drawable" />
+
+        <TextView
+            android:id="@+id/tvVolumePercent"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:gravity="end"
+            android:layout_marginStart="16dp"
+            android:text="0%" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnBack"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="32dp"
+        android:text="GERİ"
+        android:backgroundTint="@color/glass_white_heavy"
+        android:textColor="@color/white" />
+
+    <!-- Test Banner for Radio -->
+    <LinearLayout
+        android:id="@+id/testBannerRadio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="32dp"
+        android:background="@drawable/glass_card_bg"
+        android:orientation="vertical"
+        android:gravity="end"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:visibility="gone"
+        android:elevation="10dp">
+
+        <TextView
+            android:id="@+id/testTitleRadio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🧪 TEST REJİMİ"
+            android:textColor="#60a5fa"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/testTimerRadio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⏱ 00:00:00"
+            android:textColor="#60a5fa"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="2dp" />
+    </LinearLayout>
+
+</FrameLayout>

@@ -1,6 +1,7 @@
-# Tapşırıq Siyahısı - Netflix Poster Sistemi
+# Premium Splash Screen və Brendinq Tapşırıqları
 
-- [x] `item_vod.xml` faylında VOD elementlərinin dizaynını və poster aspect-ratio-sunu tənzimləmək
-- [x] `LiveTvActivity.java` faylında VOD rejimində mini pleyerin gizlədilməsini və kanal/film panelinin tam ekrana yayılmasını tənzimləmək
-- [x] `ChannelAdapter.java` faylında fokus animasiyasını və Glide şəkilyükləməsini optimallaşdırmaq
-- [x] Layihəni dərhal build edib xətaları yoxlamaq
+- [ ] `activity_main.xml` faylında Splash loqosunu sil və "AUREX PLAYER" yazısını premium et
+- [ ] `MainActivity.kt` daxilində loqo animasiyasını ləğv et, yalnız yazı animasiyasını saxla
+- [ ] `MainActivity.kt` daxilində `handleAutoStart()` funksiyasının çağırışını sil (Ana menyuya birbaşa keçid üçün)
+- [ ] Versiyanı artır (v94)
+- [ ] Build və Test

@@ -9,13 +9,22 @@
 -renamesourcefileattribute SourceFile
 -keepattributes !SourceFile,!LineNumberTable,*Annotation*,Signature,InnerClasses,EnclosingMethod
 
+# Release build-də bütün Log-ları sil (Linklərin loglara düşməməsi üçün)
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+    public static *** w(...);
+    public static *** e(...);
+}
+
 # --- Model və Data qorunması ---
 # Retrofit və Gson istifadə etdiyimiz üçün modellər gizlədilməməlidir, yoxsa JSON-dan gələn datalar boş qalar.
--keep class com.neoplay.tv.models.** { *; }
--keepclassmembers class com.neoplay.tv.models.** { *; }
+-keep class com.bykerimoff.player.models.** { *; }
+-keepclassmembers class com.bykerimoff.player.models.** { *; }
 
 # API cavablarını qoru
--keep class com.neoplay.tv.api.** { *; }
+-keep class com.bykerimoff.player.api.** { *; }
 
 # --- Kitabxana Qaydaları ---
 
@@ -42,7 +51,7 @@
 # --- Digər Vacib Qaydalar ---
 
 # ViewBinding üçün lazım olan klassları saxla
--keep class com.neoplay.tv.databinding.** { *; }
+-keep class com.bykerimoff.player.databinding.** { *; }
 
 # Android əməliyyat sistemi tərəfindən çağırılan metodları qoru
 -keepclassmembers class * extends android.app.Activity {

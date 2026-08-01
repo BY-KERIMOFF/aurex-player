@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Neo-play"
+rootProject.name = "by-kerimoff-player"
 include(":app")
