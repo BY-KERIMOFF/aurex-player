@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AUREX PLAYER FINAL GOLD TV</title>
+    <title>AUREX PLAYER LUXURY TV</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -12,14 +12,14 @@
         <!-- Splash Screen -->
         <div id="splash-screen" class="screen active">
             <h1 class="splash-title">AUREX PLAYER</h1>
-            <p class="splash-subtitle">Final Gold Edition</p>
+            <p class="splash-subtitle">Luxury Smart TV Edition</p>
         </div>
 
         <!-- Login Screen -->
         <div id="login-screen" class="screen">
             <div class="login-container">
                 <h1 class="text-gold">MAC GİRİŞİ</h1>
-                <p class="text-white">MAC ünvanını daxil edin:</p>
+                <p class="text-white">Daxil olmaq üçün MAC ünvanını yazın:</p>
                 <div class="input-wrapper">
                     <input type="text" id="mac-input" class="focusable" placeholder="00:00:00:00:00:00">
                 </div>
@@ -71,11 +71,6 @@
                 <div id="resume-list" class="horizontal-scroll"></div>
             </div>
 
-            <div id="currency-section" class="section hidden">
-                <h4 class="section-title">VALYUTA MƏZƏNNƏLƏRİ</h4>
-                <div id="currency-list" class="horizontal-scroll"></div>
-            </div>
-
             <div class="dashboard-footer">
                 <div class="card mini focusable" data-action="radio">
                     <span class="card-icon mini">📻</span>
@@ -88,25 +83,25 @@
             </div>
         </div>
 
-        <!-- TV View -->
-        <div id="tv-view" class="screen">
-            <div class="tv-layout">
-                <div class="side-panel categories-panel">
-                    <h5 class="panel-label">MENU</h5>
+        <!-- TV Panel -->
+        <div id="tv-panel" class="screen">
+            <div class="tv-container">
+                <div class="sidebar categories">
+                    <h5 class="label">MENU</h5>
                     <div id="category-list" class="list-vertical"></div>
                 </div>
-                <div class="side-panel channels-panel">
-                    <div class="panel-header">
-                        <h5 id="channels-title">KANALLAR</h5>
+                <div class="sidebar channels">
+                    <div class="sidebar-top">
+                        <h5 id="panel-title">KANALLAR</h5>
                         <input type="text" id="tv-search" class="focusable" placeholder="Axtar...">
                     </div>
                     <div id="channel-list" class="list-vertical"></div>
                 </div>
-                <div class="side-panel preview-panel">
+                <div class="sidebar preview">
                     <div class="mini-player-wrapper">
                         <video id="mini-player" autoplay muted></video>
                     </div>
-                    <div class="preview-meta">
+                    <div class="preview-info">
                         <img id="preview-logo" src="" alt="">
                         <div class="preview-text">
                             <h2 id="preview-name">Kanal Seçin</h2>
@@ -143,12 +138,12 @@
             </div>
         </div>
 
-        <!-- PIN Dialog -->
-        <div id="pin-dialog" class="dialog-overlay hidden">
-            <div class="dialog-box">
-                <h2 class="text-gold">PIN KOD</h2>
-                <div id="pin-display">****</div>
-                <p class="pin-hint">Pultun rəqəmlərindən istifadə edin</p>
+        <!-- PIN Pad -->
+        <div id="pin-pad" class="dialog-overlay hidden">
+            <div class="pin-box">
+                <h2 class="text-gold">KİLİD</h2>
+                <div id="pin-stars">****</div>
+                <p class="pin-hint">Pultun rəqəm düymələri ilə yazın</p>
             </div>
         </div>
 
