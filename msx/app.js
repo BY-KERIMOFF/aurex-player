@@ -1,10 +1,10 @@
 const CONFIG = {
     authUrl: 'http://kanal65.xyz/api.php?mac=',
     m3uDefault: 'http://kanal65.xyz/by-kerimoff-player/playlist.m3u',
-    epgProxyUrl: 'https://epg.pw/xmltv/feed/az.xml',
-    osdTimeout: 6000,
-    numericTimeout: 1500,
-    volumeTimeout: 3000
+    weatherApi: 'https://api.open-meteo.com/v1/forecast?latitude=40.4093&longitude=49.8671&current_weather=true',
+    osdTimeout: 5000,
+    volumeTimeout: 3000,
+    numericTimeout: 1500
 };
 
 let state = {
@@ -15,35 +15,37 @@ let state = {
     categories: [],
     currentCategory: 'Hamısı',
     filteredChannels: [],
-    epgData: {},
     focusedArea: 'mac-input',
     focusedIndex: 0,
     currentChannelIndex: -1,
-    hls: new Hls(),
     volume: 50,
     numericInput: '',
     numericTimer: null,
+    aspectModes: ['FILL', 'FIT', 'ZOOM'],
+    currentAspect: 0,
     favorites: JSON.parse(localStorage.getItem('aurex_favorites') || '[]'),
+    hls: new Hls()
 };
 
-// --- Initialization ---
+// --- App Lifecycle ---
 window.onload = () => {
     initClock();
-    launchApp();
+    startApp();
 };
 
 function initClock() {
     const update = () => {
         const now = new Date();
-        const time = now.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
-        if(document.getElementById('clock')) document.getElementById('clock').innerText = time;
-        if(document.getElementById('osd-clock')) document.getElementById('osd-clock').innerText = time;
+        const timeStr = now.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('clock').innerText = timeStr;
+        document.getElementById('date').innerText = now.toLocaleDateString('az-AZ', { weekday: 'long', day: 'numeric', month: 'long' });
+        if(document.getElementById('osd-clock')) document.getElementById('osd-clock').innerText = timeStr;
     };
     update();
     setInterval(update, 1000);
 }
 
-async function launchApp() {
+async function startApp() {
     showScreen('splash-screen');
     setTimeout(async () => {
         if (state.mac) await checkAuth(state.mac);
@@ -51,7 +53,7 @@ async function launchApp() {
     }, 3000);
 }
 
-// --- Server & Auth ---
+// --- Auth & Data Fetching ---
 async function checkAuth(mac) {
     try {
         const res = await fetch(CONFIG.authUrl + mac);
@@ -60,18 +62,15 @@ async function checkAuth(mac) {
             state.mac = mac;
             localStorage.setItem('aurex_mac', mac);
             state.m3uUrl = data.m3uUrl || CONFIG.m3uDefault;
-            await loadPlaylistAndEPG();
+            await loadPlaylist();
             showDashboard();
-        } else showLogin(data.message);
-    } catch (e) { showLogin("Bağlantı xətası"); }
+        } else {
+            showLogin(data.message || 'MAC ünvanı aktiv edilməyib.');
+        }
+    } catch (e) { showLogin('Serverə qoşulmaq mümkün olmadı.'); }
 }
 
-async function loadPlaylistAndEPG() {
-    await fetchM3U();
-    fetchEPG(); // Background EPG fetch
-}
-
-async function fetchM3U() {
+async function loadPlaylist() {
     try {
         const res = await fetch(state.m3uUrl);
         const text = await res.text();
@@ -79,45 +78,32 @@ async function fetchM3U() {
         let chans = [];
         let cur = null;
         lines.forEach(line => {
+            line = line.trim();
             if (line.startsWith('#EXTINF')) {
                 const name = line.split(',').pop().trim();
                 const logo = line.match(/tvg-logo="([^"]*)"/)?.[1] || '';
                 const group = line.match(/group-title="([^"]*)"/)?.[1] || 'Digər';
-                const tvgId = line.match(/tvg-id="([^"]*)"/)?.[1] || '';
-                cur = { name, logo, group, tvgId, id: btoa(name).substring(0,8) };
+                cur = { name, logo, group, id: btoa(name).substring(0,8) };
             } else if (line.startsWith('http')) {
                 if (cur) { cur.url = line; chans.push(cur); cur = null; }
             }
         });
         state.allChannels = chans;
         state.categories = ["Hamısı", "Sevimlilər", ...new Set(chans.map(c => c.group))].sort();
+        fetchWeather();
     } catch (e) {}
 }
 
-async function fetchEPG() {
+async function fetchWeather() {
     try {
-        const res = await fetch(CONFIG.epgProxyUrl);
-        const text = await res.text();
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(text, "application/xml");
-        const programmes = xml.getElementsByTagName("programme");
-
-        let epg = {};
-        for (let p of programmes) {
-            const channelId = p.getAttribute("channel");
-            const title = p.getElementsByTagName("title")[0]?.textContent;
-            const start = p.getAttribute("start");
-            const stop = p.getAttribute("stop");
-
-            if(!epg[channelId]) epg[channelId] = [];
-            epg[channelId].push({ title, start, stop });
-        }
-        state.epgData = epg;
-        renderChannels(); // Refresh channel list with EPG
+        const res = await fetch(CONFIG.weatherApi);
+        const data = await res.json();
+        document.getElementById('weather-temp').innerText = Math.round(data.current_weather.temperature) + "°C";
+        document.getElementById('weather-box').classList.remove('hidden');
     } catch (e) {}
 }
 
-// --- Navigation ---
+// --- Screen Management ---
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
@@ -127,7 +113,11 @@ function showScreen(id) {
 function showLogin(err = '') {
     showScreen('login-screen');
     state.focusedArea = 'mac-input';
-    if(err) document.getElementById('login-error').innerText = err;
+    if(err) {
+        const el = document.getElementById('login-error');
+        el.innerText = err;
+        el.classList.remove('hidden');
+    }
     updateFocus();
 }
 
@@ -148,46 +138,29 @@ function showTV(category = 'Hamısı') {
     updateFocus();
 }
 
+// --- Rendering ---
 function renderCategories() {
     document.getElementById('category-list').innerHTML = state.categories.map((c, i) => `
-        <div class="list-item cat-item ${c === state.currentCategory ? 'active-cat' : ''}" data-index="${i}">${c}</div>
+        <div class="item-channel focusable-cat" data-index="${i}">${c}</div>
     `).join('');
 }
 
 function renderChannels() {
-    if (state.currentCategory === 'Hamısı') state.filteredChannels = state.allChannels;
-    else if (state.currentCategory === 'Sevimlilər') state.filteredChannels = state.allChannels.filter(c => state.favorites.includes(c.id));
-    else state.filteredChannels = state.allChannels.filter(c => c.group === state.currentCategory);
+    const query = document.getElementById('etSearch').value.toLowerCase();
+    let list = state.allChannels;
+    if (state.currentCategory === 'Sevimlilər') list = list.filter(c => state.favorites.includes(c.id));
+    else if (state.currentCategory !== 'Hamısı') list = list.filter(c => c.group === state.currentCategory);
 
-    document.getElementById('channel-list').innerHTML = state.filteredChannels.map((c, i) => {
-        const epg = getCurrentEPG(c.tvgId);
-        return `
-            <div class="list-item chan-item" data-index="${i}">
-                <img src="${c.logo}" onerror="this.src='placeholder.png'">
-                <div class="chan-info">
-                    <div class="chan-name">${c.name}</div>
-                    <div class="chan-epg">${epg ? epg.title : 'Canlı Yayım'}</div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
+    if (query) list = list.filter(c => c.name.toLowerCase().includes(query));
 
-function getCurrentEPG(tvgId) {
-    if(!state.epgData[tvgId]) return null;
-    const now = new Date().getTime();
-    return state.epgData[tvgId].find(p => {
-        const start = parseEPGTime(p.start);
-        const stop = parseEPGTime(p.stop);
-        return now >= start && now < stop;
-    });
-}
-
-function parseEPGTime(timeStr) {
-    // Format: 20230724230000 +0000
-    const y = timeStr.substring(0,4), m = timeStr.substring(4,6)-1, d = timeStr.substring(6,8),
-          h = timeStr.substring(8,10), min = timeStr.substring(10,12);
-    return new Date(Date.UTC(y, m, d, h, min)).getTime();
+    state.filteredChannels = list;
+    document.getElementById('channel-list').innerHTML = list.map((c, i) => `
+        <div class="item-channel focusable-chan" data-index="${i}">
+            <img src="${c.logo}" class="chan-logo" onerror="this.src='placeholder.png'">
+            <div class="chan-name">${c.name}</div>
+            ${state.favorites.includes(c.id) ? '⭐' : ''}
+        </div>
+    `).join('');
 }
 
 function updateFocus() {
@@ -195,11 +168,13 @@ function updateFocus() {
     let sel = '';
     if (state.focusedArea === 'mac-input') sel = '#mac-input';
     else if (state.focusedArea === 'btn-login') sel = '#btn-login';
-    else if (state.focusedArea === 'cards') sel = '.card';
-    else if (state.focusedArea === 'categories') sel = '.cat-item';
-    else if (state.focusedArea === 'channels') sel = '.chan-item';
+    else if (state.focusedArea === 'cards') sel = '.main-card';
+    else if (state.focusedArea === 'radio') sel = '#cardRadio';
+    else if (state.focusedArea === 'categories') sel = '.focusable-cat';
+    else if (state.focusedArea === 'channels') sel = '.focusable-chan';
+    else if (state.focusedArea === 'search') sel = '#etSearch';
 
-    const el = document.querySelectorAll(sel)[state.focusedIndex];
+    const el = document.querySelectorAll(sel)[state.focusedIndex] || document.querySelector(sel);
     if (el) {
         el.classList.add('focused');
         el.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -209,25 +184,26 @@ function updateFocus() {
 
 function updatePreview(chan) {
     if(!chan) return;
-    document.getElementById('preview-name').innerText = chan.name;
-    document.getElementById('preview-logo').src = chan.logo;
-    const epg = getCurrentEPG(chan.tvgId);
-    document.getElementById('preview-epg-now').innerText = epg ? epg.title : 'Canlı Yayım';
-    playVideo(document.getElementById('mini-player'), chan.url);
+    document.getElementById('current-name').innerText = chan.name;
+    document.getElementById('current-logo').src = chan.logo;
+    const vid = document.getElementById('mini-player');
+    if (Hls.isSupported()) { state.hls.loadSource(chan.url); state.hls.attachMedia(vid); }
+    else vid.src = chan.url;
 }
 
-function playVideo(vid, url) {
-    if (Hls.isSupported()) { state.hls.loadSource(url); state.hls.attachMedia(vid); }
-    else vid.src = url;
-}
-
-// --- Key Handlers ---
+// --- Interaction ---
 window.onkeydown = (e) => {
     const key = e.key;
     if (state.screen === 'login-screen') handleLoginInput(key);
     else if (state.screen === 'dashboard') handleDashboardInput(key);
     else if (state.screen === 'tv-panel') handleTVInput(key);
     else if (state.screen === 'player-view') handlePlayerInput(key);
+
+    // Numeric & Aspect Ratio
+    if (state.screen === 'player-view') {
+        if (key >= '0' && key <= '9') handleNumeric(key);
+        if (key === 'y' || key === 'Yellow') toggleAspect();
+    }
 
     // Volume Control
     if (key === 'AudioVolumeUp') changeVolume(5);
@@ -236,63 +212,112 @@ window.onkeydown = (e) => {
     updateFocus();
 };
 
-function changeVolume(delta) {
-    state.volume = Math.max(0, Math.min(100, state.volume + delta));
-    const main = document.getElementById('main-player');
-    if(main) main.volume = state.volume / 100;
+function handleLoginInput(key) {
+    if (key === 'ArrowDown') state.focusedArea = 'btn-login';
+    if (key === 'ArrowUp') state.focusedArea = 'mac-input';
+    if (key === 'Enter' && state.focusedArea === 'btn-login') checkAuth(document.getElementById('mac-input').value);
+}
 
-    const volUI = document.getElementById('volume-overlay');
-    document.getElementById('vol-bar-fill').style.width = state.volume + '%';
-    document.getElementById('vol-percent').innerText = state.volume + '%';
-    volUI.classList.remove('volume-hidden');
-
-    clearTimeout(window.volTimer);
-    window.volTimer = setTimeout(() => volUI.classList.add('volume-hidden'), CONFIG.volumeTimeout);
+function handleDashboardInput(key) {
+    if (state.focusedArea === 'cards') {
+        const cards = document.querySelectorAll('.main-card');
+        if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % cards.length;
+        if (key === 'ArrowLeft') state.focusedIndex = (state.focusedIndex - 1 + cards.length) % cards.length;
+        if (key === 'ArrowDown') { state.focusedArea = 'radio'; state.focusedIndex = 0; }
+        if (key === 'Enter') {
+            const action = cards[state.focusedIndex].dataset.action;
+            if (action === 'live-tv') showTV();
+        }
+    } else if (state.focusedArea === 'radio') {
+        if (key === 'ArrowUp') { state.focusedArea = 'cards'; state.focusedIndex = 0; }
+        if (key === 'Enter') console.log("Radio screen coming soon");
+    }
 }
 
 function handleTVInput(key) {
     if (state.focusedArea === 'channels') {
         if (key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.filteredChannels.length;
-        if (key === 'ArrowUp') state.focusedIndex = (state.focusedIndex - 1 + state.filteredChannels.length) % state.filteredChannels.length;
-        if (key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
-        if (key === 'Enter') {
-            state.currentChannelIndex = state.allChannels.indexOf(state.filteredChannels[state.focusedIndex]);
-            startPlayer(state.filteredChannels[state.focusedIndex]);
+        if (key === 'ArrowUp') {
+            if (state.focusedIndex === 0) { state.focusedArea = 'search'; state.focusedIndex = 0; }
+            else state.focusedIndex--;
         }
+        if (key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
+        if (key === 'Enter') startPlayer(state.filteredChannels[state.focusedIndex]);
     } else if (state.focusedArea === 'categories') {
         if (key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.categories.length;
         if (key === 'ArrowUp') state.focusedIndex = (state.focusedIndex - 1 + state.categories.length) % state.categories.length;
         if (key === 'ArrowRight') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
         if (key === 'Enter') showTV(state.categories[state.focusedIndex]);
+    } else if (state.focusedArea === 'search') {
+        if (key === 'ArrowDown') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
+        if (key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
     }
-    if (key === 'Backspace') showDashboard();
+    if (key === 'Backspace' || key === 'Escape') showDashboard();
 }
 
 function startPlayer(chan) {
     showScreen('player-view');
+    document.getElementById('mini-player').pause();
     const main = document.getElementById('main-player');
-    playVideo(main, chan.url);
-    document.getElementById('osd-ch-name').innerText = chan.name;
-    document.getElementById('osd-logo').src = chan.logo;
-    const epg = getCurrentEPG(chan.tvgId);
-    document.getElementById('osd-epg-info').innerText = epg ? epg.title : 'Canlı Yayım';
-    showOSD();
-}
+    if (Hls.isSupported()) { state.hls.loadSource(chan.url); state.hls.attachMedia(main); }
+    else main.src = chan.url;
 
-function showOSD() {
-    const osd = document.getElementById('player-osd');
-    osd.classList.remove('osd-hidden');
-    clearTimeout(window.osdTimer);
-    window.osdTimer = setTimeout(() => osd.classList.add('osd-hidden'), CONFIG.osdTimeout);
+    document.getElementById('tvChannelName').innerText = chan.name;
+    document.getElementById('ivChannelLogo').src = chan.logo;
+    showOSD();
 }
 
 function handlePlayerInput(key) {
     if (key === 'Backspace' || key === 'Escape') {
-        const osd = document.getElementById('player-osd');
+        const osd = document.getElementById('osdLayout');
         if (osd.classList.contains('osd-hidden')) {
             document.getElementById('main-player').pause();
             showTV(state.currentCategory);
         } else osd.classList.add('osd-hidden');
     }
     if (key === 'Enter' || key === 'ArrowUp' || key === 'ArrowDown') showOSD();
+}
+
+function showOSD() {
+    const osd = document.getElementById('osdLayout');
+    osd.classList.remove('osd-hidden');
+    clearTimeout(window.osdTimer);
+    window.osdTimer = setTimeout(() => osd.classList.add('osd-hidden'), CONFIG.osdTimeout);
+}
+
+function changeVolume(delta) {
+    state.volume = Math.max(0, Math.min(100, state.volume + delta));
+    const main = document.getElementById('main-player');
+    if(main) main.volume = state.volume / 100;
+
+    document.getElementById('vol-fill').style.width = state.volume + '%';
+    document.getElementById('tvVolumePercent').innerText = state.volume + '%';
+    document.getElementById('volumeLayout').classList.remove('vol-hidden');
+
+    clearTimeout(window.volTimer);
+    window.volTimer = setTimeout(() => document.getElementById('volumeLayout').classList.add('vol-hidden'), CONFIG.volumeTimeout);
+}
+
+function handleNumeric(digit) {
+    state.numericInput += digit;
+    const el = document.getElementById('numeric-input');
+    el.innerText = state.numericInput;
+    el.classList.remove('hidden');
+    clearTimeout(state.numericTimer);
+    state.numericTimer = setTimeout(() => {
+        const idx = parseInt(state.numericInput) - 1;
+        if (idx >= 0 && idx < state.allChannels.length) startPlayer(state.allChannels[idx]);
+        state.numericInput = '';
+        el.classList.add('hidden');
+    }, CONFIG.numericTimeout);
+}
+
+function toggleAspect() {
+    state.currentAspect = (state.currentAspect + 1) % state.aspectModes.length;
+    const mode = state.aspectModes[state.currentAspect];
+    document.getElementById('main-player').style.objectFit = mode === 'FILL' ? 'fill' : (mode === 'FIT' ? 'contain' : 'cover');
+    const toast = document.getElementById('aspect-toast');
+    toast.innerText = "Format: " + mode;
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 2000);
 }
