@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurex Player Smart TV</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- HLS.js for better stream compatibility -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body class="bg-main">
+    <div id="app">
+        <!-- Dashboard (Ana Ekran) -->
+        <div id="dashboard" class="screen active">
+            <header>
+                <h1 class="text-gold">AUREX PLAYER</h1>
+                <div id="clock" class="text-white">00:00</div>
+            </header>
+            <div class="cards-container">
+                <div class="card focusable" data-action="live-tv">
+                    <div class="card-content">
+                        <span class="icon">📺</span>
+                        <h2>CANLI TV</h2>
+                    </div>
+                </div>
+                <div class="card focusable" data-action="movies">
+                    <div class="card-content">
+                        <span class="icon">🎬</span>
+                        <h2>FİLMLƏR</h2>
+                    </div>
+                </div>
+                <div class="card focusable" data-action="series">
+                    <div class="card-content">
+                        <span class="icon">🎭</span>
+                        <h2>SERİALLAR</h2>
+                    </div>
+                </div>
+                <div class="card focusable" data-action="favorites">
+                    <div class="card-content">
+                        <span class="icon">⭐</span>
+                        <h2>SEVİMLİLƏR</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resume-section" class="hidden">
+                <h3 class="text-gold">İZLƏMƏYƏ DAVAM ET</h3>
+                <div id="resume-list" class="horizontal-list"></div>
+            </div>
+        </div>
+
+        <!-- TV Paneli (Kanal Siyahısı) -->
+        <div id="tv-panel" class="screen">
+            <div class="sidebar categories-sidebar">
+                <h3 class="text-gold">MENU</h3>
+                <div id="category-list" class="list-container"></div>
+            </div>
+            <div class="sidebar channels-sidebar">
+                <div class="sidebar-header">
+                    <h3 id="panel-title" class="text-white">KANALLAR</h3>
+                    <input type="text" id="search-input" class="focusable" placeholder="Axtar...">
+                </div>
+                <div id="channel-list" class="list-container"></div>
+            </div>
+            <div class="player-preview">
+                <video id="mini-player" autoplay muted></video>
+                <div class="preview-info">
+                    <img id="current-logo" src="" alt="">
+                    <h2 id="current-name" class="text-gold">Kanal Seçin</h2>
+                    <p id="epg-info" class="text-gray">Proqram məlumatı yoxdur</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tam Ekran Pleyer -->
+        <div id="fullscreen-player" class="screen">
+            <video id="main-player" autoplay></video>
+            <!-- OSD (On Screen Display) -->
+            <div id="osd" class="osd-hidden">
+                <div class="osd-content">
+                    <img id="osd-logo" src="" alt="">
+                    <div class="osd-text">
+                        <h1 id="osd-name">Kanal Adı</h1>
+                        <p id="osd-epg">Yayım Məlumatı...</p>
+                    </div>
+                    <div class="osd-meta">
+                        <span id="osd-clock">00:00</span>
+                        <span id="osd-quality" class="badge">HD</span>
+                    </div>
+                </div>
+                <div id="vod-controls" class="hidden">
+                    <div class="progress-bar">
+                        <div id="current-progress" class="progress"></div>
+                    </div>
+                    <div class="time-info">
+                        <span id="pos-time">00:00</span>
+                        <span id="total-time">00:00</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Buffering Indicator -->
+            <div id="buffering" class="hidden">
+                <div class="spinner"></div>
+                <p>Yüklənir...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

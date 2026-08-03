@@ -1,0 +1,189 @@
+:root {
+    --bg-main: #0A0A0A;
+    --bg-sidebar: #121212;
+    --gold-primary: #FFD700;
+    --gold-dark: #B8860B;
+    --text-primary: #FFFFFF;
+    --text-secondary: #B0B0B0;
+    --focus-bg: #FFD700;
+    --focus-text: #000000;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.screen {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: none;
+    padding: 40px;
+}
+
+.screen.active {
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.text-gold { color: var(--gold-primary); }
+.text-white { color: var(--text-primary); }
+.text-gray { color: var(--text-secondary); }
+
+/* Dashboard Cards */
+.cards-container {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.card {
+    width: 280px;
+    height: 180px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.2s, background 0.2s;
+    border: 2px solid transparent;
+}
+
+.card .icon { font-size: 48px; }
+.card h2 { margin-top: 15px; font-size: 20px; font-weight: bold; }
+
+.card.focused {
+    background: var(--focus-bg);
+    color: var(--focus-text) !important;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px var(--gold-primary);
+}
+
+.card.focused .icon, .card.focused h2 {
+    color: var(--focus-text) !important;
+}
+
+/* TV Panel Layout */
+#tv-panel {
+    padding: 0;
+    flex-direction: row;
+}
+
+.sidebar {
+    height: 100%;
+    padding: 20px;
+    background: var(--bg-sidebar);
+}
+
+.categories-sidebar { flex: 1.8; border-right: 1px solid rgba(255,255,255,0.1); }
+.channels-sidebar { flex: 2.8; background: var(--bg-main); }
+.player-preview { flex: 3.4; padding: 20px; }
+
+.sidebar-header { margin-bottom: 20px; }
+
+#search-input {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid var(--gold-dark);
+    color: white;
+    margin-top: 10px;
+    border-radius: 5px;
+}
+
+#search-input.focused {
+    background: white;
+    color: black;
+}
+
+.list-container {
+    height: calc(100% - 60px);
+    overflow-y: auto;
+}
+
+.list-item {
+    padding: 15px;
+    margin-bottom: 5px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.list-item img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    background: white;
+    padding: 2px;
+}
+
+.list-item.focused {
+    background: var(--focus-bg);
+    color: var(--focus-text);
+    font-weight: bold;
+}
+
+/* Player Preview */
+#mini-player {
+    width: 100%;
+    height: 260px;
+    background: black;
+    border-radius: 12px;
+}
+
+.preview-info {
+    margin-top: 20px;
+}
+
+/* Fullscreen Player & OSD */
+#fullscreen-player { padding: 0; }
+#main-player { width: 100%; height: 100%; background: black; }
+
+#osd {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(transparent, rgba(0,0,0,0.9));
+    padding: 40px;
+    transition: opacity 0.5s;
+}
+
+.osd-hidden { opacity: 0; pointer-events: none; }
+
+.osd-content {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+#osd-logo { width: 100px; height: 100px; object-fit: contain; background: white; padding: 5px; }
+.osd-text h1 { font-size: 32px; }
+.osd-meta { margin-left: auto; text-align: right; }
+.badge { background: var(--gold-primary); color: black; padding: 5px 15px; border-radius: 5px; font-weight: bold; }
+
+.hidden { display: none; }
+
+/* Utilities */
+::-webkit-scrollbar { width: 0px; }
