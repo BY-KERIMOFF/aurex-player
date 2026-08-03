@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AUREX PLAYER SMART TV</title>
+    <title>AUREX PLAYER PREMIUM TV</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -99,13 +99,52 @@
                     <div id="channel-list" class="scroll-list"></div>
                 </div>
                 <div class="side-panel preview-panel">
-                    <video id="mini-player" autoplay muted></video>
+                    <div class="mini-player-wrapper">
+                        <video id="mini-player" autoplay muted></video>
+                    </div>
                     <div class="preview-meta">
                         <img id="preview-logo" src="" alt="">
-                        <h2 id="preview-name">Kanal Seçin</h2>
-                        <p id="preview-epg">Proqram məlumatı yoxdur</p>
+                        <div class="preview-text">
+                            <h2 id="preview-name">Kanal Seçin</h2>
+                            <p id="preview-epg-now" class="text-gold">Yayım yüklənir...</p>
+                            <p id="preview-epg-next" class="text-gray small">Növbəti: --</p>
+                        </div>
+                        <div class="epg-progress-mini">
+                            <div id="epg-progress-bar"></div>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Player View -->
+        <div id="player-view" class="screen">
+            <video id="main-player" autoplay></video>
+            <!-- Announcement Marquee -->
+            <div id="announcement-container" class="hidden">
+                <div id="announcement-text">AUREX PLAYER</div>
+            </div>
+            <!-- OSD -->
+            <div id="player-osd" class="osd-hidden">
+                <div class="osd-content">
+                    <img id="osd-logo" src="" alt="">
+                    <div class="osd-info">
+                        <h1 id="osd-name">Kanal Adı</h1>
+                        <p id="osd-epg-title">Yayım Məlumatı...</p>
+                        <div class="osd-progress-container">
+                            <div id="osd-progress-fill"></div>
+                        </div>
+                    </div>
+                    <div class="osd-meta">
+                        <span id="osd-time">00:00</span>
+                        <span class="badge">HD</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Archive Sidebar -->
+            <div id="archive-sidebar" class="sidebar-right hidden">
+                <h3 class="text-gold">KANAL ARXİVİ</h3>
+                <div id="archive-list" class="scroll-list"></div>
             </div>
         </div>
 
@@ -114,6 +153,11 @@
             <div class="radio-layout">
                 <div class="radio-sidebar">
                     <h3 class="text-gold">ONLAYN RADİO</h3>
+                    <div class="radio-tabs">
+                        <span class="tab focusable active" data-country="AZ">AZ</span>
+                        <span class="tab focusable" data-country="TR">TR</span>
+                        <span class="tab focusable" data-country="RU">RU</span>
+                    </div>
                     <div id="radio-list" class="scroll-list"></div>
                 </div>
                 <div class="radio-main">
@@ -121,7 +165,7 @@
                         <div id="radio-visualizer" class="pulse">
                             <img id="radio-current-logo" src="" alt="">
                         </div>
-                        <h1 id="radio-current-name">Radio Seçin</h1>
+                        <h1 id="radio-current-name" class="text-gold">Radio Seçin</h1>
                         <p id="radio-status">Siyahı yüklənir...</p>
                     </div>
                 </div>
@@ -135,29 +179,6 @@
                 <p>Şifrəli bölməyə giriş:</p>
                 <div id="pin-display">****</div>
                 <div class="pin-hint">Pultun rəqəmlərindən istifadə edin</div>
-            </div>
-        </div>
-
-        <!-- Full Player -->
-        <div id="player-view" class="screen">
-            <video id="main-player" autoplay></video>
-            <!-- Announcement Marquee -->
-            <div id="announcement-container" class="hidden">
-                <div id="announcement-text">AUREX PLAYER</div>
-            </div>
-            <!-- OSD -->
-            <div id="player-osd" class="osd-hidden">
-                <div class="osd-content">
-                    <img id="osd-logo" src="" alt="">
-                    <div class="osd-info">
-                        <h1 id="osd-name">Kanal Adı</h1>
-                        <p id="osd-epg">Yayım Məlumatı...</p>
-                    </div>
-                    <div class="osd-meta">
-                        <span id="osd-time">00:00</span>
-                        <span class="badge">HD</span>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
