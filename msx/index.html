@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AUREX PLAYER PREMIER TV</title>
+    <title>AUREX PLAYER FINAL GOLD TV</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -12,14 +12,14 @@
         <!-- Splash Screen -->
         <div id="splash-screen" class="screen active">
             <h1 class="splash-title">AUREX PLAYER</h1>
-            <p class="splash-subtitle">Premium Smart TV Experience</p>
+            <p class="splash-subtitle">Final Gold Edition</p>
         </div>
 
         <!-- Login Screen -->
         <div id="login-screen" class="screen">
             <div class="login-container">
                 <h1 class="text-gold">MAC GİRİŞİ</h1>
-                <p class="text-white">Daxil olmaq üçün MAC ünvanını yazın:</p>
+                <p class="text-white">MAC ünvanını daxil edin:</p>
                 <div class="input-wrapper">
                     <input type="text" id="mac-input" class="focusable" placeholder="00:00:00:00:00:00">
                 </div>
@@ -72,7 +72,7 @@
             </div>
 
             <div id="currency-section" class="section hidden">
-                <h4 class="section-title">GÜNLÜK MƏZƏNNƏLƏR (AZN)</h4>
+                <h4 class="section-title">VALYUTA MƏZƏNNƏLƏRİ</h4>
                 <div id="currency-list" class="horizontal-scroll"></div>
             </div>
 
@@ -88,23 +88,25 @@
             </div>
         </div>
 
-        <!-- TV Panel -->
-        <div id="tv-panel" class="screen">
-            <div class="tv-container">
-                <div class="sidebar categories">
-                    <h5 class="label">MENU</h5>
+        <!-- TV View -->
+        <div id="tv-view" class="screen">
+            <div class="tv-layout">
+                <div class="side-panel categories-panel">
+                    <h5 class="panel-label">MENU</h5>
                     <div id="category-list" class="list-vertical"></div>
                 </div>
-                <div class="sidebar channels">
-                    <div class="sidebar-top">
-                        <h5 id="panel-title">KANALLAR</h5>
+                <div class="side-panel channels-panel">
+                    <div class="panel-header">
+                        <h5 id="channels-title">KANALLAR</h5>
                         <input type="text" id="tv-search" class="focusable" placeholder="Axtar...">
                     </div>
                     <div id="channel-list" class="list-vertical"></div>
                 </div>
-                <div class="sidebar preview">
-                    <video id="mini-player" autoplay muted></video>
-                    <div class="preview-info">
+                <div class="side-panel preview-panel">
+                    <div class="mini-player-wrapper">
+                        <video id="mini-player" autoplay muted></video>
+                    </div>
+                    <div class="preview-meta">
                         <img id="preview-logo" src="" alt="">
                         <div class="preview-text">
                             <h2 id="preview-name">Kanal Seçin</h2>
@@ -119,7 +121,7 @@
 
         <!-- Radio View -->
         <div id="radio-view" class="screen">
-            <div class="radio-container">
+            <div class="radio-layout">
                 <div class="radio-side">
                     <h3 class="text-gold">ONLAYN RADİO</h3>
                     <div class="radio-tabs">
@@ -134,48 +136,54 @@
                         <div id="radio-pulse" class="pulse-anim">
                             <img id="radio-current-img" src="" alt="">
                         </div>
-                        <h1 id="radio-current-title">Radio Seçin</h1>
-                        <p id="radio-playing-status">Siyahı yüklənir...</p>
+                        <h1 id="radio-current-title" class="text-gold">Radio Seçin</h1>
+                        <p id="radio-playing-status">Hazır</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- PIN Pad -->
-        <div id="pin-pad" class="dialog-overlay hidden">
-            <div class="pin-box">
-                <h2 class="text-gold">KİLİD</h2>
-                <p>PIN Kodunu daxil edin:</p>
-                <div id="pin-stars">****</div>
-                <div class="pin-hint">Pultun rəqəm düymələri ilə yazın</div>
+        <!-- PIN Dialog -->
+        <div id="pin-dialog" class="dialog-overlay hidden">
+            <div class="dialog-box">
+                <h2 class="text-gold">PIN KOD</h2>
+                <div id="pin-display">****</div>
+                <p class="pin-hint">Pultun rəqəmlərindən istifadə edin</p>
             </div>
         </div>
 
         <!-- Full Player -->
         <div id="player-view" class="screen">
-            <video id="main-player" autoplay></video>
-            <div id="announcement-bar" class="hidden">
-                <div id="announcement-scroll">AUREX PLAYER</div>
+            <video id="main-player" autoplay class="video-fill"></video>
+            <!-- Announcement Marquee -->
+            <div id="announcement-container" class="hidden">
+                <div id="announcement-text">AUREX PLAYER</div>
             </div>
+            <!-- Numeric Input Overlay -->
+            <div id="numeric-overlay" class="hidden">0</div>
+            <!-- Aspect Ratio Status -->
+            <div id="aspect-status" class="hidden">FIT</div>
             <!-- OSD -->
             <div id="player-osd" class="osd-hidden">
-                <div class="osd-body">
+                <div class="osd-content">
                     <img id="osd-logo" src="" alt="">
-                    <div class="osd-text">
-                        <h1 id="osd-ch-name">Kanal Adı</h1>
-                        <p id="osd-epg-info">Yayım Məlumatı...</p>
-                        <div class="osd-progress-bg"><div id="osd-progress-fill"></div></div>
+                    <div class="osd-info">
+                        <h1 id="osd-name">Kanal Adı</h1>
+                        <p id="osd-epg-title">Yayım Məlumatı...</p>
+                        <div class="osd-progress-container">
+                            <div id="osd-progress-fill"></div>
+                        </div>
                     </div>
-                    <div class="osd-side">
-                        <span id="osd-clock">00:00</span>
-                        <span class="badge">4K HDR</span>
+                    <div class="osd-meta">
+                        <span id="osd-time">00:00</span>
+                        <span class="badge">HD</span>
                     </div>
                 </div>
             </div>
             <!-- Archive Sidebar -->
-            <div id="archive-panel" class="side-drawer hidden">
+            <div id="archive-sidebar" class="sidebar-right hidden">
                 <h3 class="text-gold">KANAL ARXİVİ</h3>
-                <div id="archive-items" class="list-vertical"></div>
+                <div id="archive-list" class="scroll-list"></div>
             </div>
         </div>
     </div>
