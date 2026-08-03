@@ -15,7 +15,7 @@
         android:layout_height="220dp"
         app:cardCornerRadius="10dp"
         app:cardElevation="0dp"
-        android:backgroundTint="?attr/colorSidebarCustom">
+        android:backgroundTint="@color/bg_sidebar">
 
         <ImageView
             android:id="@+id/ivLogo"
@@ -32,7 +32,8 @@
             android:layout_margin="8dp"
             android:src="@android:drawable/btn_star_big_on"
             android:visibility="gone"
-            app:tint="?attr/colorPrimaryCustom" />
+            android:duplicateParentState="true"
+            app:tint="@color/favorite_icon_selector" />
     </androidx.cardview.widget.CardView>
 
     <TextView
@@ -47,6 +48,11 @@
         android:maxLines="2"
         android:ellipsize="end"
         android:paddingStart="4dp"
-        android:paddingEnd="4dp" />
+        android:paddingEnd="4dp"
+        android:duplicateParentState="true"
+        android:shadowColor="#000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="3" />
 
 </LinearLayout>

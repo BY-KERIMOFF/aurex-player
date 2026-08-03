@@ -31,13 +31,13 @@
             android:layout_weight="1.8"
             android:orientation="vertical"
             android:padding="12dp"
-            android:background="?attr/colorSidebarCustom">
+            android:background="@color/bg_sidebar">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="MENU"
-                android:textColor="?attr/colorPrimaryCustom"
+                android:textColor="@color/gold_primary"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.2"
@@ -108,7 +108,7 @@
                 android:clipToPadding="false"
                 android:padding="8dp"
                 android:nextFocusLeft="@+id/rvChannels"
-                android:nextFocusUp="@+id/rvChannels"
+                android:nextFocusUp="@+id/etSearch"
                 android:nextFocusDown="@+id/rvChannels"
                 android:nextFocusRight="@+id/rvChannels"
                 android:descendantFocusability="afterDescendants" />
@@ -122,7 +122,7 @@
             android:layout_weight="3.4"
             android:orientation="vertical"
             android:padding="16dp"
-            android:background="?attr/colorSidebarCustom">
+            android:background="@color/bg_sidebar">
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
@@ -163,7 +163,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Seçin..."
-                    android:textColor="?attr/colorPrimaryCustom"
+                    android:textColor="@color/gold_primary"
                     android:textSize="22sp"
                     android:textStyle="bold"
                     android:layout_marginStart="16dp" />
@@ -216,7 +216,7 @@
             android:id="@+id/mainLoadingProgress"
             android:layout_width="50dp"
             android:layout_height="50dp"
-            android:indeterminateTint="?attr/colorPrimaryCustom" />
+            android:indeterminateTint="@color/gold_primary" />
 
         <TextView
             android:id="@+id/tvMainLoadingText"
@@ -224,7 +224,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="Yüklənir..."
-            android:textColor="?attr/colorPrimaryCustom"
+            android:textColor="@color/gold_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -249,7 +249,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="🧪 TEST REJİMİ"
-            android:textColor="#60a5fa"
+            android:textColor="@color/gold_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
 
@@ -258,7 +258,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="⏱ 00:00:00"
-            android:textColor="#60a5fa"
+            android:textColor="@color/gold_primary"
             android:textSize="18sp"
             android:textStyle="bold"
             android:layout_marginTop="2dp" />

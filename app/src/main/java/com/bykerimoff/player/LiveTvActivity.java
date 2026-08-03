@@ -14,6 +14,9 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.media3.common.MediaItem;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.DefaultRenderersFactory;
+import androidx.media3.extractor.DefaultExtractorsFactory;
+import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
 import androidx.media3.ui.CaptionStyleCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -73,7 +76,6 @@ public class LiveTvActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        com.bykerimoff.player.utils.ThemeManager.INSTANCE.applyTheme(this);
         super.onCreate(savedInstanceState);
         binding = ActivityLiveTvBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -200,6 +202,15 @@ public class LiveTvActivity extends AppCompatActivity {
                 binding.testTitleLive.setTextColor(color);
                 binding.testTimerLive.setTextColor(color);
                 binding.testTimerLive.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+
+                // 5 dəqiqədən az qaldıqda marqatla
+                if (remaining < 300) {
+                    if (binding.testBannerLive.getAnimation() == null) {
+                        binding.testBannerLive.startAnimation(android.view.animation.AnimationUtils.loadAnimation(LiveTvActivity.this, R.anim.blink));
+                    }
+                } else {
+                    binding.testBannerLive.clearAnimation();
+                }
             }
 
             @Override
@@ -660,7 +671,7 @@ public class LiveTvActivity extends AppCompatActivity {
             }
             
             runOnUiThread(() -> {
-                binding.mainLoadingProgress.setVisibility(android.view.View.GONE);
+                binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
                 allChannels.clear();
                 allChannels.addAll(tempAll);
                 channelMap.clear();
@@ -706,7 +717,7 @@ public class LiveTvActivity extends AppCompatActivity {
             }
             
             runOnUiThread(() -> {
-                binding.mainLoadingProgress.setVisibility(android.view.View.GONE);
+                binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
                 allChannels.clear();
                 allChannels.addAll(tempAll);
                 channelMap.clear();
@@ -732,8 +743,9 @@ public class LiveTvActivity extends AppCompatActivity {
         
         FavoriteManager fm = new FavoriteManager(this);
         int favs = 0;
-        if (allChannels.size() < 5000) {
-            for (Channel c : allChannels) if (fm.isFavorite(c.getId())) favs++;
+        if (allChannels != null && allChannels.size() < 5000) {
+            List<Channel> allCopy = new ArrayList<>(allChannels);
+            for (Channel c : allCopy) if (fm.isFavorite(c.getId())) favs++;
         }
 
         // Əvvəlcə orijinal siyahıda sayları yeniləyək
@@ -839,12 +851,16 @@ public class LiveTvActivity extends AppCompatActivity {
         
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(() -> {
+            List<Channel> channelsCopy;
+            synchronized (allChannels) {
+                channelsCopy = new ArrayList<>(allChannels);
+            }
             Map<String, List<Channel>> tempMap = new HashMap<>();
             Set<String> seenCats = new LinkedHashSet<>();
             FavoriteManager favoriteManager = new FavoriteManager(this);
             int favCount = 0;
 
-            for (Channel channel : allChannels) {
+            for (Channel channel : channelsCopy) {
                 if (favoriteManager.isFavorite(channel.getId())) favCount++;
                 String catName = channel.getCategoryName();
                 if (!tempMap.containsKey(catName)) tempMap.put(catName, new ArrayList<>());
@@ -892,7 +908,8 @@ public class LiveTvActivity extends AppCompatActivity {
             if (!lastUrl.isEmpty() && !allChannels.isEmpty()) {
                 for (int i = 0; i < allChannels.size(); i++) {
                     if (allChannels.get(i).getStreamUrl().equals(lastUrl)) {
-                        playChannel(allChannels.get(i), i, allChannels);
+                        Channel target = allChannels.get(i);
+                        playChannel(target, i, new ArrayList<>(allChannels));
                         return;
                     }
                 }
@@ -900,7 +917,7 @@ public class LiveTvActivity extends AppCompatActivity {
         }
 
         String filterCategory = getIntent().getStringExtra("filter_category");
-        if (filterCategory != null) {
+        if (filterCategory != null && categories != null && !categories.isEmpty()) {
             if ("Sevimlilər".equals(filterCategory)) {
                 loadFavorites();
             } else if ("VOD_MOVIES".equals(filterCategory) || "VOD_SERIES".equals(filterCategory)) {
@@ -916,27 +933,32 @@ public class LiveTvActivity extends AppCompatActivity {
                 setVodMode(true);
                 loadVodContent();
             }
-        } else if (!categories.isEmpty()) {
+        } else if (categories != null && !categories.isEmpty()) {
             setVodMode(false);
             
-            // "Sevimlilər" boşdursa, içində kanal olan ilk kateqoriyaya keç
-            Category targetCategory = categories.get(0);
-            if ("Sevimlilər".equals(targetCategory.getName())) {
+            List<Category> catsCopy = new ArrayList<>(categories);
+            if (catsCopy.isEmpty()) return;
+
+            Category targetCategory = catsCopy.get(0);
+            if (targetCategory != null && "Sevimlilər".equals(targetCategory.getName())) {
                 FavoriteManager fm = new FavoriteManager(this);
                 boolean hasFavorites = false;
-                for (Channel c : allChannels) {
-                    if (fm.isFavorite(c.getId())) {
+                List<Channel> channelsCopy = new ArrayList<>(allChannels);
+                for (Channel c : channelsCopy) {
+                    if (c != null && fm.isFavorite(c.getId())) {
                         hasFavorites = true;
                         break;
                     }
                 }
                 
-                if (!hasFavorites && categories.size() > 1) {
-                    targetCategory = categories.get(1); // Birinci real kateqoriya
+                if (!hasFavorites && catsCopy.size() > 1) {
+                    targetCategory = catsCopy.get(1); // Birinci real kateqoriya
                 }
             }
             
-            filterChannelsByCategory(targetCategory);
+            if (targetCategory != null) {
+                filterChannelsByCategory(targetCategory);
+            }
         }
     }
 
@@ -1010,6 +1032,22 @@ public class LiveTvActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+            if (binding.rvChannels.hasFocus()) {
+                View focused = binding.rvChannels.getFocusedChild();
+                if (focused != null && binding.rvChannels.getChildAdapterPosition(focused) == 0) {
+                    binding.etSearch.requestFocus();
+                    return true;
+                }
+            }
+        }
+        if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            if (binding.etSearch.hasFocus()) {
+                binding.rvChannels.requestFocus();
+                return true;
+            }
+        }
+
         if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
             if (binding.rvChannels.hasFocus() || binding.etSearch.hasFocus()) {
                 binding.rvCategories.requestFocus();

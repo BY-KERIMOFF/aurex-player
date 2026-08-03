@@ -17,6 +17,15 @@ public class DataManager {
     private static String adminAnnouncementColor = "";
     private static List<Channel> allChannels = new ArrayList<>();
     private static String playlistIdentifier = "";
+    private static boolean showAnnouncementGlobal = true;
+    
+    public static void setShowAnnouncementGlobal(boolean show) {
+        showAnnouncementGlobal = show;
+    }
+
+    public static boolean isShowAnnouncementGlobal() {
+        return showAnnouncementGlobal;
+    }
     
     public static void setGlobalEpgUrl(String url) {
         globalEpgUrl = url;

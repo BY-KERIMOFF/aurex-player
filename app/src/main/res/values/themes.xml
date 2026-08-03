@@ -1,42 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base Theme -->
-    <style name="Theme.Aurex.Base" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:windowBackground">@color/black</item>
+    <style name="Theme.Neoplay" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/bg_main</item>
+        <item name="android:statusBarColor">@color/black</item>
     </style>
-
-    <!-- Gold Theme (Default) -->
-    <style name="Theme.Aurex.Gold" parent="Theme.Aurex.Base">
-        <item name="colorPrimaryCustom">@color/gold_primary</item>
-        <item name="colorSidebarCustom">@color/sidebar_gold</item>
-        <item name="colorAccentCustom">@color/gold_dark</item>
-        <item name="colorGlassCustom">@color/glass_white</item>
-    </style>
-
-    <!-- Blue Theme -->
-    <style name="Theme.Aurex.Blue" parent="Theme.Aurex.Base">
-        <item name="colorPrimaryCustom">@color/blue_primary</item>
-        <item name="colorSidebarCustom">@color/sidebar_blue</item>
-        <item name="colorAccentCustom">@color/blue_dark</item>
-        <item name="colorGlassCustom">#1A0078D4</item>
-    </style>
-
-    <!-- Purple Theme -->
-    <style name="Theme.Aurex.Purple" parent="Theme.Aurex.Base">
-        <item name="colorPrimaryCustom">@color/purple_primary</item>
-        <item name="colorSidebarCustom">@color/sidebar_purple</item>
-        <item name="colorAccentCustom">@color/purple_dark</item>
-        <item name="colorGlassCustom">#1A9C27B0</item>
-    </style>
-
-    <!-- Pure Black Theme -->
-    <style name="Theme.Aurex.PureBlack" parent="Theme.Aurex.Base">
-        <item name="colorPrimaryCustom">@color/pure_black_primary</item>
-        <item name="colorSidebarCustom">@color/bg_pure_black</item>
-        <item name="colorAccentCustom">@color/pure_black_accent</item>
-        <item name="colorGlassCustom">#26FFFFFF</item>
-    </style>
-
-    <!-- Keep old name for compatibility if needed, but updated to Gold -->
-    <style name="Theme.Neoplay" parent="Theme.Aurex.Gold" />
 </resources>

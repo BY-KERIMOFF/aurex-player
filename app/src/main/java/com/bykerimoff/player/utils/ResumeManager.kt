@@ -34,7 +34,18 @@ object ResumeManager {
         val json = prefs.getString(KEY_RESUME_LIST, null) ?: return emptyList()
         return try {
             val type = object : TypeToken<List<ResumeItem>>() {}.type
-            Gson().fromJson(json, type)
+            val fullList: List<ResumeItem> = Gson().fromJson(json, type)
+            
+            // 24 saatlıq (1 gün) təmizləmə: 24 saat * 60 dəq * 60 san * 1000 ms
+            val oneDayAgo = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
+            val filteredList = fullList.filter { it.timestamp > oneDayAgo }
+            
+            // Əgər silinən varsa, yaddaşı yenilə
+            if (filteredList.size != fullList.size) {
+                saveList(context, filteredList)
+            }
+            
+            filteredList
         } catch (e: Exception) {
             emptyList()
         }

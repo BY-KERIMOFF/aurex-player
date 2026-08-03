@@ -44,10 +44,18 @@ object NetworkUtils {
         //    .build()
         // builder.certificatePinner(pinner)
 
-        builder.connectTimeout(15, TimeUnit.SECONDS)
-        builder.readTimeout(15, TimeUnit.SECONDS)
+        builder.connectTimeout(60, TimeUnit.SECONDS)
+        builder.readTimeout(60, TimeUnit.SECONDS)
+        builder.writeTimeout(60, TimeUnit.SECONDS)
         
-        // Standart sistem sertifikatlarını yoxlayır (MITM blocker)
+        // Dinamik Header Interceptor (API sorğuları üçün)
+        builder.addInterceptor { chain ->
+            val request = chain.request().newBuilder()
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
+                .header("Accept", "*/*")
+                .build()
+            chain.proceed(request)
+        }
         
         return builder.build()
     }

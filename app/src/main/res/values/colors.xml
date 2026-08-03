@@ -1,39 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Common Colors -->
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#B0B0B0</color>
-    <color name="glass_white">#1AFFFFFF</color>
-    <color name="glass_white_heavy">#33FFFFFF</color>
-
-    <!-- Legacy compatibility (needed by some layouts before full refactor) -->
+    <!-- Deep Dark Palette -->
     <color name="bg_main">#0A0A0A</color>
     <color name="bg_sidebar">#121212</color>
-    <color name="item_focus_color">#0078D4</color>
 
-    <!-- Gold Theme (Default) -->
+    <!-- Gold Accent Palette -->
     <color name="gold_primary">#FFD700</color>
     <color name="gold_dark">#B8860B</color>
-    <color name="bg_dark_gold">#0A0A0A</color>
-    <color name="sidebar_gold">#121212</color>
 
-    <!-- Blue Theme -->
-    <color name="blue_primary">#0078D4</color>
-    <color name="blue_dark">#004578</color>
-    <color name="bg_dark_blue">#000B1A</color>
-    <color name="sidebar_blue">#001429</color>
+    <!-- Glass & Text Colors -->
+    <color name="glass_white">#1AFFFFFF</color>
+    <color name="glass_white_heavy">#33FFFFFF</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
 
-    <!-- Purple Theme -->
-    <color name="purple_primary">#9C27B0</color>
-    <color name="purple_dark">#6A1B9A</color>
-    <color name="bg_dark_purple">#1A001A</color>
-    <color name="sidebar_purple">#260026</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
 
-    <!-- Pure Black Theme (OLED) -->
-    <color name="pure_black_primary">#E0E0E0</color>
-    <color name="pure_black_accent">#FFFFFF</color>
-    <color name="bg_pure_black">#000000</color>
-    <color name="sidebar_pure_black">#000000</color>
+    <!-- Item State Colors -->
+    <color name="item_focus_color">#FFD700</color>
 </resources>

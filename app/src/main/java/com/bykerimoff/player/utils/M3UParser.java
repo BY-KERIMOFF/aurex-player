@@ -101,7 +101,7 @@ public class M3UParser {
                     }
                 } catch (Exception ignored) {}
 
-                channels.add(new Channel(currentId, currentName, currentLogo, SecurityUtils.encryptUrl(currentUrl), currentGroup.intern(), currentTvgId, currentCatchupType, catchupDays, currentCatchupSource));
+                channels.add(new Channel(currentId, currentName, currentLogo, SecurityUtils.encryptUrl(currentUrl), currentGroup, currentTvgId, currentCatchupType, catchupDays, currentCatchupSource));
                 
                 // Növbəti kanal üçün sıfırla
                 currentId = "";

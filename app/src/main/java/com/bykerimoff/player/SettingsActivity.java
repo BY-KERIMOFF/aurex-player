@@ -14,7 +14,6 @@ import androidx.media3.common.util.UnstableApi;
 import com.bykerimoff.player.databinding.ActivitySettingsBinding;
 import com.bykerimoff.player.utils.MacUtils;
 import com.bykerimoff.player.utils.SleepTimerManager;
-import com.bykerimoff.player.utils.ThemeManager;
 import com.bykerimoff.player.utils.WallpaperManager;
 import com.bykerimoff.player.adapters.WallpaperAdapter;
 
@@ -25,7 +24,6 @@ public class SettingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemeManager.INSTANCE.applyTheme(this);
         super.onCreate(savedInstanceState);
         binding = ActivitySettingsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -75,12 +73,6 @@ public class SettingsActivity extends AppCompatActivity {
         else if ("count".equals(sortMode)) binding.rbSortCount.setChecked(true);
         else binding.rbSortDefault.setChecked(true);
 
-        String theme = ThemeManager.INSTANCE.getSavedTheme(this);
-        if (theme.equals(ThemeManager.THEME_BLUE)) binding.rbThemeBlue.setChecked(true);
-        else if (theme.equals(ThemeManager.THEME_PURPLE)) binding.rbThemePurple.setChecked(true);
-        else if (theme.equals(ThemeManager.THEME_PURE_BLACK)) binding.rbThemeBlack.setChecked(true);
-        else binding.rbThemeGold.setChecked(true);
-
         String pType = prefs.getString("player_type", "exo2");
         if ("standard".equalsIgnoreCase(pType)) {
             binding.rbExoStandard.setChecked(true);
@@ -122,11 +114,6 @@ public class SettingsActivity extends AppCompatActivity {
         setupFocusEffect(binding.rbSortDefault);
         setupFocusEffect(binding.rbSortName);
         setupFocusEffect(binding.rbSortCount);
-        
-        setupFocusEffect(binding.rbThemeGold);
-        setupFocusEffect(binding.rbThemeBlue);
-        setupFocusEffect(binding.rbThemePurple);
-        setupFocusEffect(binding.rbThemeBlack);
 
         binding.cbBootOnStartup.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("boot_on_startup", isChecked).apply();
@@ -211,17 +198,6 @@ public class SettingsActivity extends AppCompatActivity {
             
             prefs.edit().putString("category_sort_mode", mode).apply();
             Toast.makeText(this, "Kateqoriya sıralaması dəyişdirildi", Toast.LENGTH_SHORT).show();
-        });
-
-        binding.rgThemeChoice.setOnCheckedChangeListener((group, checkedId) -> {
-            String theme = ThemeManager.THEME_GOLD;
-            if (checkedId == R.id.rbThemeBlue) theme = ThemeManager.THEME_BLUE;
-            else if (checkedId == R.id.rbThemePurple) theme = ThemeManager.THEME_PURPLE;
-            else if (checkedId == R.id.rbThemeBlack) theme = ThemeManager.THEME_PURE_BLACK;
-
-            ThemeManager.INSTANCE.setAppTheme(this, theme);
-            Toast.makeText(this, "Tema tətbiq edildi. Aktiv edilir...", Toast.LENGTH_SHORT).show();
-            recreate(); // Temanı tətbiq etmək üçün ekranı yenilə
         });
 
         binding.btnRefreshData.setOnClickListener(v -> {

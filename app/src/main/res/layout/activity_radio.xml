@@ -35,7 +35,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="ONLAYN RADİO"
-                android:textColor="?attr/colorPrimaryCustom"
+                android:textColor="@color/gold_primary"
                 android:textSize="24sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="24dp" />
@@ -61,7 +61,7 @@
                 android:layout_height="250dp"
                 app:cardCornerRadius="125dp"
                 app:cardElevation="20dp"
-                app:cardBackgroundColor="?attr/colorSidebarCustom">
+                app:cardBackgroundColor="@color/bg_sidebar">
 
                 <ImageView
                     android:id="@+id/ivCurrentRadioLogo"
@@ -89,7 +89,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="Dayandırılıb"
-                android:textColor="?attr/colorPrimaryCustom"
+                android:textColor="@color/gold_primary"
                 android:textSize="18sp" />
 
             <ProgressBar
@@ -198,7 +198,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="🧪 TEST REJİMİ"
-            android:textColor="#60a5fa"
+            android:textColor="@color/gold_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
 
@@ -207,7 +207,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="⏱ 00:00:00"
-            android:textColor="#60a5fa"
+            android:textColor="@color/gold_primary"
             android:textSize="18sp"
             android:textStyle="bold"
             android:layout_marginTop="2dp" />

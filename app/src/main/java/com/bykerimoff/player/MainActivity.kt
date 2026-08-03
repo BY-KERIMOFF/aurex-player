@@ -59,7 +59,6 @@ class MainActivity : AppCompatActivity() {
     
     @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        com.bykerimoff.player.utils.ThemeManager.applyTheme(this)
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -79,6 +78,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         com.bykerimoff.player.utils.WallpaperManager.applyWallpaper(this, binding.ivAppBackground)
+
+        // Elan ayarını yaddaşdan yüklə
+        DataManager.setShowAnnouncementGlobal(prefs.getBoolean("show_announcement_global", true))
 
         deviceMac = MacUtils.getMacAddress(this)
 
@@ -715,6 +717,16 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 binding.testCountdown.setTextColor(color)
+                binding.testTitle.setTextColor(color)
+
+                // 5 dəqiqədən az qaldıqda marqatla
+                if (remaining < 300) {
+                    if (binding.testBanner.animation == null) {
+                        binding.testBanner.startAnimation(AnimationUtils.loadAnimation(this@MainActivity, R.anim.blink))
+                    }
+                } else {
+                    binding.testBanner.clearAnimation()
+                }
             }
             
             override fun onFinish() {

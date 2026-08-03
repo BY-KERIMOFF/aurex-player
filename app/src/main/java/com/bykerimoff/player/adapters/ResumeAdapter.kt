@@ -41,7 +41,7 @@ class ResumeAdapter(
                 if (hasFocus) {
                     v.startAnimation(AnimationUtils.loadAnimation(v.context, R.anim.scale_up))
                     v.elevation = 15f
-                    pbResumeProgress.progressTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.WHITE)
+                    pbResumeProgress.progressTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.BLACK)
                 } else {
                     v.startAnimation(AnimationUtils.loadAnimation(v.context, R.anim.scale_down))
                     v.elevation = 0f

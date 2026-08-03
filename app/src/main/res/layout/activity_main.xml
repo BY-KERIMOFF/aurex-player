@@ -52,7 +52,7 @@
                     android:layout_centerVertical="true"
                     android:layout_toEndOf="@id/titleContainer"
                     android:layout_marginStart="16dp"
-                    android:indeterminateTint="?attr/colorPrimaryCustom"
+                    android:indeterminateTint="@color/gold_primary"
                     android:visibility="gone" />
 
                 <LinearLayout
@@ -140,7 +140,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="🧪 TEST REJİMİ"
-                                android:textColor="#60a5fa"
+                                android:textColor="@color/gold_primary"
                                 android:textSize="18sp"
                                 android:textStyle="bold" />
 
@@ -160,7 +160,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="⏱ 00:00:00"
-                                android:textColor="#60a5fa"
+                                android:textColor="@color/gold_primary"
                                 android:textSize="24sp"
                                 android:textStyle="bold"
                                 android:paddingHorizontal="8dp"
@@ -203,7 +203,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textColor="?attr/colorAccentCustom"
+                android:textColor="@color/gold_dark"
                 android:textSize="16sp"
                 android:layout_marginBottom="24dp"
                 android:visibility="gone" />
@@ -226,7 +226,7 @@
                     android:clickable="true"
                     app:cardCornerRadius="15dp"
                     app:cardElevation="0dp"
-                    android:backgroundTint="?attr/colorSidebarCustom">
+                    android:backgroundTint="@color/bg_sidebar">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
@@ -237,7 +237,7 @@
                             android:layout_width="72dp"
                             android:layout_height="72dp"
                             android:src="@android:drawable/ic_menu_slideshow"
-                            app:tint="?attr/colorPrimaryCustom" />
+                            app:tint="@color/gold_primary" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -260,7 +260,7 @@
                     android:clickable="true"
                     app:cardCornerRadius="15dp"
                     app:cardElevation="0dp"
-                    android:backgroundTint="?attr/colorSidebarCustom">
+                    android:backgroundTint="@color/bg_sidebar">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
@@ -271,7 +271,7 @@
                             android:layout_width="72dp"
                             android:layout_height="72dp"
                             android:src="@android:drawable/ic_menu_gallery"
-                            app:tint="?attr/colorPrimaryCustom" />
+                            app:tint="@color/gold_primary" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -294,7 +294,7 @@
                     android:clickable="true"
                     app:cardCornerRadius="15dp"
                     app:cardElevation="0dp"
-                    android:backgroundTint="?attr/colorSidebarCustom">
+                    android:backgroundTint="@color/bg_sidebar">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
@@ -305,7 +305,7 @@
                             android:layout_width="72dp"
                             android:layout_height="72dp"
                             android:src="@android:drawable/ic_menu_sort_by_size"
-                            app:tint="?attr/colorPrimaryCustom" />
+                            app:tint="@color/gold_primary" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -328,7 +328,7 @@
                     android:clickable="true"
                     app:cardCornerRadius="15dp"
                     app:cardElevation="0dp"
-                    android:backgroundTint="?attr/colorSidebarCustom">
+                    android:backgroundTint="@color/bg_sidebar">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
@@ -339,7 +339,7 @@
                             android:layout_width="72dp"
                             android:layout_height="72dp"
                             android:src="@android:drawable/btn_star_big_on"
-                            app:tint="?attr/colorPrimaryCustom" />
+                            app:tint="@color/gold_primary" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -372,7 +372,7 @@
                 android:clickable="true"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="0dp"
-                android:backgroundTint="?attr/colorSidebarCustom">
+                android:backgroundTint="@color/bg_sidebar">
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -386,7 +386,7 @@
                         android:layout_height="40dp"
                         android:src="@android:drawable/ic_lock_silent_mode_off"
                         android:scaleType="fitCenter"
-                        app:tint="?attr/colorPrimaryCustom" />
+                        app:tint="@color/gold_primary" />
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -404,7 +404,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Dünyanın ən populyar və yerli radio stansiyaları"
-                            android:textColor="?attr/colorAccentCustom"
+                            android:textColor="@color/gold_dark"
                             android:textSize="12sp"
                             android:alpha="0.9" />
                     </LinearLayout>
@@ -430,7 +430,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="İZLƏMƏYƏ DAVAM ET"
-                    android:textColor="?attr/colorPrimaryCustom"
+                    android:textColor="@color/gold_primary"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:layout_marginStart="10dp"
@@ -460,7 +460,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="GÜNLÜK MƏZƏNNƏLƏR (AZN)"
-                    android:textColor="?attr/colorPrimaryCustom"
+                    android:textColor="@color/gold_primary"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:layout_marginStart="10dp"
@@ -498,7 +498,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="AXTARIŞ"
-                    android:backgroundTint="?attr/colorAccentCustom"
+                    android:backgroundTint="@color/gold_dark"
                     android:textColor="@color/white" />
             </LinearLayout>
         </LinearLayout>
@@ -540,7 +540,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="30dp"
             android:text="MAC: 00:00:00:00:00"
-            android:textColor="?attr/colorPrimaryCustom"
+            android:textColor="@color/gold_primary"
             android:textSize="20sp" />
 
         <Button

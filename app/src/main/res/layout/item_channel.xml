@@ -26,7 +26,12 @@
         android:layout_marginStart="16dp"
         android:textColor="@color/text_focus_selector"
         android:textSize="16sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:duplicateParentState="true"
+        android:shadowColor="#000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="3" />
 
     <ImageView
         android:id="@+id/ivFavorite"
@@ -35,7 +40,8 @@
         android:layout_marginEnd="8dp"
         android:src="@android:drawable/btn_star_big_off"
         android:visibility="gone"
+        android:duplicateParentState="true"
         xmlns:app="http://schemas.android.com/apk/res-auto"
-        app:tint="@color/gold_primary" />
+        app:tint="@color/favorite_icon_selector" />
 
 </LinearLayout>

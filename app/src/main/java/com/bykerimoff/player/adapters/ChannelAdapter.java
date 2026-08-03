@@ -37,6 +37,11 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         this.listener = listener;
     }
 
+    public void updateData(List<Channel> newChannels) {
+        this.channels = newChannels;
+        notifyDataSetChanged();
+    }
+
     public void setViewType(int viewType) {
         this.currentViewType = viewType;
         notifyDataSetChanged();

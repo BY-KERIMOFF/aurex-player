@@ -45,6 +45,7 @@ public class UpdateManager {
                 Log.d(TAG, "Checking for updates...");
                 okhttp3.Request request = new okhttp3.Request.Builder()
                         .url(UPDATE_URL)
+                        .cacheControl(new okhttp3.CacheControl.Builder().noCache().noStore().build()) // Keşi ləğv et
                         .build();
 
                 okhttp3.Response response = NetworkUtils.getSafeOkHttpClient().newCall(request).execute();
@@ -58,15 +59,20 @@ public class UpdateManager {
                 String notes = json.optString("releaseNotes", "");
                 String announcement = json.optString("announcement", "");
                 String announcementColor = json.optString("announcementColor", "");
+                
+                // Elanı göstər/gizlə (Susmaya görə true)
+                boolean showAnnouncement = json.optBoolean("showAnnouncement", true);
 
                 DataManager.setAdminAnnouncement(announcement);
                 DataManager.setAdminAnnouncementColor(announcementColor);
+                DataManager.setShowAnnouncementGlobal(showAnnouncement);
                 
                 // Daimi yaddaşa yaz
                 context.getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
                         .edit()
                         .putString("last_announcement", announcement)
                         .putString("last_announcement_color", announcementColor)
+                        .putBoolean("show_announcement_global", showAnnouncement)
                         .apply();
 
                 long currentVersionCode = getAppVersionCode();

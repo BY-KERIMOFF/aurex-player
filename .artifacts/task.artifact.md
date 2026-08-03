@@ -1,7 +1,14 @@
-# Premium Splash Screen və Brendinq Tapşırıqları
-
-- [ ] `activity_main.xml` faylında Splash loqosunu sil və "AUREX PLAYER" yazısını premium et
-- [ ] `MainActivity.kt` daxilində loqo animasiyasını ləğv et, yalnız yazı animasiyasını saxla
-- [ ] `MainActivity.kt` daxilində `handleAutoStart()` funksiyasının çağırışını sil (Ana menyuya birbaşa keçid üçün)
-- [ ] Versiyanı artır (v94)
-- [ ] Build və Test
+- [x] `blink.xml` animasiyasını yaratmaq
+- [x] Layout fayllarında rəngləri yeniləmək
+    - [x] `activity_main.xml`
+    - [x] `activity_live_tv.xml`
+    - [x] `activity_player.xml`
+    - [x] `activity_radio.xml`
+- [x] Activity kodlarında taymer məntiqini və animasiyanı tətbiq etmək
+    - [x] `MainActivity.kt`
+    - [x] `LiveTvActivity.java`
+    - [x] `PlayerActivity.java`
+    - [x] `RadioActivity.java`
+- [x] `app/build.gradle.kts` faylında versiyanı artırmaq (v186)
+- [x] Release build prosesini başlatmaq (assembleRelease)
+- [x] APK faylının yaradılmasını yoxlamaq

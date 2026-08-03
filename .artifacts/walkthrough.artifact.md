@@ -1,23 +1,24 @@
-# Premium Splash Screen və "Aurex Player" Brendinqi: Walkthrough
+# Test Rejimi Vizual Təkmilləşdirmələri (v186)
 
-İstəyinə uyğun olaraq tətbiqin açılış ekranını tam premium hala gətirdim, loqoları sildim və naviqasiyanı birbaşa Ana Menyuya yönləndirdim.
+Bu yeniləmə ilə "Test Rejimi" banneri daha diqqətçəkən və oxunaqlı hala gətirildi.
 
-## Edilən Dəyişikliklər
+## Yeniliklər
 
-### 1. 🎞️ Premium Splash Screen (Açılış Ekranı)
-- **Loqosuz Dizayn**: Giriş ekranındakı bütün loqolar və Neo Play elementləri silindi.
-- **Aesthetic Text**: Mərkəzdə tam qara fonda modern, hərəkətli (animated) **"AUREX PLAYER"** yazısı gəlir.
-- **Premium Styling**: Yazı üçün xüsusi `shadow`, `letterSpacing` və böyük şrift ölçüsü (`48sp`) tətbiq olundu.
+### 1. Yüksək Kontrastlı Rənglər
+- Bütün ekranlarda (Ana ekran, Canlı TV, Pleyer, Radio) əvvəlki mavi rəng parlaq **Qızılı/Sarı** rənglə əvəz edildi. Bu, bannerin hər cür fon üzərində aydın görünməsini təmin edir.
 
-### 2. 🧭 Naviqasiya və Məntiq
-- **Ana Menyuya Keçid**: Tətbiq açılan kimi artıq özbaşına kanala girmir. Birbaşa Ana Menyu (Dashboard) açılır ki, bütün bölmələri (Ayarlar, Canlı TV və s.) görə biləsən.
-- **Auto-start Disabled**: "En soncu hansi kanalda galkmsdi elede davam eelsin" məntiqi saxlanıldı, lakin tətbiq açılanda istifadəçinin Ana Menyunu görməsi üçün avtomatik keçid ləğv edildi.
+### 2. Dinamik Rəng Dəyişimi
+Vaxt azaldıqca bannerin rəngi avtomatik olaraq dəyişir:
+- **5 dəqiqədən çox:** Qızılı/Sarı (Gold)
+- **5 dəqiqədən az:** Narıncı (Orange)
+- **1 dəqiqədən az:** Qırmızı (Red)
 
-### 3. 🚀 Versiya və Build
-- **Version Code**: `94`
-- **Version Name**: `2.3.0`
-- **APK Faylı**: `app/build/outputs/apk/release/by-kerimoff-player_v94.apk`
+### 3. Yanıb-Sönmə (Blink) Effekti
+- Test müddətinin bitməsinə **5 dəqiqə** qaldıqda, banner avtomatik olaraq yanıb-sönməyə (marqatlamağa) başlayır. Bu, istifadəçini vaxtın azaldığı barədə vizual olaraq xəbərdar edir.
 
-## Doğrulama
-- Layihə uğurla build olundu.
-- Splash ekranında mənzərə və ya Neo Play loqosunun qalmadığı, tam qara fonda Aurex yazısının gəldiyi təsdiqləndi.
+### 4. Versiya Yeniləməsi
+- **Versiya:** 3.7.2 (Build 186)
+- **APK faylı:** `app/build/outputs/apk/release/by-kerimoff-player_v186.apk`
+
+## Nəticə
+Düzəlişlər tətbiq edildi və build uğurla başa çatdı. Artıq test rejimi həm daha aydın görünür, həm də vaxt bitəndə daha ciddi xəbərdarlıq edir.

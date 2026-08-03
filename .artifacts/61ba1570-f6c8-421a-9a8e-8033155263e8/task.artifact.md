@@ -1,4 +1,4 @@
-- [ ] `PlayerActivity.java` faylında ən son baxılan kanalın linkini yadda saxlamaq
-- [ ] `app/build.gradle.kts` faylında versiyanı artırmaq (v177)
-- [ ] Release build prosesini başlatmaq (assembleRelease)
-- [ ] APK faylının yaradılmasını yoxlamaq
+- [x] `PlayerActivity.java` faylında ən son baxılan kanalın linkini yadda saxlamaq
+- [x] `app/build.gradle.kts` faylında versiyanı artırmaq (v177)
+- [x] Release build prosesini başlatmaq (assembleRelease)
+- [x] APK faylının yaradılmasını yoxlamaq

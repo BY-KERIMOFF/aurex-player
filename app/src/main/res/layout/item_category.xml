@@ -17,14 +17,24 @@
         android:layout_weight="1"
         android:textColor="@color/text_focus_selector"
         android:textSize="15sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:duplicateParentState="true"
+        android:shadowColor="#000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2" />
 
     <TextView
         android:id="@+id/tvChannelCount"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="@color/text_focus_selector"
+        android:duplicateParentState="true"
         android:alpha="0.7"
-        android:textSize="12sp" />
+        android:textSize="12sp"
+        android:shadowColor="#000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="1" />
 
 </LinearLayout>

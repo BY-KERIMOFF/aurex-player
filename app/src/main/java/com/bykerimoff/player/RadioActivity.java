@@ -17,6 +17,8 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.DefaultRenderersFactory;
+import androidx.media3.extractor.DefaultExtractorsFactory;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import com.bumptech.glide.Glide;
 import com.bykerimoff.player.adapters.RadioAdapter;
@@ -54,7 +56,6 @@ public class RadioActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        com.bykerimoff.player.utils.ThemeManager.INSTANCE.applyTheme(this);
         super.onCreate(savedInstanceState);
         binding = ActivityRadioBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -111,14 +112,25 @@ public class RadioActivity extends AppCompatActivity {
                 binding.testTimerRadio.setText("🧪 TEST - " + timeLeft);
 
                 int color;
-                if (remaining < 300) {
+                if (remaining < 60) {
                     color = android.graphics.Color.parseColor("#ef4444");
+                } else if (remaining < 300) {
+                    color = android.graphics.Color.parseColor("#FFA500"); // Orange
                 } else {
-                    color = android.graphics.Color.parseColor("#4ade80");
+                    color = android.graphics.Color.parseColor("#D4AF37"); // Gold
                 }
                 
                 binding.testTitleRadio.setTextColor(color);
                 binding.testTimerRadio.setTextColor(color);
+
+                // 5 dəqiqədən az qaldıqda marqatla
+                if (remaining < 300) {
+                    if (binding.testBannerRadio.getAnimation() == null) {
+                        binding.testBannerRadio.startAnimation(android.view.animation.AnimationUtils.loadAnimation(RadioActivity.this, R.anim.blink));
+                    }
+                } else {
+                    binding.testBannerRadio.clearAnimation();
+                }
             }
 
             @Override
@@ -145,8 +157,18 @@ public class RadioActivity extends AppCompatActivity {
             String.format("%02d:%02d:%02d", hours, minutes, secs);
     }
 
+    @OptIn(markerClass = UnstableApi.class)
     private void initPlayer() {
-        exoPlayer = new ExoPlayer.Builder(this).build();
+        DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory();
+        androidx.media3.exoplayer.source.DefaultMediaSourceFactory mediaSourceFactory = new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(this, extractorsFactory);
+
+        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
+                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+                .setEnableDecoderFallback(true);
+
+        exoPlayer = new ExoPlayer.Builder(this, renderersFactory)
+                .setMediaSourceFactory(mediaSourceFactory)
+                .build();
         exoPlayer.addListener(new Player.Listener() {
             @Override
             public void onPlaybackStateChanged(int state) {
