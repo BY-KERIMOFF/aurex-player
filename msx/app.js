@@ -1,16 +1,10 @@
 const CONFIG = {
     authUrl: 'http://kanal65.xyz/api.php?mac=',
     m3uDefault: 'http://kanal65.xyz/by-kerimoff-player/playlist.m3u',
-    weatherApi: 'https://api.open-meteo.com/v1/forecast?latitude=40.4093&longitude=49.8671&current_weather=true',
-    radioApi: 'https://all.api.radio-browser.info/json/stations/bycountrycodeexact/',
+    epgProxyUrl: 'https://epg.pw/xmltv/feed/az.xml',
     osdTimeout: 6000,
     numericTimeout: 1500,
-    wallpapers: [
-        'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1920',
-        'https://images.unsplash.com/photo-1477346611705-65d1883cee1e?w=1920',
-        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1920',
-        'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920'
-    ]
+    volumeTimeout: 3000
 };
 
 let state = {
@@ -21,39 +15,29 @@ let state = {
     categories: [],
     currentCategory: 'Hamısı',
     filteredChannels: [],
-    favorites: JSON.parse(localStorage.getItem('aurex_favorites') || '[]'),
-    lastChannelUrl: localStorage.getItem('aurex_last_channel_url') || '',
+    epgData: {},
     focusedArea: 'mac-input',
     focusedIndex: 0,
     currentChannelIndex: -1,
     hls: new Hls(),
+    volume: 50,
     numericInput: '',
     numericTimer: null,
-    aspectModes: ['FILL', 'FIT', 'ZOOM'],
-    currentAspect: 0,
-    sleepTimer: null,
-    sleepTimeRemaining: 0,
-    wallpaperIndex: localStorage.getItem('aurex_wp') || 0,
-    radioCountry: 'AZ',
-    radios: [],
-    longPressTimer: null,
-    isLongPress: false
+    favorites: JSON.parse(localStorage.getItem('aurex_favorites') || '[]'),
 };
 
 // --- Initialization ---
 window.onload = () => {
-    applyWallpaper();
-    startClock();
+    initClock();
     launchApp();
 };
 
-function startClock() {
+function initClock() {
     const update = () => {
         const now = new Date();
-        const opts = { hour: '2-digit', minute: '2-digit' };
-        document.getElementById('clock').innerText = now.toLocaleTimeString('az-AZ', opts);
-        if(document.getElementById('osd-clock')) document.getElementById('osd-clock').innerText = now.toLocaleTimeString('az-AZ', opts);
-        document.getElementById('date').innerText = now.toLocaleDateString('az-AZ', { weekday: 'long', day: 'numeric', month: 'long' });
+        const time = now.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+        if(document.getElementById('clock')) document.getElementById('clock').innerText = time;
+        if(document.getElementById('osd-clock')) document.getElementById('osd-clock').innerText = time;
     };
     update();
     setInterval(update, 1000);
@@ -67,7 +51,7 @@ async function launchApp() {
     }, 3000);
 }
 
-// --- Auth & Data ---
+// --- Server & Auth ---
 async function checkAuth(mac) {
     try {
         const res = await fetch(CONFIG.authUrl + mac);
@@ -76,28 +60,15 @@ async function checkAuth(mac) {
             state.mac = mac;
             localStorage.setItem('aurex_mac', mac);
             state.m3uUrl = data.m3uUrl || CONFIG.m3uDefault;
-            if (data.announcement) {
-                const elan = document.getElementById('announcement-scroll');
-                elan.innerText = data.announcement;
-                if(data.announcementColor) elan.style.color = data.announcementColor;
-                document.getElementById('announcement-bar').classList.remove('hidden');
-            }
-            await loadAllAppData();
-
-            if (state.lastChannelUrl) {
-                const idx = state.allChannels.findIndex(c => c.url === state.lastChannelUrl);
-                if (idx !== -1) { state.currentChannelIndex = idx; startPlayer(state.allChannels[idx]); return; }
-            }
+            await loadPlaylistAndEPG();
             showDashboard();
         } else showLogin(data.message);
     } catch (e) { showLogin("Bağlantı xətası"); }
 }
 
-async function loadAllAppData() {
+async function loadPlaylistAndEPG() {
     await fetchM3U();
-    fetchWeather();
-    fetchRadios(state.radioCountry);
-    renderWallpaperList();
+    fetchEPG(); // Background EPG fetch
 }
 
 async function fetchM3U() {
@@ -112,8 +83,8 @@ async function fetchM3U() {
                 const name = line.split(',').pop().trim();
                 const logo = line.match(/tvg-logo="([^"]*)"/)?.[1] || '';
                 const group = line.match(/group-title="([^"]*)"/)?.[1] || 'Digər';
-                const catchup = line.match(/catchup="([^"]*)"/)?.[1] || '';
-                cur = { name, logo, group, catchup, id: btoa(name).substring(0,8) };
+                const tvgId = line.match(/tvg-id="([^"]*)"/)?.[1] || '';
+                cur = { name, logo, group, tvgId, id: btoa(name).substring(0,8) };
             } else if (line.startsWith('http')) {
                 if (cur) { cur.url = line; chans.push(cur); cur = null; }
             }
@@ -123,16 +94,30 @@ async function fetchM3U() {
     } catch (e) {}
 }
 
-async function fetchWeather() {
+async function fetchEPG() {
     try {
-        const res = await fetch(CONFIG.weatherApi);
-        const data = await res.json();
-        document.getElementById('weather-temp').innerText = Math.round(data.current_weather.temperature) + "°C";
-        document.getElementById('weather-widget').classList.remove('hidden');
+        const res = await fetch(CONFIG.epgProxyUrl);
+        const text = await res.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, "application/xml");
+        const programmes = xml.getElementsByTagName("programme");
+
+        let epg = {};
+        for (let p of programmes) {
+            const channelId = p.getAttribute("channel");
+            const title = p.getElementsByTagName("title")[0]?.textContent;
+            const start = p.getAttribute("start");
+            const stop = p.getAttribute("stop");
+
+            if(!epg[channelId]) epg[channelId] = [];
+            epg[channelId].push({ title, start, stop });
+        }
+        state.epgData = epg;
+        renderChannels(); // Refresh channel list with EPG
     } catch (e) {}
 }
 
-// --- Screens & Navigation ---
+// --- Navigation ---
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
@@ -142,11 +127,7 @@ function showScreen(id) {
 function showLogin(err = '') {
     showScreen('login-screen');
     state.focusedArea = 'mac-input';
-    if(err) {
-        const el = document.getElementById('login-error');
-        el.innerText = err;
-        el.classList.remove('hidden');
-    }
+    if(err) document.getElementById('login-error').innerText = err;
     updateFocus();
 }
 
@@ -157,8 +138,8 @@ function showDashboard() {
     updateFocus();
 }
 
-function showTV(cat = 'Hamısı') {
-    state.currentCategory = cat;
+function showTV(category = 'Hamısı') {
+    state.currentCategory = category;
     showScreen('tv-panel');
     renderCategories();
     renderChannels();
@@ -168,9 +149,9 @@ function showTV(cat = 'Hamısı') {
 }
 
 function renderCategories() {
-    document.getElementById('category-list').innerHTML = state.categories.map((c, i) =>
-        `<div class="list-item cat-item ${c === state.currentCategory ? 'active-cat' : ''}" data-index="${i}">${c}</div>`
-    ).join('');
+    document.getElementById('category-list').innerHTML = state.categories.map((c, i) => `
+        <div class="list-item cat-item ${c === state.currentCategory ? 'active-cat' : ''}" data-index="${i}">${c}</div>
+    `).join('');
 }
 
 function renderChannels() {
@@ -178,16 +159,35 @@ function renderChannels() {
     else if (state.currentCategory === 'Sevimlilər') state.filteredChannels = state.allChannels.filter(c => state.favorites.includes(c.id));
     else state.filteredChannels = state.allChannels.filter(c => c.group === state.currentCategory);
 
-    document.getElementById('channel-list').innerHTML = state.filteredChannels.map((c, i) => `
-        <div class="list-item chan-item" data-index="${i}">
-            <img src="${c.logo}" onerror="this.src='placeholder.png'">
-            <div class="chan-info">
-                <div class="chan-name">${c.name}</div>
-                <div class="chan-epg">Canlı Yayım</div>
+    document.getElementById('channel-list').innerHTML = state.filteredChannels.map((c, i) => {
+        const epg = getCurrentEPG(c.tvgId);
+        return `
+            <div class="list-item chan-item" data-index="${i}">
+                <img src="${c.logo}" onerror="this.src='placeholder.png'">
+                <div class="chan-info">
+                    <div class="chan-name">${c.name}</div>
+                    <div class="chan-epg">${epg ? epg.title : 'Canlı Yayım'}</div>
+                </div>
             </div>
-            ${state.favorites.includes(c.id) ? '<span class="fav-star">⭐</span>' : ''}
-        </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+function getCurrentEPG(tvgId) {
+    if(!state.epgData[tvgId]) return null;
+    const now = new Date().getTime();
+    return state.epgData[tvgId].find(p => {
+        const start = parseEPGTime(p.start);
+        const stop = parseEPGTime(p.stop);
+        return now >= start && now < stop;
+    });
+}
+
+function parseEPGTime(timeStr) {
+    // Format: 20230724230000 +0000
+    const y = timeStr.substring(0,4), m = timeStr.substring(4,6)-1, d = timeStr.substring(6,8),
+          h = timeStr.substring(8,10), min = timeStr.substring(10,12);
+    return new Date(Date.UTC(y, m, d, h, min)).getTime();
 }
 
 function updateFocus() {
@@ -195,14 +195,9 @@ function updateFocus() {
     let sel = '';
     if (state.focusedArea === 'mac-input') sel = '#mac-input';
     else if (state.focusedArea === 'btn-login') sel = '#btn-login';
-    else if (state.focusedArea === 'cards') sel = '.main-cards .card';
-    else if (state.focusedArea === 'mini-card') sel = '.dashboard-footer .card.mini';
-    else if (state.focusedArea === 'footer-btns') sel = '.footer-buttons button';
+    else if (state.focusedArea === 'cards') sel = '.card';
     else if (state.focusedArea === 'categories') sel = '.cat-item';
     else if (state.focusedArea === 'channels') sel = '.chan-item';
-    else if (state.focusedArea === 'tv-search') sel = '#tv-search';
-    else if (state.focusedArea === 'timer-btn') sel = '.btn-timer';
-    else if (state.focusedArea === 'wp-item') sel = '.wp-item';
 
     const el = document.querySelectorAll(sel)[state.focusedIndex];
     if (el) {
@@ -216,69 +211,14 @@ function updatePreview(chan) {
     if(!chan) return;
     document.getElementById('preview-name').innerText = chan.name;
     document.getElementById('preview-logo').src = chan.logo;
-    const vid = document.getElementById('mini-player');
-    if (Hls.isSupported()) { state.hls.loadSource(chan.url); state.hls.attachMedia(vid); }
-    else vid.src = chan.url;
+    const epg = getCurrentEPG(chan.tvgId);
+    document.getElementById('preview-epg-now').innerText = epg ? epg.title : 'Canlı Yayım';
+    playVideo(document.getElementById('mini-player'), chan.url);
 }
 
-// --- Logic Engines ---
-function handleNumeric(digit) {
-    state.numericInput += digit;
-    const overlay = document.getElementById('numeric-overlay');
-    overlay.innerText = state.numericInput;
-    overlay.classList.remove('hidden');
-    clearTimeout(state.numericTimer);
-    state.numericTimer = setTimeout(() => {
-        const idx = parseInt(state.numericInput) - 1;
-        if (idx >= 0 && idx < state.allChannels.length) {
-            state.currentChannelIndex = idx;
-            startPlayer(state.allChannels[idx]);
-        }
-        state.numericInput = '';
-        overlay.classList.add('hidden');
-    }, CONFIG.numericTimeout);
-}
-
-function toggleAspect() {
-    state.currentAspect = (state.currentAspect + 1) % state.aspectModes.length;
-    const mode = state.aspectModes[state.currentAspect];
-    document.getElementById('main-player').className = 'video-' + mode.toLowerCase();
-    const status = document.getElementById('aspect-status');
-    status.innerText = "Format: " + mode;
-    status.classList.remove('hidden');
-    setTimeout(() => status.classList.add('hidden'), 2000);
-}
-
-function setSleepTimer(minutes) {
-    clearInterval(state.sleepTimer);
-    if (minutes === 0) {
-        state.sleepTimeRemaining = 0;
-        document.getElementById('sleep-timer-indicator').classList.add('hidden');
-        return;
-    }
-    state.sleepTimeRemaining = minutes * 60;
-    document.getElementById('sleep-timer-indicator').classList.remove('hidden');
-    state.sleepTimer = setInterval(() => {
-        state.sleepTimeRemaining--;
-        if (state.sleepTimeRemaining <= 0) {
-            clearInterval(state.sleepTimer);
-            window.close(); // MSX close command if supported, or just splash
-            location.reload();
-        }
-        const m = Math.floor(state.sleepTimeRemaining / 60);
-        const s = state.sleepTimeRemaining % 60;
-        document.getElementById('sleep-timer-val').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-    }, 1000);
-}
-
-function applyWallpaper() {
-    document.getElementById('wallpaper-overlay').style.backgroundImage = `url('${CONFIG.wallpapers[state.wallpaperIndex]}')`;
-}
-
-function renderWallpaperList() {
-    document.getElementById('wallpaper-list').innerHTML = CONFIG.wallpapers.map((wp, i) => `
-        <div class="wp-item focusable" data-index="${i}" style="background-image: url('${wp}')"></div>
-    `).join('');
+function playVideo(vid, url) {
+    if (Hls.isSupported()) { state.hls.loadSource(url); state.hls.attachMedia(vid); }
+    else vid.src = url;
 }
 
 // --- Key Handlers ---
@@ -287,70 +227,33 @@ window.onkeydown = (e) => {
     if (state.screen === 'login-screen') handleLoginInput(key);
     else if (state.screen === 'dashboard') handleDashboardInput(key);
     else if (state.screen === 'tv-panel') handleTVInput(key);
-    else if (state.screen === 'settings-screen') handleSettingsInput(key);
     else if (state.screen === 'player-view') handlePlayerInput(key);
 
-    if (state.screen === 'player-view' && key >= '0' && key <= '9') handleNumeric(key);
-    if (state.screen === 'player-view' && (key === 'y' || key === 'Yellow')) toggleAspect();
+    // Volume Control
+    if (key === 'AudioVolumeUp') changeVolume(5);
+    if (key === 'AudioVolumeDown') changeVolume(-5);
+
     updateFocus();
 };
 
-function handleLoginInput(key) {
-    if (key === 'ArrowDown') state.focusedArea = 'btn-login';
-    if (key === 'ArrowUp') state.focusedArea = 'mac-input';
-    if (key === 'Enter' && state.focusedArea === 'btn-login') checkServerAuth(document.getElementById('mac-input').value);
-}
+function changeVolume(delta) {
+    state.volume = Math.max(0, Math.min(100, state.volume + delta));
+    const main = document.getElementById('main-player');
+    if(main) main.volume = state.volume / 100;
 
-function handleDashboardInput(key) {
-    if (state.focusedArea === 'cards') {
-        const cards = document.querySelectorAll('.main-cards .card');
-        if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % cards.length;
-        if (key === 'ArrowLeft') state.focusedIndex = (state.focusedIndex - 1 + cards.length) % cards.length;
-        if (key === 'ArrowDown') { state.focusedArea = 'mini-card'; state.focusedIndex = 0; }
-        if (key === 'Enter') {
-            const action = cards[state.focusedIndex].dataset.action;
-            if (action === 'live-tv') showTV();
-        }
-    } else if (state.focusedArea === 'mini-card') {
-        if (key === 'ArrowUp') { state.focusedArea = 'cards'; state.focusedIndex = 0; }
-        if (key === 'ArrowRight') { state.focusedArea = 'footer-btns'; state.focusedIndex = 0; }
-        if (key === 'Enter') showRadioScreen();
-    } else if (state.focusedArea === 'footer-btns') {
-        const btns = document.querySelectorAll('.footer-buttons button');
-        if (key === 'ArrowUp') { state.focusedArea = 'cards'; state.focusedIndex = 3; }
-        if (key === 'ArrowLeft') { state.focusedArea = 'mini-card'; state.focusedIndex = 0; }
-        if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % btns.length;
-        if (key === 'Enter') {
-            const action = btns[state.focusedIndex].dataset.action;
-            if (action === 'settings-screen') showSettings();
-        }
-    }
-}
+    const volUI = document.getElementById('volume-overlay');
+    document.getElementById('vol-bar-fill').style.width = state.volume + '%';
+    document.getElementById('vol-percent').innerText = state.volume + '%';
+    volUI.classList.remove('volume-hidden');
 
-function handleSettingsInput(key) {
-    if (state.focusedArea === 'timer-btn') {
-        const opts = document.querySelectorAll('.timer-options .btn-timer');
-        if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % opts.length;
-        if (key === 'ArrowLeft') state.focusedIndex = (state.focusedIndex - 1 + opts.length) % opts.length;
-        if (key === 'ArrowDown') { state.focusedArea = 'wp-item'; state.focusedIndex = 0; }
-        if (key === 'Enter') setSleepTimer(parseInt(opts[state.focusedIndex].dataset.timer));
-    } else if (state.focusedArea === 'wp-item') {
-        const wps = document.querySelectorAll('.wp-item');
-        if (key === 'ArrowUp') { state.focusedArea = 'timer-btn'; state.focusedIndex = 0; }
-        if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % wps.length;
-        if (key === 'ArrowLeft') state.focusedIndex = (state.focusedIndex - 1 + wps.length) % wps.length;
-        if (key === 'Enter') { state.wallpaperIndex = state.focusedIndex; localStorage.setItem('aurex_wp', state.wallpaperIndex); applyWallpaper(); }
-    }
-    if (key === 'Backspace') showDashboard();
+    clearTimeout(window.volTimer);
+    window.volTimer = setTimeout(() => volUI.classList.add('volume-hidden'), CONFIG.volumeTimeout);
 }
 
 function handleTVInput(key) {
     if (state.focusedArea === 'channels') {
         if (key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.filteredChannels.length;
-        if (key === 'ArrowUp') {
-            if (state.focusedIndex === 0) { state.focusedArea = 'tv-search'; state.focusedIndex = 0; }
-            else state.focusedIndex--;
-        }
+        if (key === 'ArrowUp') state.focusedIndex = (state.focusedIndex - 1 + state.filteredChannels.length) % state.filteredChannels.length;
         if (key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
         if (key === 'Enter') {
             state.currentChannelIndex = state.allChannels.indexOf(state.filteredChannels[state.focusedIndex]);
@@ -367,35 +270,13 @@ function handleTVInput(key) {
 
 function startPlayer(chan) {
     showScreen('player-view');
-    document.getElementById('mini-player').pause();
     const main = document.getElementById('main-player');
-    if (Hls.isSupported()) { state.hls.loadSource(chan.url); state.hls.attachMedia(main); }
-    else main.src = chan.url;
-
-    state.lastChannelUrl = chan.url;
-    localStorage.setItem('aurex_last_channel_url', chan.url);
-
+    playVideo(main, chan.url);
     document.getElementById('osd-ch-name').innerText = chan.name;
     document.getElementById('osd-logo').src = chan.logo;
+    const epg = getCurrentEPG(chan.tvgId);
+    document.getElementById('osd-epg-info').innerText = epg ? epg.title : 'Canlı Yayım';
     showOSD();
-}
-
-function handlePlayerInput(key) {
-    if (key === 'Backspace' || key === 'Escape') {
-        const osd = document.getElementById('player-osd');
-        if (osd.classList.contains('osd-hidden')) { document.getElementById('main-player').pause(); showTV(state.currentCategory); }
-        else osd.classList.add('osd-hidden');
-    }
-    if (key === 'Enter' || key === 'ArrowUp' || key === 'ArrowDown') showOSD();
-    if (document.getElementById('player-osd').classList.contains('osd-hidden')) {
-        if (key === 'ArrowUp') switchChannel(1);
-        if (key === 'ArrowDown') switchChannel(-1);
-    }
-}
-
-function switchChannel(dir) {
-    state.currentChannelIndex = (state.currentChannelIndex + dir + state.allChannels.length) % state.allChannels.length;
-    startPlayer(state.allChannels[state.currentChannelIndex]);
 }
 
 function showOSD() {
@@ -405,4 +286,13 @@ function showOSD() {
     window.osdTimer = setTimeout(() => osd.classList.add('osd-hidden'), CONFIG.osdTimeout);
 }
 
-function showSettings() { showScreen('settings-screen'); state.focusedArea = 'timer-btn'; state.focusedIndex = 0; updateFocus(); }
+function handlePlayerInput(key) {
+    if (key === 'Backspace' || key === 'Escape') {
+        const osd = document.getElementById('player-osd');
+        if (osd.classList.contains('osd-hidden')) {
+            document.getElementById('main-player').pause();
+            showTV(state.currentCategory);
+        } else osd.classList.add('osd-hidden');
+    }
+    if (key === 'Enter' || key === 'ArrowUp' || key === 'ArrowDown') showOSD();
+}

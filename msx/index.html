@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AUREX PLAYER FINAL GOLD TV</title>
+    <title>AUREX PLAYER ULTIMATE TV</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -14,7 +14,7 @@
         <!-- Splash Screen -->
         <div id="splash-screen" class="screen active">
             <h1 class="splash-title">AUREX PLAYER</h1>
-            <p class="splash-subtitle">Premium Final Edition</p>
+            <p class="splash-subtitle">Ultimate Smart TV Edition</p>
         </div>
 
         <!-- Login Screen -->
@@ -91,29 +91,6 @@
             </div>
         </div>
 
-        <!-- Settings Screen -->
-        <div id="settings-screen" class="screen">
-            <div class="settings-container">
-                <h2 class="text-gold">AYARLAR</h2>
-                <div class="settings-grid">
-                    <div class="settings-column">
-                        <h3>YUXU TAYMERİ</h3>
-                        <div class="timer-options">
-                            <button class="focusable btn-timer" data-timer="0">QAPALI</button>
-                            <button class="focusable btn-timer" data-timer="15">15 DƏQ</button>
-                            <button class="focusable btn-timer" data-timer="30">30 DƏQ</button>
-                            <button class="focusable btn-timer" data-timer="60">60 DƏQ</button>
-                        </div>
-                    </div>
-                    <div class="settings-column">
-                        <h3>ARXA FON SEÇİMİ</h3>
-                        <div id="wallpaper-list" class="wallpaper-grid scroll-list"></div>
-                    </div>
-                </div>
-                <button class="focusable btn-gold" data-action="back-to-dash">GERİ QAYIT</button>
-            </div>
-        </div>
-
         <!-- TV Panel -->
         <div id="tv-panel" class="screen">
             <div class="tv-container">
@@ -143,9 +120,64 @@
             </div>
         </div>
 
-        <!-- Radio View -->
+        <!-- Player View -->
+        <div id="player-view" class="screen">
+            <video id="main-player" autoplay class="video-fill"></video>
+            <div id="announcement-container" class="hidden">
+                <div id="announcement-text">AUREX PLAYER</div>
+            </div>
+            <div id="numeric-overlay" class="hidden">0</div>
+            <div id="aspect-status" class="hidden">FIT</div>
+
+            <!-- Custom Volume UI -->
+            <div id="volume-overlay" class="volume-hidden">
+                <span class="vol-icon">🔊</span>
+                <div class="vol-bar-bg"><div id="vol-bar-fill"></div></div>
+                <span id="vol-percent">50%</span>
+            </div>
+
+            <!-- Player OSD -->
+            <div id="player-osd" class="osd-hidden">
+                <div class="osd-body">
+                    <img id="osd-logo" src="" alt="">
+                    <div class="osd-text">
+                        <h1 id="osd-ch-name">Kanal Adı</h1>
+                        <p id="osd-epg-info">Yayım Məlumatı...</p>
+                        <div class="osd-progress-bg"><div id="osd-progress-fill"></div></div>
+                    </div>
+                    <div class="osd-side">
+                        <span id="osd-clock">00:00</span>
+                        <span class="badge">4K UltraHD</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings, Radio, PIN Dialogs remain same as v194 -->
+        <div id="settings-screen" class="screen">
+            <div class="settings-container">
+                <h2 class="text-gold">AYARLAR</h2>
+                <div class="settings-grid">
+                    <div class="settings-column">
+                        <h3>YUXU TAYMERİ</h3>
+                        <div class="timer-options">
+                            <button class="focusable btn-timer" data-timer="0">QAPALI</button>
+                            <button class="focusable btn-timer" data-timer="15">15 DƏQ</button>
+                            <button class="focusable btn-timer" data-timer="30">30 DƏQ</button>
+                            <button class="focusable btn-timer" data-timer="60">60 DƏQ</button>
+                        </div>
+                    </div>
+                    <div class="settings-column">
+                        <h3>ARXA FON SEÇİMİ</h3>
+                        <div id="wallpaper-list" class="wallpaper-grid scroll-list"></div>
+                    </div>
+                </div>
+                <button class="focusable btn-gold" data-action="back-to-dash">GERİ QAYIT</button>
+            </div>
+        </div>
+
         <div id="radio-view" class="screen">
-            <div class="radio-container">
+            <div class="radio-layout">
                 <div class="radio-side">
                     <h3 class="text-gold">ONLAYN RADİO</h3>
                     <div class="radio-tabs">
@@ -167,45 +199,11 @@
             </div>
         </div>
 
-        <!-- PIN Pad -->
         <div id="pin-pad" class="dialog-overlay hidden">
             <div class="pin-box">
                 <h2 class="text-gold">KİLİD</h2>
                 <div id="pin-stars">****</div>
                 <p class="pin-hint">Pultun rəqəm düymələri ilə yazın</p>
-            </div>
-        </div>
-
-        <!-- Full Player -->
-        <div id="player-view" class="screen">
-            <video id="main-player" autoplay class="video-fill"></video>
-            <!-- Announcement Marquee -->
-            <div id="announcement-container" class="hidden">
-                <div id="announcement-text">AUREX PLAYER</div>
-            </div>
-            <!-- Numeric Input Overlay -->
-            <div id="numeric-overlay" class="hidden">0</div>
-            <!-- Aspect Ratio Status -->
-            <div id="aspect-status" class="hidden">FIT</div>
-            <!-- OSD -->
-            <div id="player-osd" class="osd-hidden">
-                <div class="osd-body">
-                    <img id="osd-logo" src="" alt="">
-                    <div class="osd-text">
-                        <h1 id="osd-ch-name">Kanal Adı</h1>
-                        <p id="osd-epg-info">Yayım Məlumatı...</p>
-                        <div class="osd-progress-bg"><div id="osd-progress-fill"></div></div>
-                    </div>
-                    <div class="osd-side">
-                        <span id="osd-clock">00:00</span>
-                        <span class="badge">HD</span>
-                    </div>
-                </div>
-            </div>
-            <!-- Archive Sidebar -->
-            <div id="archive-panel" class="side-drawer hidden">
-                <h3 class="text-gold">KANAL ARXİVİ</h3>
-                <div id="archive-items" class="list-vertical"></div>
             </div>
         </div>
     </div>
