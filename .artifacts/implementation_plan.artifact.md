@@ -1,37 +1,42 @@
-# "Aurex Player Smart TV" (Tam Kopya - v188) Tətbiq Planı
+# "Aurex Player Smart TV" (Yekun Yüksək Səviyyəli Kopya) Tətbiq Planı
 
-Bu plan MediaStation X tətbiqini sizin Android APK-nın **vizual və funksional tam kopyasına** çevirir. Buraya MAC adres ilə giriş, eyni rəng sxemi və bütün bölmələr daxildir.
+Bu plan Smart TV versiyasını (MediaStation X) Android APK-da olan bütün qabaqcıl funksiyalarla təchiz edərək 100% kopyasına çevirir.
 
 ## Proposed Changes
 
 ### [Web Application Components]
 
 #### [MODIFY] [msx/index.html](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/index.html)
-- **Login Screen:** APK-dakı "MAC Ünvanı" ekranına bənzər giriş səhifəsi.
-- **Splash Screen:** Açılışda qızılı "AUREX PLAYER" yazısı olan animasiyalı ekran.
-- **Dashboard:** Eyni kartlar (Canlı TV, Filmlər, Seriallar, Sevimlilər).
-- **Layout:** Bütün pəncərələr Android-dəki ölçülər və yerləşmə ilə eyni olacaq.
+- **Widgets:** Dashboard-a hava (Open-Meteo) və valyuta (CBAR) məlumatları üçün sahələr əlavə ediləcək.
+- **Radio Screen:** Radio stansiyaların siyahısı və pleyeri üçün yeni pəncərə.
+- **PIN Dialog:** "Adult" kateqoriyalar üçün 4 rəqəmli şifrə pəncərəsi.
+- **Marquee:** Kanalın altında sağdan sola qaçan elan mətni (Android-dəki kimi).
 
 #### [MODIFY] [msx/style.css](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/style.css)
-- **Android Studio Mövzusu:** Android-dəki `@color/gold_primary` (#FFD700) və `@color/bg_main` (#0A0A0A) rənglərindən istifadə olunacaq.
-- **Fokus Effektləri:** Elementin üzərinə gələndə **Sarı fon və Qara yazı** effektləri tətbiq ediləcək.
-- **Kart Dizaynı:** Android-dəki kimi yuvarlaq künclər (15dp) və kölgələr.
+- **Animasiyalar:** Marqatlayan (blink) test taymeri və qaçan yazı (marquee) üçün CSS keyframes.
+- **Widget Stilləri:** Hava emojiləri və valyuta kartları üçün xüsusi dizayn.
+- **Radio UI:** Radio loqolarının dairəvi və animasiyalı (pulse) olması.
 
 #### [MODIFY] [msx/app.js](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/app.js)
-1.  **MAC Auth:** `http://kanal65.xyz/api.php?mac=...` vasitəsilə eyni autentifikasya sistemi.
-2.  **Dinamik Menyu:** Serverdən gələn `is_vod_enabled` və `is_series_enabled` dəyərlərinə görə Filmlər və Seriallar bölmələrini gizlədib-açacaq.
-3.  **HLS/M3U8:** Smart TV-nin daxili pleyeri vasitəsilə 4K və Full HD dəstəyi.
-4.  **LocalStorage:** MAC adresini yadda saxlayacaq ki, hər dəfə istəməsin.
+1.  **Hava və Valyuta:** APK-dakı eyni API-lərdən istifadə edərək məlumatların gətirilməsi.
+2.  **Parental Lock:** `localStorage`-da saxlanılan PIN ilə şifrəli kateqoriyalara girişin qorunması.
+3.  **Radio Motoru:** `radio-browser.info` vasitəsilə AZ, TR və RU radiolarının yüklənməsi.
+4.  **Track Control:** Video pleyerdə audio və alt yazı kanallarının seçilməsi imkanı.
 
-## Texniki Addımlar (İcraat)
-
-1.  **Dizayn Yeniləməsi:** Bütün düymə və yazı rəngləri Android XML fayllarındakı rəng kodları ilə eyniləşdiriləcək.
-2.  **Giriş Sistemi:** İlk açılışda istifadəçiyə MAC daxil etmək üçün virtual klaviatura dəstəkli pəncərə göstəriləcək.
-3.  **Səhifələrarası Keçid:** Android-dəki "Slide" animasiyaları veb versiyaya əlavə ediləcək.
+### [Gradle Configuration]
+- `versionCode` **189**, `versionName` **"3.7.5"** olaraq yenilənəcək.
 
 ## Verification Plan
 
 ### Manual Verification
-1.  Televizorda açanda birinci MAC giriş ekranının gəldiyini görmək.
-2.  MAC daxil etdikdən sonra Dashboard-un tam olaraq Android APK-ya bənzədiyini (Qara/Qızılı) yoxlamaq.
-3.  Kanallarda və filmlərdə sarı fon/qara yazı effektinin işləməsini təsdiqləmək.
+1.  **Hava/Valyuta:** Ana ekranda Bakı üçün hava dərəcəsinin və AZN məzənnələrinin göründüyünü yoxlamaq.
+2.  **Radio:** Radio bölməsinə daxil olub bir neçə stansiyanın səsləndiyini təsdiqləmək.
+3.  **Kilid:** Şifrəli kateqoriyaya daxil olarkən PIN tələb olunmasını və pultla daxil edilməsini yoxlamaq.
+4.  **Elan:** Yazının sağdan sola rəvan şəkildə qaçdığını müşahidə etmək.
+
+---
+
+> [!NOTE]
+> Bu tətbiq tamamlandıqdan sonra sizin LG və Samsung TV istifadəçiləriniz Android TV istifadəçiləri ilə tam eyni imkanlara sahib olacaqlar.
+
+Başlayaqmı? Razısınızsa, bu kompleks kodları hazırlayıb GitHub-a göndərim.

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AUREX PLAYER TV</title>
+    <title>AUREX PLAYER SMART TV</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -11,7 +11,6 @@
     <div id="app">
         <!-- Splash Screen -->
         <div id="splash-screen" class="screen active">
-            <div class="splash-bg"></div>
             <h1 class="splash-title">AUREX PLAYER</h1>
         </div>
 
@@ -19,66 +18,68 @@
         <div id="login-screen" class="screen">
             <div class="login-container">
                 <h1 class="text-gold">GİRİŞ</h1>
-                <p class="text-white">Zəhmət olmasa MAC ünvanınızı daxil edin:</p>
+                <p class="text-white">MAC Ünvanını daxil edin:</p>
                 <div class="input-wrapper">
-                    <input type="text" id="mac-input" class="focusable" placeholder="00:00:00:00:00:00" maxlength="17">
+                    <input type="text" id="mac-input" class="focusable" placeholder="00:00:00:00:00:00">
                 </div>
                 <button id="btn-login" class="focusable btn-gold">DAXİL OL</button>
-                <p id="login-error" class="text-red hidden">MAC ünvanı aktiv edilməyib.</p>
-                <div class="mac-hint text-gray">Cihaz MAC: <span id="device-mac-info">Naməlum</span></div>
+                <p id="login-error" class="text-red hidden"></p>
             </div>
         </div>
 
-        <!-- Dashboard (Ana Ekran) -->
+        <!-- Dashboard -->
         <div id="dashboard" class="screen">
-            <div class="panoramic-bg"></div>
             <header class="dashboard-header">
                 <div class="header-left">
                     <h1 class="app-title-gradient">AUREX PLAYER</h1>
-                    <div id="test-banner" class="hidden">🧪 TEST REJİMİ - <span id="test-timer">00:00:00</span></div>
+                    <div id="weather-widget" class="header-widget hidden">
+                        <span id="weather-emoji">☀️</span>
+                        <span id="weather-temp">--°C</span>
+                    </div>
                 </div>
                 <div class="header-right">
-                    <div id="clock">00:00</div>
-                    <div id="date">Cümə, 24 İyul</div>
+                    <div id="test-banner" class="test-banner hidden">🧪 TEST - <span id="test-timer">00:00:00</span></div>
+                    <div class="clock-group">
+                        <div id="clock">00:00</div>
+                        <div id="date">Cümə, 24 İyul</div>
+                    </div>
                 </div>
             </header>
 
             <div class="main-cards">
                 <div class="card focusable" data-action="live-tv">
-                    <div class="card-inner">
-                        <span class="card-icon">📺</span>
-                        <h3>CANLI TV</h3>
-                    </div>
+                    <span class="card-icon">📺</span>
+                    <h3>CANLI TV</h3>
                 </div>
                 <div class="card focusable" data-action="movies">
-                    <div class="card-inner">
-                        <span class="card-icon">🎬</span>
-                        <h3>FİLMLƏR</h3>
-                    </div>
+                    <span class="card-icon">🎬</span>
+                    <h3>FİLMLƏR</h3>
                 </div>
                 <div class="card focusable" data-action="series">
-                    <div class="card-inner">
-                        <span class="card-icon">🎭</span>
-                        <h3>SERİALLAR</h3>
-                    </div>
+                    <span class="card-icon">🎭</span>
+                    <h3>SERİALLAR</h3>
                 </div>
                 <div class="card focusable" data-action="favorites">
-                    <div class="card-inner">
-                        <span class="card-icon">⭐</span>
-                        <h3>SEVİMLİLƏR</h3>
-                    </div>
+                    <span class="card-icon">⭐</span>
+                    <h3>SEVİMLİLƏR</h3>
                 </div>
             </div>
 
-            <div class="bottom-sections">
-                <div id="resume-section" class="section hidden">
-                    <h4 class="section-title">İZLƏMƏYƏ DAVAM ET</h4>
-                    <div id="resume-list" class="list-row"></div>
+            <div class="dashboard-bottom">
+                <div id="currency-section" class="section hidden">
+                    <h4 class="section-title">VALYUTA MƏZƏNNƏLƏRİ</h4>
+                    <div id="currency-list" class="list-row"></div>
                 </div>
 
-                <div class="settings-bar">
-                    <button class="focusable btn-glass" data-action="settings">AYARLAR</button>
-                    <button class="focusable btn-gold" data-action="search">AXTARIŞ</button>
+                <div class="action-bar">
+                    <div class="card mini focusable" data-action="radio">
+                        <span class="card-icon mini">📻</span>
+                        <h3>RADİO</h3>
+                    </div>
+                    <div class="settings-group">
+                        <button class="focusable btn-glass" data-action="settings">AYARLAR</button>
+                        <button class="focusable btn-gold" data-action="search">AXTARIŞ</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -98,47 +99,65 @@
                     <div id="channel-list" class="scroll-list"></div>
                 </div>
                 <div class="side-panel preview-panel">
-                    <div class="mini-player-wrapper">
-                        <video id="mini-player" autoplay muted></video>
-                    </div>
+                    <video id="mini-player" autoplay muted></video>
                     <div class="preview-meta">
                         <img id="preview-logo" src="" alt="">
                         <h2 id="preview-name">Kanal Seçin</h2>
-                        <p id="preview-epg">Yayım məlumatı yoxdur</p>
-                        <div class="epg-progress-bar"><div id="epg-progress-fill"></div></div>
+                        <p id="preview-epg">Proqram məlumatı yoxdur</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Player View -->
-        <div id="player-view" class="screen">
-            <video id="main-player" autoplay></video>
-            <div id="player-osd" class="osd-hidden">
-                <div class="osd-main">
-                    <img id="osd-logo" src="" alt="">
-                    <div class="osd-info">
-                        <h1 id="osd-channel-name">Kanal Adı</h1>
-                        <p id="osd-epg-text">Yayım Məlumatı...</p>
-                    </div>
-                    <div class="osd-status">
-                        <span id="osd-time">00:00</span>
-                        <span class="osd-badge">HD</span>
-                    </div>
+        <!-- Radio View -->
+        <div id="radio-view" class="screen">
+            <div class="radio-layout">
+                <div class="radio-sidebar">
+                    <h3 class="text-gold">ONLAYN RADİO</h3>
+                    <div id="radio-list" class="scroll-list"></div>
                 </div>
-                <div id="player-controls" class="hidden">
-                    <div class="osd-progress-wrapper">
-                        <span id="osd-current-time">00:00</span>
-                        <div class="osd-progress-bg">
-                            <div id="osd-progress-fill"></div>
+                <div class="radio-main">
+                    <div class="radio-player-card">
+                        <div id="radio-visualizer" class="pulse">
+                            <img id="radio-current-logo" src="" alt="">
                         </div>
-                        <span id="osd-total-time">00:00</span>
+                        <h1 id="radio-current-name">Radio Seçin</h1>
+                        <p id="radio-status">Siyahı yüklənir...</p>
                     </div>
                 </div>
             </div>
-            <div id="player-buffering" class="hidden">
-                <div class="loader"></div>
-                <p>Yüklənir...</p>
+        </div>
+
+        <!-- PIN Dialog -->
+        <div id="pin-dialog" class="dialog-overlay hidden">
+            <div class="dialog-box">
+                <h2 class="text-gold">PIN KOD</h2>
+                <p>Şifrəli bölməyə giriş:</p>
+                <div id="pin-display">****</div>
+                <div class="pin-hint">Pultun rəqəmlərindən istifadə edin</div>
+            </div>
+        </div>
+
+        <!-- Full Player -->
+        <div id="player-view" class="screen">
+            <video id="main-player" autoplay></video>
+            <!-- Announcement Marquee -->
+            <div id="announcement-container" class="hidden">
+                <div id="announcement-text">AUREX PLAYER</div>
+            </div>
+            <!-- OSD -->
+            <div id="player-osd" class="osd-hidden">
+                <div class="osd-content">
+                    <img id="osd-logo" src="" alt="">
+                    <div class="osd-info">
+                        <h1 id="osd-name">Kanal Adı</h1>
+                        <p id="osd-epg">Yayım Məlumatı...</p>
+                    </div>
+                    <div class="osd-meta">
+                        <span id="osd-time">00:00</span>
+                        <span class="badge">HD</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
