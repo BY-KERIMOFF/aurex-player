@@ -5,7 +5,12 @@ const CONFIG = {
     radioApi: 'https://all.api.radio-browser.info/json/stations/bycountrycodeexact/',
     osdTimeout: 6000,
     numericTimeout: 1500,
-    longPressThreshold: 800
+    wallpapers: [
+        'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1920',
+        'https://images.unsplash.com/photo-1477346611705-65d1883cee1e?w=1920',
+        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1920',
+        'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920'
+    ]
 };
 
 let state = {
@@ -26,6 +31,9 @@ let state = {
     numericTimer: null,
     aspectModes: ['FILL', 'FIT', 'ZOOM'],
     currentAspect: 0,
+    sleepTimer: null,
+    sleepTimeRemaining: 0,
+    wallpaperIndex: localStorage.getItem('aurex_wp') || 0,
     radioCountry: 'AZ',
     radios: [],
     longPressTimer: null,
@@ -34,6 +42,7 @@ let state = {
 
 // --- Initialization ---
 window.onload = () => {
+    applyWallpaper();
     startClock();
     launchApp();
 };
@@ -58,7 +67,7 @@ async function launchApp() {
     }, 3000);
 }
 
-// --- Server & Auth ---
+// --- Auth & Data ---
 async function checkAuth(mac) {
     try {
         const res = await fetch(CONFIG.authUrl + mac);
@@ -73,27 +82,22 @@ async function checkAuth(mac) {
                 if(data.announcementColor) elan.style.color = data.announcementColor;
                 document.getElementById('announcement-bar').classList.remove('hidden');
             }
-            await loadAllData();
+            await loadAllAppData();
 
-            // Auto-start last channel
             if (state.lastChannelUrl) {
-                const lastIdx = state.allChannels.findIndex(c => c.url === state.lastChannelUrl);
-                if (lastIdx !== -1) {
-                    state.currentChannelIndex = lastIdx;
-                    startPlayer(state.allChannels[lastIdx]);
-                    return;
-                }
+                const idx = state.allChannels.findIndex(c => c.url === state.lastChannelUrl);
+                if (idx !== -1) { state.currentChannelIndex = idx; startPlayer(state.allChannels[idx]); return; }
             }
             showDashboard();
         } else showLogin(data.message);
     } catch (e) { showLogin("Bağlantı xətası"); }
 }
 
-async function loadAllData() {
+async function loadAllAppData() {
     await fetchM3U();
     fetchWeather();
-    fetchCurrency();
     fetchRadios(state.radioCountry);
+    renderWallpaperList();
 }
 
 async function fetchM3U() {
@@ -108,7 +112,8 @@ async function fetchM3U() {
                 const name = line.split(',').pop().trim();
                 const logo = line.match(/tvg-logo="([^"]*)"/)?.[1] || '';
                 const group = line.match(/group-title="([^"]*)"/)?.[1] || 'Digər';
-                cur = { name, logo, group, id: btoa(name).substring(0,8) };
+                const catchup = line.match(/catchup="([^"]*)"/)?.[1] || '';
+                cur = { name, logo, group, catchup, id: btoa(name).substring(0,8) };
             } else if (line.startsWith('http')) {
                 if (cur) { cur.url = line; chans.push(cur); cur = null; }
             }
@@ -127,23 +132,7 @@ async function fetchWeather() {
     } catch (e) {}
 }
 
-function fetchCurrency() {
-    const mock = [{ code: 'USD', value: '1.7000' }, { code: 'EUR', value: '1.8450' }, { code: 'TRY', value: '0.0520' }];
-    document.getElementById('currency-list').innerHTML = mock.map(c => `
-        <div class="list-item widget"><strong>${c.code}</strong> <span>${c.value}</span></div>
-    `).join('');
-    document.getElementById('currency-section').classList.remove('hidden');
-}
-
-async function fetchRadios(country) {
-    try {
-        const res = await fetch(CONFIG.radioApi + country);
-        state.radios = await res.json();
-        if(state.screen === 'radio-view') renderRadios();
-    } catch (e) {}
-}
-
-// --- Navigation & UI ---
+// --- Screens & Navigation ---
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
@@ -206,12 +195,14 @@ function updateFocus() {
     let sel = '';
     if (state.focusedArea === 'mac-input') sel = '#mac-input';
     else if (state.focusedArea === 'btn-login') sel = '#btn-login';
-    else if (state.focusedArea === 'cards') sel = '.card';
+    else if (state.focusedArea === 'cards') sel = '.main-cards .card';
+    else if (state.focusedArea === 'mini-card') sel = '.dashboard-footer .card.mini';
+    else if (state.focusedArea === 'footer-btns') sel = '.footer-buttons button';
     else if (state.focusedArea === 'categories') sel = '.cat-item';
     else if (state.focusedArea === 'channels') sel = '.chan-item';
     else if (state.focusedArea === 'tv-search') sel = '#tv-search';
-    else if (state.focusedArea === 'radio-tab') sel = '.tab';
-    else if (state.focusedArea === 'radio-item') sel = '.radio-item';
+    else if (state.focusedArea === 'timer-btn') sel = '.btn-timer';
+    else if (state.focusedArea === 'wp-item') sel = '.wp-item';
 
     const el = document.querySelectorAll(sel)[state.focusedIndex];
     if (el) {
@@ -225,68 +216,84 @@ function updatePreview(chan) {
     if(!chan) return;
     document.getElementById('preview-name').innerText = chan.name;
     document.getElementById('preview-logo').src = chan.logo;
-    playStream(document.getElementById('mini-player'), chan.url);
+    const vid = document.getElementById('mini-player');
+    if (Hls.isSupported()) { state.hls.loadSource(chan.url); state.hls.attachMedia(vid); }
+    else vid.src = chan.url;
 }
 
-function playStream(video, url) {
-    if (Hls.isSupported()) { state.hls.loadSource(url); state.hls.attachMedia(video); }
-    else video.src = url;
+// --- Logic Engines ---
+function handleNumeric(digit) {
+    state.numericInput += digit;
+    const overlay = document.getElementById('numeric-overlay');
+    overlay.innerText = state.numericInput;
+    overlay.classList.remove('hidden');
+    clearTimeout(state.numericTimer);
+    state.numericTimer = setTimeout(() => {
+        const idx = parseInt(state.numericInput) - 1;
+        if (idx >= 0 && idx < state.allChannels.length) {
+            state.currentChannelIndex = idx;
+            startPlayer(state.allChannels[idx]);
+        }
+        state.numericInput = '';
+        overlay.classList.add('hidden');
+    }, CONFIG.numericTimeout);
+}
+
+function toggleAspect() {
+    state.currentAspect = (state.currentAspect + 1) % state.aspectModes.length;
+    const mode = state.aspectModes[state.currentAspect];
+    document.getElementById('main-player').className = 'video-' + mode.toLowerCase();
+    const status = document.getElementById('aspect-status');
+    status.innerText = "Format: " + mode;
+    status.classList.remove('hidden');
+    setTimeout(() => status.classList.add('hidden'), 2000);
+}
+
+function setSleepTimer(minutes) {
+    clearInterval(state.sleepTimer);
+    if (minutes === 0) {
+        state.sleepTimeRemaining = 0;
+        document.getElementById('sleep-timer-indicator').classList.add('hidden');
+        return;
+    }
+    state.sleepTimeRemaining = minutes * 60;
+    document.getElementById('sleep-timer-indicator').classList.remove('hidden');
+    state.sleepTimer = setInterval(() => {
+        state.sleepTimeRemaining--;
+        if (state.sleepTimeRemaining <= 0) {
+            clearInterval(state.sleepTimer);
+            window.close(); // MSX close command if supported, or just splash
+            location.reload();
+        }
+        const m = Math.floor(state.sleepTimeRemaining / 60);
+        const s = state.sleepTimeRemaining % 60;
+        document.getElementById('sleep-timer-val').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }, 1000);
+}
+
+function applyWallpaper() {
+    document.getElementById('wallpaper-overlay').style.backgroundImage = `url('${CONFIG.wallpapers[state.wallpaperIndex]}')`;
+}
+
+function renderWallpaperList() {
+    document.getElementById('wallpaper-list').innerHTML = CONFIG.wallpapers.map((wp, i) => `
+        <div class="wp-item focusable" data-index="${i}" style="background-image: url('${wp}')"></div>
+    `).join('');
 }
 
 // --- Key Handlers ---
 window.onkeydown = (e) => {
     const key = e.key;
-
-    // Long Press Start
-    if (key === 'Enter' && !state.longPressTimer) {
-        state.isLongPress = false;
-        state.longPressTimer = setTimeout(() => {
-            state.isLongPress = true;
-            handleLongPress();
-        }, CONFIG.longPressThreshold);
-    }
-
     if (state.screen === 'login-screen') handleLoginInput(key);
     else if (state.screen === 'dashboard') handleDashboardInput(key);
     else if (state.screen === 'tv-panel') handleTVInput(key);
+    else if (state.screen === 'settings-screen') handleSettingsInput(key);
     else if (state.screen === 'player-view') handlePlayerInput(key);
-    else if (state.screen === 'radio-view') handleRadioInput(key);
 
-    if (state.screen === 'player-view') {
-        if (key >= '0' && key <= '9') handleNumeric(key);
-        if (key === 'y' || key === 'Yellow') toggleAspect();
-    }
+    if (state.screen === 'player-view' && key >= '0' && key <= '9') handleNumeric(key);
+    if (state.screen === 'player-view' && (key === 'y' || key === 'Yellow')) toggleAspect();
     updateFocus();
 };
-
-window.onkeyup = (e) => {
-    if (e.key === 'Enter') {
-        clearTimeout(state.longPressTimer);
-        state.longPressTimer = null;
-        if (state.isLongPress) {
-            e.preventDefault();
-            return;
-        }
-    }
-};
-
-function handleLongPress() {
-    if (state.screen === 'tv-panel' && state.focusedArea === 'channels') {
-        const chan = state.filteredChannels[state.focusedIndex];
-        toggleFavorite(chan);
-    }
-}
-
-function toggleFavorite(chan) {
-    if (state.favorites.includes(chan.id)) {
-        state.favorites = state.favorites.filter(id => id !== chan.id);
-    } else {
-        state.favorites.push(chan.id);
-    }
-    localStorage.setItem('aurex_favorites', JSON.stringify(state.favorites));
-    renderChannels();
-    updateFocus();
-}
 
 function handleLoginInput(key) {
     if (key === 'ArrowDown') state.focusedArea = 'btn-login';
@@ -295,15 +302,46 @@ function handleLoginInput(key) {
 }
 
 function handleDashboardInput(key) {
-    const cards = document.querySelectorAll('.card');
-    if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % cards.length;
-    if (key === 'ArrowLeft') state.focusedIndex = (state.focusedIndex - 1 + cards.length) % cards.length;
-    if (key === 'Enter') {
-        const action = cards[state.focusedIndex].getAttribute('data-action');
-        if (action === 'live-tv') showTV();
-        if (action === 'search') { showTV(); state.focusedArea = 'tv-search'; updateFocus(); }
-        if (action === 'radio') showRadioScreen();
+    if (state.focusedArea === 'cards') {
+        const cards = document.querySelectorAll('.main-cards .card');
+        if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % cards.length;
+        if (key === 'ArrowLeft') state.focusedIndex = (state.focusedIndex - 1 + cards.length) % cards.length;
+        if (key === 'ArrowDown') { state.focusedArea = 'mini-card'; state.focusedIndex = 0; }
+        if (key === 'Enter') {
+            const action = cards[state.focusedIndex].dataset.action;
+            if (action === 'live-tv') showTV();
+        }
+    } else if (state.focusedArea === 'mini-card') {
+        if (key === 'ArrowUp') { state.focusedArea = 'cards'; state.focusedIndex = 0; }
+        if (key === 'ArrowRight') { state.focusedArea = 'footer-btns'; state.focusedIndex = 0; }
+        if (key === 'Enter') showRadioScreen();
+    } else if (state.focusedArea === 'footer-btns') {
+        const btns = document.querySelectorAll('.footer-buttons button');
+        if (key === 'ArrowUp') { state.focusedArea = 'cards'; state.focusedIndex = 3; }
+        if (key === 'ArrowLeft') { state.focusedArea = 'mini-card'; state.focusedIndex = 0; }
+        if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % btns.length;
+        if (key === 'Enter') {
+            const action = btns[state.focusedIndex].dataset.action;
+            if (action === 'settings-screen') showSettings();
+        }
     }
+}
+
+function handleSettingsInput(key) {
+    if (state.focusedArea === 'timer-btn') {
+        const opts = document.querySelectorAll('.timer-options .btn-timer');
+        if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % opts.length;
+        if (key === 'ArrowLeft') state.focusedIndex = (state.focusedIndex - 1 + opts.length) % opts.length;
+        if (key === 'ArrowDown') { state.focusedArea = 'wp-item'; state.focusedIndex = 0; }
+        if (key === 'Enter') setSleepTimer(parseInt(opts[state.focusedIndex].dataset.timer));
+    } else if (state.focusedArea === 'wp-item') {
+        const wps = document.querySelectorAll('.wp-item');
+        if (key === 'ArrowUp') { state.focusedArea = 'timer-btn'; state.focusedIndex = 0; }
+        if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % wps.length;
+        if (key === 'ArrowLeft') state.focusedIndex = (state.focusedIndex - 1 + wps.length) % wps.length;
+        if (key === 'Enter') { state.wallpaperIndex = state.focusedIndex; localStorage.setItem('aurex_wp', state.wallpaperIndex); applyWallpaper(); }
+    }
+    if (key === 'Backspace') showDashboard();
 }
 
 function handleTVInput(key) {
@@ -314,7 +352,7 @@ function handleTVInput(key) {
             else state.focusedIndex--;
         }
         if (key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
-        if (key === 'Enter' && !state.isLongPress) {
+        if (key === 'Enter') {
             state.currentChannelIndex = state.allChannels.indexOf(state.filteredChannels[state.focusedIndex]);
             startPlayer(state.filteredChannels[state.focusedIndex]);
         }
@@ -323,9 +361,6 @@ function handleTVInput(key) {
         if (key === 'ArrowUp') state.focusedIndex = (state.focusedIndex - 1 + state.categories.length) % state.categories.length;
         if (key === 'ArrowRight') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
         if (key === 'Enter') showTV(state.categories[state.focusedIndex]);
-    } else if (state.focusedArea === 'tv-search') {
-        if (key === 'ArrowDown') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
-        if (key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
     }
     if (key === 'Backspace') showDashboard();
 }
@@ -334,12 +369,13 @@ function startPlayer(chan) {
     showScreen('player-view');
     document.getElementById('mini-player').pause();
     const main = document.getElementById('main-player');
-    playStream(main, chan.url);
+    if (Hls.isSupported()) { state.hls.loadSource(chan.url); state.hls.attachMedia(main); }
+    else main.src = chan.url;
 
     state.lastChannelUrl = chan.url;
     localStorage.setItem('aurex_last_channel_url', chan.url);
 
-    document.getElementById('osd-name').innerText = chan.name;
+    document.getElementById('osd-ch-name').innerText = chan.name;
     document.getElementById('osd-logo').src = chan.logo;
     showOSD();
 }
@@ -347,13 +383,10 @@ function startPlayer(chan) {
 function handlePlayerInput(key) {
     if (key === 'Backspace' || key === 'Escape') {
         const osd = document.getElementById('player-osd');
-        if (osd.classList.contains('osd-hidden')) {
-            document.getElementById('main-player').pause();
-            showTV(state.currentCategory);
-        } else osd.classList.add('osd-hidden');
+        if (osd.classList.contains('osd-hidden')) { document.getElementById('main-player').pause(); showTV(state.currentCategory); }
+        else osd.classList.add('osd-hidden');
     }
     if (key === 'Enter' || key === 'ArrowUp' || key === 'ArrowDown') showOSD();
-
     if (document.getElementById('player-osd').classList.contains('osd-hidden')) {
         if (key === 'ArrowUp') switchChannel(1);
         if (key === 'ArrowDown') switchChannel(-1);
@@ -372,74 +405,4 @@ function showOSD() {
     window.osdTimer = setTimeout(() => osd.classList.add('osd-hidden'), CONFIG.osdTimeout);
 }
 
-// --- Final Gold Logic ---
-function handleNumeric(digit) {
-    state.numericInput += digit;
-    const overlay = document.getElementById('numeric-overlay');
-    overlay.innerText = state.numericInput;
-    overlay.classList.remove('hidden');
-
-    clearTimeout(state.numericTimer);
-    state.numericTimer = setTimeout(() => {
-        const idx = parseInt(state.numericInput) - 1;
-        if (idx >= 0 && idx < state.allChannels.length) {
-            state.currentChannelIndex = idx;
-            startPlayer(state.allChannels[idx]);
-        }
-        state.numericInput = '';
-        overlay.classList.add('hidden');
-    }, CONFIG.numericTimeout);
-}
-
-function toggleAspect() {
-    state.currentAspect = (state.currentAspect + 1) % state.aspectModes.length;
-    const mode = state.aspectModes[state.currentAspect];
-    document.getElementById('main-player').className = 'video-' + mode.toLowerCase();
-
-    const status = document.getElementById('aspect-status');
-    status.innerText = "Format: " + mode;
-    status.classList.remove('hidden');
-    setTimeout(() => status.classList.add('hidden'), 2000);
-}
-
-function showRadioScreen() {
-    showScreen('radio-view');
-    state.focusedArea = 'radio-tab';
-    state.focusedIndex = 0;
-    renderRadioList();
-}
-
-function renderRadioList() {
-    document.getElementById('radio-list').innerHTML = state.radios.map((r, i) =>
-        `<div class="list-item radio-item" data-index="${i}">${r.name}</div>`
-    ).join('');
-}
-
-function handleRadioInput(key) {
-    if (state.focusedArea === 'radio-tab') {
-        const tabs = document.querySelectorAll('.tab');
-        if (key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % tabs.length;
-        if (key === 'ArrowLeft') state.focusedIndex = (state.focusedIndex - 1 + tabs.length) % tabs.length;
-        if (key === 'ArrowDown') { state.focusedArea = 'radio-item'; state.focusedIndex = 0; }
-        if (key === 'Enter') {
-            state.radioCountry = tabs[state.focusedIndex].dataset.country;
-            fetchRadios(state.radioCountry);
-        }
-    } else if (state.focusedArea === 'radio-item') {
-        if (key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.radios.length;
-        if (key === 'ArrowUp') {
-            if (state.focusedIndex === 0) { state.focusedArea = 'radio-tab'; state.focusedIndex = 0; }
-            else state.focusedIndex--;
-        }
-        if (key === 'Enter') playRadio(state.radios[state.focusedIndex]);
-    }
-    if (key === 'Backspace') showDashboard();
-}
-
-function playRadio(r) {
-    const audio = new Audio(r.url);
-    audio.play();
-    document.getElementById('radio-current-title').innerText = r.name;
-    document.getElementById('radio-current-img').src = r.favicon || 'radio.png';
-    document.getElementById('radio-playing-status').innerText = "Oynadılır...";
-}
+function showSettings() { showScreen('settings-screen'); state.focusedArea = 'timer-btn'; state.focusedIndex = 0; updateFocus(); }
