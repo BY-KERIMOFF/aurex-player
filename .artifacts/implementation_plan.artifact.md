@@ -1,33 +1,33 @@
-# Uzun Elan Mətnlərinin (Marquee) Tam Görünməsi və Sürət Tənzimlənməsi
+# "Aurex Player Smart TV" (Mütləq Final - v200) Tətbiq Planı
 
-Bu plan həm Android APK-da, həm də Smart TV versiyasında çox uzun olan elan mətnlərinin (tikerlərin) ekranda rəvan və oxunaqlı şəkildə qaçmasını təmin edir.
+Bu plan Smart TV versiyasını (MediaStation X) Android APK-nın sonuncu çatışmayan funksiyaları (Son baxılan kanallar, VOD süzgəcləmə) ilə təmin edərək layihəni rəsmi olaraq yekunlaşdırır.
 
 ## Proposed Changes
 
-### [Player Activity - Android]
-
-#### [MODIFY] [PlayerActivity.java](file:///home/by-kerimoff/Belgeler/by-kerimoff/app/src/main/java/com/bykerimoff/player/PlayerActivity.java)
-- `startAnnouncementAnimation()` metodu yenilənəcək.
-- Sabit `25000ms` (25 saniyə) müddəti əvəzinə, müddət mətnin uzunluğuna mütənasib olaraq hesablanacaq.
-- **Düstur:** `duration = (screenWidth + textWidth) * 15` (hər piksel üçün 15ms). Bu, mətn nə qədər uzun olsa da, eyni sürətlə hərəkət etməsini təmin edir.
-
-### [Web Application (MSX) - Smart TV]
+### [Web Application Components]
 
 #### [MODIFY] [msx/index.html](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/index.html)
-- `player-view` daxilinə elan mətni üçün konteyner (`#announcement-bar`) yenidən əlavə ediləcək.
-
-#### [MODIFY] [msx/style.css](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/style.css)
-- Elan barı üçün Android-dəki ilə eyni dizayn (Yarım-şəffaf qara fon, qızılı yazı) tətbiq olunacaq.
-- Sabit animasiya müddəti ləğv ediləcək, çünki o JS vasitəsilə dinamik təyin olunacaq.
+- **Recent Channels Section:** Dashboard-a "SON BAXILAN KANALLAR" adlı yeni bir horizontal siyahı sahəsi əlavə ediləcək.
+- **VOD Labels:** Filmlər və Seriallar üçün xüsusi başlıqlar və kateqoriya strukturu.
 
 #### [MODIFY] [msx/app.js](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/app.js)
-- Serverdən uzun elan mətni gəldikdə, tətbiq mətnin uzunluğunu ölçəcək və CSS `animation-duration` dəyərini ona uyğun təyin edəcək.
-- Bu, çox uzun reklam mətnlərinin TV-də çox sürətli qaçmasının qarşısını alacaq.
+1.  **Smart VOD Filter:**
+    - M3U oxunarkən linkin sonundakı `.mp4`, `.mkv` və ya qovluq adlarına (`/movie/`, `/series/`) baxaraq kanalları avtomatik "Canlı", "Film" və "Serial" qruplarına ayıracaq.
+2.  **Recent History Engine:**
+    - İzlənilən kanalları `localStorage`-da `aurex_recent_tv` adı ilə yadda saxlayacaq.
+    - Ana ekranda bu kanalların loqoları ilə birlikdə göstərilməsini təmin edəcək.
+3.  **Radio Stream Fix:**
+    - Yeni radio seçiləndə əvvəlkinin səsinin tam kəsilməsi (overlap olmaması) üçün mərkəzi `Audio` obyekti tətbiq olunacaq.
 
 ### [Gradle Configuration]
-- `versionCode` **199**, `versionName` **"5.2.0"** olaraq yenilənəcək.
+- `versionCode` **200**, `versionName` **"6.0.0"** (The Masterpiece) olaraq yenilənəcək.
 
 ## Verification Plan
-1. Serverdəki JSON-da çox uzun (məsələn, 500 simvollu) bir `announcement` yazmaq.
-2. APK-da yazının hərəkət sürətinin normal (çox sürətli deyil) olduğunu yoxlamaq.
-3. Smart TV-də (MediaStation X) eyni uzunluqlu yazının tam şəkildə göründüyünü və oxunduğunu təsdiqləmək.
+1.  **Recent:** Bir neçə kanala baxıb çıxmaq -> Ana ekranda həmin kanalların siyahıya düşdüyünü yoxlamaq.
+2.  **VOD:** "FİLMLƏR" bölməsinə girdikdə yalnız filmlərin (video faylların) siyahıda olduğunu təsdiqləmək.
+3.  **Radio:** Bir radiodan digərinə keçəndə köhnə səsin dərhal kəsildiyini yoxlamaq.
+
+---
+
+> [!NOTE]
+> Bu tətbiqin sonuncu (v200) yeniləməsidir. Bundan sonra layihə həm texniki, həm də vizual olaraq tam mükəmməl hala gələcək.

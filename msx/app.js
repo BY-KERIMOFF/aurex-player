@@ -14,6 +14,9 @@ let state = {
     m3uUrl: '',
     isAdultEnabled: true,
     allChannels: [],
+    movies: [],
+    series: [],
+    liveTv: [],
     categories: [],
     currentCategory: 'Hamısı',
     filteredChannels: [],
@@ -26,8 +29,12 @@ let state = {
     numericTimer: null,
     lastChannelUrl: localStorage.getItem('aurex_last_url') || '',
     favorites: JSON.parse(localStorage.getItem('aurex_favorites') || '[]'),
-    hls: new Hls()
+    recentTv: JSON.parse(localStorage.getItem('aurex_recent_tv') || '[]'),
+    hls: new Hls(),
+    currentMode: 'live' // 'live', 'movie', 'series'
 };
+
+const radioAudio = new Audio();
 
 // --- Initialization ---
 window.onload = () => {
@@ -67,23 +74,16 @@ async function performAuth(mac) {
             state.m3uUrl = data.m3uUrl || CONFIG.m3uDefault;
             state.isAdultEnabled = data.is_adult === 1;
 
-            if (data.announcement) {
-                const elan = document.getElementById('announcement-scroll');
-                if (elan) {
-                    elan.innerText = data.announcement;
-                    if(data.announcementColor) elan.style.color = data.announcementColor;
-                    const duration = Math.max(20, data.announcement.length * 0.15);
-                    elan.style.animationDuration = duration + 's';
-                }
-                const bar = document.getElementById('announcement-bar');
-                if (bar) bar.classList.remove('hidden');
-            }
-
             await loadPlaylistAndEPG();
 
             if (state.lastChannelUrl) {
                 const idx = state.allChannels.findIndex(c => c.url === state.lastChannelUrl);
-                if (idx !== -1) { state.currentChannelIndex = idx; startFullscreen(state.allChannels[idx]); return; }
+                if (idx !== -1) {
+                    state.currentChannelIndex = idx;
+                    state.currentMode = isVod(state.allChannels[idx].url) ? 'movie' : 'live';
+                    startFullscreen(state.allChannels[idx]);
+                    return;
+                }
             }
             showDashboard();
         } else showLogin(data.message || 'MAC ünvanı aktiv edilməyib.');
@@ -95,6 +95,12 @@ async function loadPlaylistAndEPG() {
     fetchEPG();
     fetchWeather();
     fetchCurrency();
+}
+
+function isVod(url) {
+    if(!url) return false;
+    const low = url.toLowerCase();
+    return low.includes('.mp4') || low.includes('.mkv') || low.includes('/movie/') || low.includes('/series/') || low.includes('type=vod');
 }
 
 async function fetchM3U() {
@@ -112,50 +118,43 @@ async function fetchM3U() {
                 const tvgId = line.match(/tvg-id="([^"]*)"/)?.[1] || '';
                 cur = { name, logo, group, tvgId, id: btoa(name).substring(0,8) };
             } else if (line.startsWith('http')) {
-                if (cur) { cur.url = line; chans.push(cur); cur = null; }
+                if (cur) {
+                    cur.url = line;
+                    chans.push(cur);
+                    cur = null;
+                }
             }
         });
         state.allChannels = chans;
 
-        // No Adult Filter - show all
-        const groups = [...new Set(chans.map(c => c.group))];
-        state.categories = ["Hamısı", "Sevimlilər", ...groups].sort();
+        // Smart Separation
+        state.movies = chans.filter(c => c.url.toLowerCase().includes('.mp4') || c.url.toLowerCase().includes('.mkv') || c.url.toLowerCase().includes('/movie/'));
+        state.series = chans.filter(c => c.url.toLowerCase().includes('/series/'));
+        state.liveTv = chans.filter(c => !isVod(c.url));
+
+        renderRecentTv();
     } catch (e) {}
 }
 
-async function fetchEPG() {
-    try {
-        const res = await fetch(CONFIG.epgProxy);
-        const text = await res.text();
-        const xml = new DOMParser().parseFromString(text, "text/xml");
-        const progs = xml.getElementsByTagName("programme");
-        let epg = {};
-        for(let p of progs) {
-            const id = p.getAttribute("channel");
-            const title = p.getElementsByTagName("title")[0]?.textContent;
-            const start = p.getAttribute("start");
-            if(!epg[id]) epg[id] = [];
-            epg[id].push({ title, start });
-        }
-        state.epgData = epg;
-    } catch (e) {}
+function renderRecentTv() {
+    if (state.recentTv.length > 0) {
+        const container = document.getElementById('recent-tv-list');
+        container.innerHTML = state.recentTv.slice(0, 10).map(c => `
+            <div class="resume-card">
+                <img src="${c.logo}" class="resume-img" onerror="this.src='placeholder.png'">
+                <div class="resume-overlay"><span class="resume-name">${c.name}</span></div>
+            </div>
+        `).join('');
+        document.getElementById('recentTvSection').classList.remove('hidden');
+    }
 }
 
-function fetchWeather() {
-    fetch(CONFIG.weatherApi).then(r => r.json()).then(d => {
-        document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature) + "°C";
-        document.getElementById('weather-widget').classList.remove('hidden');
-    }).catch(()=>{});
-}
-
-function fetchCurrency() {
-    const mock = [{c:'USD', v:'1.70'}, {c:'EUR', v:'1.85'}, {c:'TRY', v:'0.05'}];
-    document.getElementById('currency-list').innerHTML = mock.map(m => `
-        <div style="background:var(--glass); padding:10px 20px; border-radius:10px;">
-            <strong>${m.c}</strong>: ${m.v}
-        </div>
-    `).join('');
-    document.getElementById('currencySection').classList.remove('hidden');
+function addToRecent(chan) {
+    if (isVod(chan.url)) return; // Only Live TV
+    state.recentTv = state.recentTv.filter(c => c.url !== chan.url);
+    state.recentTv.unshift(chan);
+    if (state.recentTv.length > 15) state.recentTv.pop();
+    localStorage.setItem('aurex_recent_tv', JSON.stringify(state.recentTv));
 }
 
 // --- Navigation ---
@@ -176,12 +175,19 @@ function showDashboard() {
     showScreen('dashboard');
     state.focusedArea = 'cards';
     state.focusedIndex = 0;
+    renderRecentTv();
     updateFocus();
 }
 
-function showTV(cat = 'Hamısı') {
+function showTV(mode = 'live', cat = 'Hamısı') {
+    state.currentMode = mode;
     state.currentCategory = cat;
     showScreen('tv-panel');
+
+    let source = mode === 'movie' ? state.movies : (mode === 'series' ? state.series : state.liveTv);
+    const groups = [...new Set(source.map(c => c.group))];
+    state.categories = ["Hamısı", "Sevimlilər", ...groups].sort();
+
     renderCategories();
     renderChannels();
     state.focusedArea = 'channels';
@@ -197,9 +203,11 @@ function renderCategories() {
 
 function renderChannels() {
     const query = document.getElementById('etSearch').value.toLowerCase();
-    let list = state.allChannels;
-    if(state.currentCategory === 'Sevimlilər') list = list.filter(c => state.favorites.includes(c.id));
-    else if(state.currentCategory !== 'Hamısı') list = list.filter(c => c.group === state.currentCategory);
+    let source = state.currentMode === 'movie' ? state.movies : (state.currentMode === 'series' ? state.series : state.liveTv);
+
+    let list = source;
+    if(state.currentCategory === 'Sevimlilər') list = state.allChannels.filter(c => state.favorites.includes(c.id));
+    else if(state.currentCategory !== 'Hamısı') list = source.filter(c => c.group === state.currentCategory);
     if(query) list = list.filter(c => c.name.toLowerCase().includes(query));
 
     state.filteredChannels = list;
@@ -265,75 +273,33 @@ function handleDashboardKey(key) {
         if(key === 'ArrowRight') state.focusedIndex = (state.focusedIndex + 1) % cards.length;
         if(key === 'ArrowLeft') state.focusedIndex = (state.focusedIndex - 1 + cards.length) % cards.length;
         if(key === 'ArrowDown') { state.focusedArea = 'radio'; state.focusedIndex = 0; }
-        if(key === 'Enter') { const act = cards[state.focusedIndex].dataset.action; if(act==='live-tv') showTV(); }
+        if(key === 'Enter') {
+            const act = cards[state.focusedIndex].dataset.action;
+            if(act==='live-tv') showTV('live');
+            if(act==='movies') showTV('movie');
+            if(act==='series') showTV('series');
+        }
     } else if(state.focusedArea === 'radio') {
         if(key === 'ArrowUp') { state.focusedArea = 'cards'; state.focusedIndex = 0; }
     }
 }
 
 function handleTVKey(key) {
-    if (state.screen === 'pin-pad') {
-        if (key >= '0' && key <= '9') {
-            state.pin += key;
-            document.getElementById('pin-stars').innerText = '*'.repeat(state.pin.length).padEnd(4, '-');
-            if (state.pin.length === 4) {
-                const savedPin = localStorage.getItem('aurex_pin') || '2266';
-                if (state.pin === savedPin) {
-                    document.getElementById('pin-pad').classList.add('hidden');
-                    state.screen = 'tv-panel';
-                    state.currentCategory = state.categories[state.focusedIndex];
-                    filterAndRenderChannels();
-                    state.focusedArea = 'channels';
-                    state.focusedIndex = 0;
-                } else {
-                    state.pin = '';
-                    document.getElementById('pin-stars').innerText = '----';
-                    alert("Yanlış PİN!");
-                }
-            }
-        }
-        if (key === 'Backspace' || key === 'Escape') {
-            document.getElementById('pin-pad').classList.add('hidden');
-            state.screen = 'tv-panel';
-            state.focusedArea = 'categories';
-        }
-        return;
+    if(state.focusedArea === 'channels') {
+        if(key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.filteredChannels.length;
+        if(key === 'ArrowUp') { if(state.focusedIndex === 0) { state.focusedArea = 'search'; state.focusedIndex = 0; } else state.focusedIndex--; }
+        if(key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
+        if(key === 'Enter') startFullscreen(state.filteredChannels[state.focusedIndex]);
+    } else if(state.focusedArea === 'categories') {
+        if(key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.categories.length;
+        if(key === 'ArrowUp') state.focusedIndex = (state.focusedIndex - 1 + state.categories.length) % state.categories.length;
+        if(key === 'ArrowRight') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
+        if(key === 'Enter') showTV(state.currentMode, state.categories[state.focusedIndex]);
+    } else if(state.focusedArea === 'search') {
+        if(key === 'ArrowDown') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
+        if(key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
     }
-
-    if (state.focusedArea === 'channels') {
-        if (key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.filteredChannels.length;
-        if (key === 'ArrowUp') { if (state.focusedIndex === 0) { state.focusedArea = 'search'; state.focusedIndex = 0; } else state.focusedIndex--; }
-        if (key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
-        if (key === 'Enter') startFullscreen(state.filteredChannels[state.focusedIndex]);
-    } else if (state.focusedArea === 'categories') {
-        if (key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.categories.length;
-        if (key === 'ArrowUp') state.focusedIndex = (state.focusedIndex - 1 + state.categories.length) % state.categories.length;
-        if (key === 'ArrowRight') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
-        if (key === 'Enter') {
-            const cat = state.categories[state.focusedIndex];
-            if (isSensitiveCategory(cat)) {
-                state.pin = '';
-                document.getElementById('pin-stars').innerText = '----';
-                document.getElementById('pin-pad').classList.remove('hidden');
-                state.screen = 'pin-pad';
-            } else {
-                state.currentCategory = cat;
-                filterAndRenderChannels();
-                state.focusedArea = 'channels';
-                state.focusedIndex = 0;
-            }
-        }
-    } else if (state.focusedArea === 'search') {
-        if (key === 'ArrowDown') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
-        if (key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
-    }
-    if (key === 'Backspace') showDashboard();
-}
-
-function isSensitiveCategory(name) {
-    if (!name) return false;
-    const n = name.toLowerCase();
-    return n.includes('adult') || n.includes('xxx') || n.includes('+18') || n.includes('взрослые');
+    if(key === 'Backspace') showDashboard();
 }
 
 function startFullscreen(chan) {
@@ -345,6 +311,7 @@ function startFullscreen(chan) {
 
     state.lastChannelUrl = chan.url;
     localStorage.setItem('aurex_last_url', chan.url);
+    addToRecent(chan);
 
     document.getElementById('tvChannelName').innerText = chan.name;
     document.getElementById('ivChannelLogo').src = chan.logo;
@@ -354,7 +321,7 @@ function startFullscreen(chan) {
 function handlePlayerKey(key) {
     if(key === 'Backspace' || key === 'Escape') {
         const osd = document.getElementById('osdLayout');
-        if(osd.classList.contains('osd-hidden')) { document.getElementById('main-player').pause(); showTV(state.currentCategory); }
+        if(osd.classList.contains('osd-hidden')) { document.getElementById('main-player').pause(); showTV(state.currentMode, state.currentCategory); }
         else osd.classList.add('osd-hidden');
     }
     if(key === 'Enter' || key === 'ArrowUp' || key === 'ArrowDown') triggerOSD();
@@ -376,7 +343,7 @@ function changeVolume(delta) {
     const volUI = document.getElementById('volume-ui');
     volUI.classList.remove('vol-hidden');
     clearTimeout(window.volTimer);
-    window.volTimer = setTimeout(() => volUI.classList.add('vol-hidden'), CONFIG.volumeTimeout);
+    window.volTimer = setTimeout(() => document.getElementById('volume-ui').classList.add('vol-hidden'), CONFIG.volumeTimeout);
 }
 
 function handleNumeric(digit) {
@@ -399,3 +366,6 @@ function toggleAspect() {
     toast.innerText = "Format: " + mode; toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 2000);
 }
+
+function fetchEPG() {}
+function fetchWeather() {}
