@@ -1,33 +1,23 @@
-# "Aurex Player Smart TV" (Mütləq Final - v200) Tətbiq Planı
+# Kanal Siyahısı Yüklənmə Xətalarının Bildirilməsi
 
-Bu plan Smart TV versiyasını (MediaStation X) Android APK-nın sonuncu çatışmayan funksiyaları (Son baxılan kanallar, VOD süzgəcləmə) ilə təmin edərək layihəni rəsmi olaraq yekunlaşdırır.
+Bu plan Xtream və ya M3U kanal siyahıları yüklənərkən yaranan problemlər (şəbəkə xətası, boş siyahı və s.) barədə istifadəçiyə vizual məlumat verilməsini təmin edir.
 
 ## Proposed Changes
 
-### [Web Application Components]
+### [Activities]
 
-#### [MODIFY] [msx/index.html](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/index.html)
-- **Recent Channels Section:** Dashboard-a "SON BAXILAN KANALLAR" adlı yeni bir horizontal siyahı sahəsi əlavə ediləcək.
-- **VOD Labels:** Filmlər və Seriallar üçün xüsusi başlıqlar və kateqoriya strukturu.
+#### [MODIFY] [LiveTvActivity.java](file:///home/by-kerimoff/Belgeler/by-kerimoff/app/src/main/java/com/bykerimoff/player/LiveTvActivity.java)
 
-#### [MODIFY] [msx/app.js](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/app.js)
-1.  **Smart VOD Filter:**
-    - M3U oxunarkən linkin sonundakı `.mp4`, `.mkv` və ya qovluq adlarına (`/movie/`, `/series/`) baxaraq kanalları avtomatik "Canlı", "Film" və "Serial" qruplarına ayıracaq.
-2.  **Recent History Engine:**
-    - İzlənilən kanalları `localStorage`-da `aurex_recent_tv` adı ilə yadda saxlayacaq.
-    - Ana ekranda bu kanalların loqoları ilə birlikdə göstərilməsini təmin edəcək.
-3.  **Radio Stream Fix:**
-    - Yeni radio seçiləndə əvvəlkinin səsinin tam kəsilməsi (overlap olmaması) üçün mərkəzi `Audio` obyekti tətbiq olunacaq.
-
-### [Gradle Configuration]
-- `versionCode` **200**, `versionName` **"6.0.0"** (The Masterpiece) olaraq yenilənəcək.
+1.  **M3U Yükləmə Xətaları:**
+    - `loadM3UFromUrl` daxilində serverdən xətalı cavab gəldikdə və ya şəbəkə bağlantısı kəsildikdə `Toast.makeText` vasitəsilə "M3U yüklənmədi" xəbərdarlığı göstəriləcək.
+2.  **Xtream Yükləmə Xətaları:**
+    - `loadXtreamDataInternal` və onun geri çağırışlarında (onFailure) server xətaları barədə daha dəqiq bildirişlər əlavə ediləcək.
+3.  **Boş Siyahı Yoxlanışı:**
+    - `processLoadedChannels` və `processXtreamChannels` metodlarının sonunda əgər heç bir kanal tapılmayıbsa, ekranda "Kanal siyahısı boşdur" yazısı çıxacaq.
 
 ## Verification Plan
-1.  **Recent:** Bir neçə kanala baxıb çıxmaq -> Ana ekranda həmin kanalların siyahıya düşdüyünü yoxlamaq.
-2.  **VOD:** "FİLMLƏR" bölməsinə girdikdə yalnız filmlərin (video faylların) siyahıda olduğunu təsdiqləmək.
-3.  **Radio:** Bir radiodan digərinə keçəndə köhnə səsin dərhal kəsildiyini yoxlamaq.
 
----
-
-> [!NOTE]
-> Bu tətbiqin sonuncu (v200) yeniləməsidir. Bundan sonra layihə həm texniki, həm də vizual olaraq tam mükəmməl hala gələcək.
+### Manual Verification
+- Səhv bir M3U linki daxil edib "Məlumatları Yenilə" sıxmaq -> "M3U yüklənmədi" mesajını görmək.
+- İnterneti söndürüb siyahını yeniləməyə çalışmaq -> "Bağlantı xətası" mesajını görmək.
+- Boş bir Xtream hesabı ilə daxil olmaq -> "Siyahı boşdur" mesajını görmək.

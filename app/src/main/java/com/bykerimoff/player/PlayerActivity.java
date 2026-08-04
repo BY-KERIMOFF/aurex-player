@@ -259,6 +259,11 @@ public class PlayerActivity extends AppCompatActivity {
             // Mətnin real ölçüsünü hesabla
             String text = binding.tvAnnouncement.getText().toString();
             float textWidth = binding.tvAnnouncement.getPaint().measureText(text);
+
+            // Mətnin kəsilməsinin qarşısını almaq üçün genişliyi proqramatik təyin et
+            android.view.ViewGroup.LayoutParams params = binding.tvAnnouncement.getLayoutParams();
+            params.width = (int) textWidth + 100;
+            binding.tvAnnouncement.setLayoutParams(params);
             
             // Animasiya məsafəsi: Ekranın sağından başlayıb, mətn tam bitənə qədər sola
             android.view.animation.TranslateAnimation animation = new android.view.animation.TranslateAnimation(screenWidth, -textWidth - 500, 0, 0);

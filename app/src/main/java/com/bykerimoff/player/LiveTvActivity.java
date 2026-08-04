@@ -495,13 +495,18 @@ public class LiveTvActivity extends AppCompatActivity {
                     if (response.isSuccessful() && response.body() != null) {
                         String streamUrl = baseUrl + "&action=get_vod_streams";
                         processXtreamCategories(response.body(), streamUrl, "movie");
-                    } else {
-                        runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
+                        runOnUiThread(() -> {
+                            binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                            Toast.makeText(LiveTvActivity.this, "Server xətası (Vod Cat): " + response.code(), Toast.LENGTH_SHORT).show();
+                        });
                     }
                 }
                 @Override
                 public void onFailure(Call<List<XtreamCategory>> call, Throwable t) {
-                    runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
+                    runOnUiThread(() -> {
+                        binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                        Toast.makeText(LiveTvActivity.this, "Bağlantı xətası (Vod Cat)", Toast.LENGTH_SHORT).show();
+                    });
                 }
             });
         } else if ("VOD_SERIES".equals(filterCategory)) {
@@ -513,12 +518,18 @@ public class LiveTvActivity extends AppCompatActivity {
                         String streamUrl = baseUrl + "&action=get_series";
                         processXtreamCategories(response.body(), streamUrl, "series");
                     } else {
-                        runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
+                        runOnUiThread(() -> {
+                            binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                            Toast.makeText(LiveTvActivity.this, "Server xətası (Series Cat): " + response.code(), Toast.LENGTH_SHORT).show();
+                        });
                     }
                 }
                 @Override
                 public void onFailure(Call<List<XtreamCategory>> call, Throwable t) {
-                    runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
+                    runOnUiThread(() -> {
+                        binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                        Toast.makeText(LiveTvActivity.this, "Bağlantı xətası (Series Cat)", Toast.LENGTH_SHORT).show();
+                    });
                 }
             });
         } else {
@@ -596,12 +607,18 @@ public class LiveTvActivity extends AppCompatActivity {
                     if (response.isSuccessful() && response.body() != null) {
                         processXtreamChannels(response.body());
                     } else {
-                        runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
+                        runOnUiThread(() -> {
+                            binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                            Toast.makeText(LiveTvActivity.this, "Server xətası (Streams): " + response.code(), Toast.LENGTH_SHORT).show();
+                        });
                     }
                 }
                 @Override
                 public void onFailure(Call<List<XtreamChannel>> call, Throwable t) {
-                    runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
+                    runOnUiThread(() -> {
+                        binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                        Toast.makeText(LiveTvActivity.this, "Bağlantı xətası (Streams)", Toast.LENGTH_SHORT).show();
+                    });
                 }
             });
         } else {
@@ -616,12 +633,18 @@ public class LiveTvActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     processXtreamVod(response.body(), type);
                 } else {
-                    runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
+                    runOnUiThread(() -> {
+                        binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                        Toast.makeText(LiveTvActivity.this, "Server xətası (Vod): " + response.code(), Toast.LENGTH_SHORT).show();
+                    });
                 }
             }
             @Override
             public void onFailure(Call<List<XtreamChannel>> call, Throwable t) {
-                runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
+                runOnUiThread(() -> {
+                    binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                    Toast.makeText(LiveTvActivity.this, "Bağlantı xətası (Vod)", Toast.LENGTH_SHORT).show();
+                });
             }
         });
     }
@@ -674,6 +697,10 @@ public class LiveTvActivity extends AppCompatActivity {
                 channelMap.clear();
                 channelMap.putAll(tempMap);
                 
+                if (allChannels.isEmpty()) {
+                    Toast.makeText(LiveTvActivity.this, "Siyahı boşdur (VOD)", Toast.LENGTH_SHORT).show();
+                }
+
                 DataManager.setAllChannels(allChannels);
                 DataManager.setCurrentChannelMap(channelMap);
                 updateCategoryCounts();
@@ -720,6 +747,10 @@ public class LiveTvActivity extends AppCompatActivity {
                 channelMap.clear();
                 channelMap.putAll(tempMap);
                 
+                if (allChannels.isEmpty()) {
+                    Toast.makeText(LiveTvActivity.this, "Kanal siyahısı boşdur", Toast.LENGTH_SHORT).show();
+                }
+
                 // Pleyer üçün məlumatları yadda saxla
                 DataManager.setAllChannels(allChannels);
                 DataManager.setCurrentChannelMap(channelMap);
@@ -808,7 +839,10 @@ public class LiveTvActivity extends AppCompatActivity {
                 try (okhttp3.Response response = client.newCall(request).execute()) {
                     if (!response.isSuccessful()) {
                         android.util.Log.e("M3U_LOAD", "M3U yükləmə uğursuz: " + response.code());
-                        runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
+                        runOnUiThread(() -> {
+                            binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                            Toast.makeText(LiveTvActivity.this, "M3U yüklənmədi (Kod: " + response.code() + ")", Toast.LENGTH_SHORT).show();
+                        });
                         return;
                     }
 
@@ -837,7 +871,10 @@ public class LiveTvActivity extends AppCompatActivity {
                 }
             } catch (Exception e) {
                 android.util.Log.e("M3U_LOAD", "M3U xətası: " + e.getMessage());
-                runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
+                runOnUiThread(() -> {
+                    binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                    Toast.makeText(LiveTvActivity.this, "İnternet və ya M3U xətası", Toast.LENGTH_SHORT).show();
+                });
                 e.printStackTrace();
             }
         });
@@ -883,6 +920,11 @@ public class LiveTvActivity extends AppCompatActivity {
                 
                 // Pleyer üçün məlumatları yadda saxla
                 sortCategories(categories);
+                
+                if (allChannels.isEmpty()) {
+                    Toast.makeText(LiveTvActivity.this, "M3U siyahısı boşdur", Toast.LENGTH_SHORT).show();
+                }
+
                 DataManager.setAllChannels(allChannels);
                 DataManager.setCurrentCategoryList(categories);
                 DataManager.setCurrentChannelMap(channelMap);
