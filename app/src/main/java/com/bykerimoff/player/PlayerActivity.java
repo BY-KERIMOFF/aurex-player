@@ -256,9 +256,17 @@ public class PlayerActivity extends AppCompatActivity {
     private void startAnnouncementAnimation() {
         binding.tvAnnouncement.post(() -> {
             float screenWidth = getResources().getDisplayMetrics().widthPixels;
-            float textWidth = binding.tvAnnouncement.getPaint().measureText(binding.tvAnnouncement.getText().toString());
-            android.view.animation.TranslateAnimation animation = new android.view.animation.TranslateAnimation(screenWidth, -textWidth - 1000, 0, 0);
-            animation.setDuration(25000);
+            // Mətnin real ölçüsünü hesabla
+            String text = binding.tvAnnouncement.getText().toString();
+            float textWidth = binding.tvAnnouncement.getPaint().measureText(text);
+            
+            // Animasiya məsafəsi: Ekranın sağından başlayıb, mətn tam bitənə qədər sola
+            android.view.animation.TranslateAnimation animation = new android.view.animation.TranslateAnimation(screenWidth, -textWidth - 500, 0, 0);
+            
+            // Dinamik Sürət: Hər piksel üçün 12ms (Mətn uzandıqca vaxt artır, sürət sabit qalır)
+            long dynamicDuration = (long) ((screenWidth + textWidth) * 12);
+            animation.setDuration(Math.max(20000, dynamicDuration)); // Minimum 20 saniyə
+            
             animation.setRepeatCount(android.view.animation.Animation.INFINITE);
             animation.setInterpolator(new android.view.animation.LinearInterpolator());
             binding.tvAnnouncement.startAnimation(animation);

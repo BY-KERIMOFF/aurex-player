@@ -98,6 +98,10 @@ button { padding: 12px 30px; border-radius: 10px; font-size: 16px; font-weight: 
 .dialog-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; display:flex; justify-content:center; align-items:center; }
 .dialog-card, .pin-box { background:var(--bg-sidebar); padding:40px; border-radius:20px; border:2px solid var(--gold); text-align:center; min-width:400px; }
 
+#announcement-bar { position: absolute; top: 0; width: 100%; background: rgba(0,0,0,0.8); padding: 18px 0; z-index: 1000; border-bottom: 3px solid var(--gold-dark); overflow: hidden; }
+#announcement-scroll { display: inline-block; white-space: nowrap; font-size: 30px; color: var(--gold); font-weight: 900; animation: marquee-anim linear infinite; min-width: 100%; }
+@keyframes marquee-anim { from { transform: translateX(100vw); } to { transform: translateX(-100%); } }
+
 .hidden { display: none !important; }
 .text-gold { color: var(--gold); }
 .text-red { color: #ef4444; }

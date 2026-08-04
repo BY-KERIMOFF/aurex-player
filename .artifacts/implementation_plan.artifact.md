@@ -1,44 +1,33 @@
-# 18+ Məzmun və PIN Kod İdarəetməsinin Sadələşdirilməsi
+# Uzun Elan Mətnlərinin (Marquee) Tam Görünməsi və Sürət Tənzimlənməsi
 
-Bu plan 18+ kanalların hər zaman görünməsini təmin edir və standart PIN kodu "2266" olaraq təyin edir.
-
-## User Review Required
-
-> [!IMPORTANT]
-> Bu dəyişiklikdən sonra:
-> 1. "Ayarlar" bölməsindəki "Böyüklər üçün məzmunu göstər" seçimi ləğv ediləcək. 18+ kateqoriyalar hər zaman siyahıda görünəcək.
-> 2. Standart (ilk) PIN kod **2266** olacaq.
-> 3. 18+ kateqoriyaya daxil olmaq istədikdə hər zaman PIN soruşulacaq.
+Bu plan həm Android APK-da, həm də Smart TV versiyasında çox uzun olan elan mətnlərinin (tikerlərin) ekranda rəvan və oxunaqlı şəkildə qaçmasını təmin edir.
 
 ## Proposed Changes
 
-### [Utilities]
+### [Player Activity - Android]
 
-#### [MODIFY] [PinDialog.java](file:///home/by-kerimoff/Belgeler/by-kerimoff/app/src/main/java/com/bykerimoff/player/utils/PinDialog.java)
-- PIN yoxlanışı üçün `SharedPreferences` istifadə olunacaq.
-- Standart PIN dəyəri "0000"-dan **"2266"**-ya dəyişdiriləcək.
+#### [MODIFY] [PlayerActivity.java](file:///home/by-kerimoff/Belgeler/by-kerimoff/app/src/main/java/com/bykerimoff/player/PlayerActivity.java)
+- `startAnnouncementAnimation()` metodu yenilənəcək.
+- Sabit `25000ms` (25 saniyə) müddəti əvəzinə, müddət mətnin uzunluğuna mütənasib olaraq hesablanacaq.
+- **Düstur:** `duration = (screenWidth + textWidth) * 15` (hər piksel üçün 15ms). Bu, mətn nə qədər uzun olsa da, eyni sürətlə hərəkət etməsini təmin edir.
 
-### [Activities]
+### [Web Application (MSX) - Smart TV]
 
-#### [MODIFY] [SettingsActivity.java](file:///home/by-kerimoff/Belgeler/by-kerimoff/app/src/main/java/com/bykerimoff/player/SettingsActivity.java)
-- "Böyüklər üçün məzmunu göstər" (`cbShowAdult`) seçimi UI-dan və koddan silinəcək.
-- PIN dəyişdirmə hissəsində köhnə "0000" xəbərdarlığı "2266" ilə əvəz olunacaq.
+#### [MODIFY] [msx/index.html](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/index.html)
+- `player-view` daxilinə elan mətni üçün konteyner (`#announcement-bar`) yenidən əlavə ediləcək.
 
-#### [MODIFY] [LiveTvActivity.java](file:///home/by-kerimoff/Belgeler/by-kerimoff/app/src/main/java/com/bykerimoff/player/LiveTvActivity.java)
-- Kanal və kateqoriya yükləmə zamanı tətbiq olunan 18+ süzgəcləri ləğv ediləcək. Bütün kateqoriyalar hər zaman görünəcək.
-- Kateqoriya klikləndikdə `PinDialog` vasitəsilə qorunma davam edəcək.
-
-### [Web Application (Smart TV)]
+#### [MODIFY] [msx/style.css](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/style.css)
+- Elan barı üçün Android-dəki ilə eyni dizayn (Yarım-şəffaf qara fon, qızılı yazı) tətbiq olunacaq.
+- Sabit animasiya müddəti ləğv ediləcək, çünki o JS vasitəsilə dinamik təyin olunacaq.
 
 #### [MODIFY] [msx/app.js](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/app.js)
-- Standart PIN "2266" olaraq təyin ediləcək.
-- Kateqoriya süzgəcləri (Adult filter) ləğv edilərək hamısının görünməsi təmin olunacaq.
+- Serverdən uzun elan mətni gəldikdə, tətbiq mətnin uzunluğunu ölçəcək və CSS `animation-duration` dəyərini ona uyğun təyin edəcək.
+- Bu, çox uzun reklam mətnlərinin TV-də çox sürətli qaçmasının qarşısını alacaq.
+
+### [Gradle Configuration]
+- `versionCode` **199**, `versionName` **"5.2.0"** olaraq yenilənəcək.
 
 ## Verification Plan
-
-### Manual Verification
-1. Tətbiqi açıb "Live TV" bölməsinə daxil olmaq.
-2. 18+ kateqoriyanın siyahıda olduğunu yoxlamaq (heç bir ayar etmədən).
-3. Həmin kateqoriyaya klikləmək -> PIN pəncərəsinin açıldığını görmək.
-4. **2266** yazaraq girişin uğurlu olduğunu yoxlamaq.
-5. Ayarlara daxil olub PIN-i dəyişmək və yeni PIN-lə girişi yoxlamaq.
+1. Serverdəki JSON-da çox uzun (məsələn, 500 simvollu) bir `announcement` yazmaq.
+2. APK-da yazının hərəkət sürətinin normal (çox sürətli deyil) olduğunu yoxlamaq.
+3. Smart TV-də (MediaStation X) eyni uzunluqlu yazının tam şəkildə göründüyünü və oxunduğunu təsdiqləmək.

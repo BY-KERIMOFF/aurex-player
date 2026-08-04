@@ -67,6 +67,18 @@ async function performAuth(mac) {
             state.m3uUrl = data.m3uUrl || CONFIG.m3uDefault;
             state.isAdultEnabled = data.is_adult === 1;
 
+            if (data.announcement) {
+                const elan = document.getElementById('announcement-scroll');
+                if (elan) {
+                    elan.innerText = data.announcement;
+                    if(data.announcementColor) elan.style.color = data.announcementColor;
+                    const duration = Math.max(20, data.announcement.length * 0.15);
+                    elan.style.animationDuration = duration + 's';
+                }
+                const bar = document.getElementById('announcement-bar');
+                if (bar) bar.classList.remove('hidden');
+            }
+
             await loadPlaylistAndEPG();
 
             if (state.lastChannelUrl) {
