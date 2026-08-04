@@ -105,16 +105,9 @@ async function fetchM3U() {
         });
         state.allChannels = chans;
 
-        // Adult Filter
+        // No Adult Filter - show all
         const groups = [...new Set(chans.map(c => c.group))];
-        const isAdultUser = localStorage.getItem('aurex_is_adult_user') === 'true';
-        const finalShowAdult = state.isAdultEnabled || isAdultUser;
-
-        state.categories = ["Hamısı", "Sevimlilər", ...groups.filter(g => {
-            if (finalShowAdult) return true;
-            const low = g.toLowerCase();
-            return !(low.includes('adult') || low.includes('xxx') || low.includes('+18') || low.includes('взрослые'));
-        })].sort();
+        state.categories = ["Hamısı", "Sevimlilər", ...groups].sort();
     } catch (e) {}
 }
 
@@ -267,21 +260,68 @@ function handleDashboardKey(key) {
 }
 
 function handleTVKey(key) {
-    if(state.focusedArea === 'channels') {
-        if(key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.filteredChannels.length;
-        if(key === 'ArrowUp') { if(state.focusedIndex === 0) { state.focusedArea = 'search'; state.focusedIndex = 0; } else state.focusedIndex--; }
-        if(key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
-        if(key === 'Enter') startFullscreen(state.filteredChannels[state.focusedIndex]);
-    } else if(state.focusedArea === 'categories') {
-        if(key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.categories.length;
-        if(key === 'ArrowUp') state.focusedIndex = (state.focusedIndex - 1 + state.categories.length) % state.categories.length;
-        if(key === 'ArrowRight') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
-        if(key === 'Enter') showTV(state.categories[state.focusedIndex]);
-    } else if(state.focusedArea === 'search') {
-        if(key === 'ArrowDown') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
-        if(key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
+    if (state.screen === 'pin-pad') {
+        if (key >= '0' && key <= '9') {
+            state.pin += key;
+            document.getElementById('pin-stars').innerText = '*'.repeat(state.pin.length).padEnd(4, '-');
+            if (state.pin.length === 4) {
+                const savedPin = localStorage.getItem('aurex_pin') || '2266';
+                if (state.pin === savedPin) {
+                    document.getElementById('pin-pad').classList.add('hidden');
+                    state.screen = 'tv-panel';
+                    state.currentCategory = state.categories[state.focusedIndex];
+                    filterAndRenderChannels();
+                    state.focusedArea = 'channels';
+                    state.focusedIndex = 0;
+                } else {
+                    state.pin = '';
+                    document.getElementById('pin-stars').innerText = '----';
+                    alert("Yanlış PİN!");
+                }
+            }
+        }
+        if (key === 'Backspace' || key === 'Escape') {
+            document.getElementById('pin-pad').classList.add('hidden');
+            state.screen = 'tv-panel';
+            state.focusedArea = 'categories';
+        }
+        return;
     }
-    if(key === 'Backspace') showDashboard();
+
+    if (state.focusedArea === 'channels') {
+        if (key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.filteredChannels.length;
+        if (key === 'ArrowUp') { if (state.focusedIndex === 0) { state.focusedArea = 'search'; state.focusedIndex = 0; } else state.focusedIndex--; }
+        if (key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
+        if (key === 'Enter') startFullscreen(state.filteredChannels[state.focusedIndex]);
+    } else if (state.focusedArea === 'categories') {
+        if (key === 'ArrowDown') state.focusedIndex = (state.focusedIndex + 1) % state.categories.length;
+        if (key === 'ArrowUp') state.focusedIndex = (state.focusedIndex - 1 + state.categories.length) % state.categories.length;
+        if (key === 'ArrowRight') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
+        if (key === 'Enter') {
+            const cat = state.categories[state.focusedIndex];
+            if (isSensitiveCategory(cat)) {
+                state.pin = '';
+                document.getElementById('pin-stars').innerText = '----';
+                document.getElementById('pin-pad').classList.remove('hidden');
+                state.screen = 'pin-pad';
+            } else {
+                state.currentCategory = cat;
+                filterAndRenderChannels();
+                state.focusedArea = 'channels';
+                state.focusedIndex = 0;
+            }
+        }
+    } else if (state.focusedArea === 'search') {
+        if (key === 'ArrowDown') { state.focusedArea = 'channels'; state.focusedIndex = 0; }
+        if (key === 'ArrowLeft') { state.focusedArea = 'categories'; state.focusedIndex = 0; }
+    }
+    if (key === 'Backspace') showDashboard();
+}
+
+function isSensitiveCategory(name) {
+    if (!name) return false;
+    const n = name.toLowerCase();
+    return n.includes('adult') || n.includes('xxx') || n.includes('+18') || n.includes('взрослые');
 }
 
 function startFullscreen(chan) {

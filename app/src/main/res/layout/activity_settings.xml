@@ -143,15 +143,6 @@
                     android:textColor="@color/white"
                     android:buttonTint="@color/gold_primary" />
 
-                <CheckBox
-                    android:id="@+id/cbShowAdult"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Böyüklər üçün məzmunu göstər (+18)"
-                    android:textColor="@color/white"
-                    android:buttonTint="@color/gold_primary" />
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

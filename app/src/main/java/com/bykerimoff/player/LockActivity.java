@@ -20,7 +20,7 @@ public class LockActivity extends AppCompatActivity {
         com.bykerimoff.player.utils.WallpaperManager.INSTANCE.applyWallpaper(this, binding.ivAppBackground);
 
         SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-        String savedPin = prefs.getString("app_pin", "0000");
+        String savedPin = prefs.getString("app_pin", "2266");
 
         binding.btnUnlock.setOnClickListener(v -> {
             String enteredPin = binding.etLockPin.getText().toString();

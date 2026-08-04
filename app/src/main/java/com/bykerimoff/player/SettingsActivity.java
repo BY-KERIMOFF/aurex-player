@@ -51,7 +51,6 @@ public class SettingsActivity extends AppCompatActivity {
         binding.cbAutoStartLast.setChecked(prefs.getBoolean("auto_start_last_channel", true));
         binding.cbUseExternalPlayer.setChecked(prefs.getBoolean("use_external_player", false));
         binding.cbDataSaver.setChecked(prefs.getBoolean("data_saver_enabled", false));
-        binding.cbShowAdult.setChecked(prefs.getBoolean("is_adult_enabled_user", false));
         binding.etEpgUrl.setText(prefs.getString("manual_epg_url", ""));
 
         String dns = prefs.getString("dns_type", "system");
@@ -116,7 +115,6 @@ public class SettingsActivity extends AppCompatActivity {
         setupFocusEffect(binding.rbSortDefault);
         setupFocusEffect(binding.rbSortName);
         setupFocusEffect(binding.rbSortCount);
-        setupFocusEffect(binding.cbShowAdult);
 
         binding.cbBootOnStartup.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("boot_on_startup", isChecked).apply();
@@ -133,27 +131,6 @@ public class SettingsActivity extends AppCompatActivity {
             Toast.makeText(this, "Pleyer seçimi yadda saxlanıldı", Toast.LENGTH_SHORT).show();
         });
 
-        binding.cbShowAdult.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                // PIN soruş
-                PinDialog.show(this, new PinDialog.PinListener() {
-                    @Override
-                    public void onSuccess() {
-                        prefs.edit().putBoolean("is_adult_enabled_user", true).apply();
-                        Toast.makeText(SettingsActivity.this, "18+ məzmun aktiv edildi", Toast.LENGTH_SHORT).show();
-                    }
-
-                    @Override
-                    public void onCancel() {
-                        binding.cbShowAdult.setChecked(false);
-                    }
-                });
-            } else {
-                prefs.edit().putBoolean("is_adult_enabled_user", false).apply();
-                Toast.makeText(this, "18+ məzmun gizlədildi", Toast.LENGTH_SHORT).show();
-            }
-        });
-
         binding.cbDataSaver.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("data_saver_enabled", isChecked).apply();
             Toast.makeText(this, "Data Saver: " + (isChecked ? "Aktiv" : "Deaktiv"), Toast.LENGTH_SHORT).show();
@@ -163,8 +140,8 @@ public class SettingsActivity extends AppCompatActivity {
         binding.btnChangePin.setVisibility(binding.cbAppLock.isChecked() ? View.VISIBLE : View.GONE);
 
         binding.cbAppLock.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked && prefs.getString("app_pin", "0000").equals("0000")) {
-                Toast.makeText(this, "Lütfən PİN kodu dəyişməyi unutmayın (Default: 0000)", Toast.LENGTH_LONG).show();
+            if (isChecked && prefs.getString("app_pin", "2266").equals("2266")) {
+                Toast.makeText(this, "Lütfən PİN kodu dəyişməyi unutmayın (Default: 2266)", Toast.LENGTH_LONG).show();
             }
             prefs.edit().putBoolean("app_lock_enabled", isChecked).apply();
             binding.btnChangePin.setVisibility(isChecked ? View.VISIBLE : View.GONE);

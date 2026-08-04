@@ -20,7 +20,11 @@ public class PinDialog {
 
         final EditText input = new EditText(context);
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-        input.setHint("PİN (0000)");
+        
+        android.content.SharedPreferences prefs = context.getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE);
+        String savedPin = prefs.getString("app_pin", "2266"); // Standart: 2266
+        
+        input.setHint("PİN (" + savedPin + ")");
         
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -30,10 +34,10 @@ public class PinDialog {
 
         builder.setPositiveButton("Təsdiqlə", (dialog, which) -> {
             String pin = input.getText().toString();
-            if ("0000".equals(pin)) {
+            if (savedPin.equals(pin)) {
                 listener.onSuccess();
             } else {
-                builder.show(); // Yanlışdırsa təkrar göstər (sadə üsul)
+                android.widget.Toast.makeText(context, "Yanlış PIN!", android.widget.Toast.LENGTH_SHORT).show();
             }
         });
         builder.setNegativeButton("Ləğv et", (dialog, which) -> {

@@ -581,15 +581,8 @@ public class LiveTvActivity extends AppCompatActivity {
         categories.clear();
         originalCategories.clear();
         
-        SharedPreferences p = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-        boolean isAdultEnabledUser = p.getBoolean("is_adult_enabled_user", false);
-        boolean finalShowAdult = isAdultEnabled || isAdultEnabledUser;
-
         categories.add(new Category("0", "Sevimlilər", 0));
         for (XtreamCategory xc : xtCats) {
-            if (!finalShowAdult && M3UParser.isSensitiveCategory(xc.getName())) {
-                continue;
-            }
             categories.add(new Category(xc.getId(), xc.getName(), 0));
         }
         
@@ -873,10 +866,6 @@ public class LiveTvActivity extends AppCompatActivity {
             }
 
             final int finalFavCount = favCount;
-            SharedPreferences p = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-            boolean isAdultEnabledUser = p.getBoolean("is_adult_enabled_user", false);
-            boolean finalShowAdult = isAdultEnabled || isAdultEnabledUser;
-
             runOnUiThread(() -> {
                 channelMap.clear();
                 channelMap.putAll(tempMap);
@@ -886,9 +875,6 @@ public class LiveTvActivity extends AppCompatActivity {
                 categories.add(new Category("0", "Sevimlilər", finalFavCount));
                 int id = 1;
                 for (String cname : seenCats) {
-                    if (!finalShowAdult && M3UParser.isSensitiveCategory(cname)) {
-                        continue;
-                    }
                     List<Channel> list = channelMap.get(cname);
                     categories.add(new Category(String.valueOf(id++), cname, list != null ? list.size() : 0));
                 }
