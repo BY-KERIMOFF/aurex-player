@@ -1,35 +1,43 @@
-# "Aurex Player Smart TV" (Səs Paneli və Real EPG) Tətbiq Planı
+# "Aurex Player" (Mütləq Kopya və 18+ Fix - v197) Tətbiq Planı
 
-Bu plan Smart TV versiyasını (MediaStation X) Android APK-dakı vizual səs səviyyəsi və real proqram rəhbəri (EPG) funksiyaları ilə təkmilləşdirir.
+Bu plan həm Android APK-dakı (+18) kanalların görünməməsi problemini həll edir, həm də Smart TV versiyasını APK-nın **100% vizual və funksional kopyasına** (Pixel-Perfect Mirror) çevirir.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **18+ Kanallar:** İndi həm APK-da, həm də Smart TV-də "Ayarlar" bölməsinə "Böyüklər üçün məzmunu göstər" seçimi əlavə ediləcək. Bu seçim yalnız düzgün PIN kod daxil edildikdə aktivləşə bilər. Beləliklə, kanalları serverdən asılı olmayaraq (əgər icazə varsa) gizlədib-açmaq mümkün olacaq.
 
 ## Proposed Changes
 
-### [Web Application Components]
+### [Android Studio - Layouts & Logic]
+
+#### [MODIFY] [SettingsActivity.java](file:///home/by-kerimoff/Belgeler/by-kerimoff/app/src/main/java/com/bykerimoff/player/SettingsActivity.java)
+- "Böyüklər üçün məzmunu göstər" (`cbShowAdult`) adlı yeni bir `CheckBox` (və ya Switch) əlavə ediləcək.
+- Bu seçim klikləndikdə istifadəçidən PIN tələb olunacaq.
+
+#### [MODIFY] [LiveTvActivity.java](file:///home/by-kerimoff/Belgeler/by-kerimoff/app/src/main/java/com/bykerimoff/player/LiveTvActivity.java)
+- Kanalları süzgəcləyərkən yalnız serverdən gələn `is_adult_enabled` yox, həm də istifadəçinin ayarlarda verdiyi `show_adult_content` icazəsi yoxlanılacaq.
+
+### [Web Application (MSX) - Absolute Mirror]
 
 #### [MODIFY] [msx/index.html](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/index.html)
-- **Volume Overlay:** Ekranda səs artırıb-azaldanda görünəcək qızılı rəngli yeni bir panel (`#volume-overlay`) əlavə ediləcək.
-- **EPG Placeholders:** Kanal siyahısında və pleyer daxilində real EPG məlumatlarının oturacağı sahələr dəqiqləşdiriləcək.
+- **Dashboard:** `activity_main.xml`-dəki bütün vidjetlərin (Hava, Saat, Tarix) və bölmələrin (Resume, Currency) dəqiq yerləşməsi.
+- **Login:** Giriş ekranı APK-dakı "MAC Adresi" pəncərəsi ilə 1:1 eyniləşdiriləcək.
 
 #### [MODIFY] [msx/style.css](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/style.css)
-- **Volume UI Styles:** Android APK-dakı səs paneli ilə eyni dizayn (Qızılı tərəqqi çubuğu, şüşə effekti).
-- **EPG Text Glow:** Proqram adlarının qaranlıq fon üzərində daha aydın görünməsi üçün kölgə və vurğu stilləri.
+- **Dizayn Mirror:** Android Studio-dakı bütün rəng kodları (`#FFD700`, `#0A0A0A`, `#121212`) və `dp` ölçüləri dəqiq tətbiq olunacaq.
+- **Fontlar:** APK-dakı eyni font ailələri və ölçüləri.
 
 #### [MODIFY] [msx/app.js](file:///home/by-kerimoff/Belgeler/by-kerimoff/msx/app.js)
-1.  **Custom Volume Logic:**
-    - Pultun `AudioVolumeUp` və `AudioVolumeDown` düymələrini tutacaq.
-    - Video pleyerin səsini dəyişəcək və ekranda xüsusi qızılı səs panelini göstərəcək.
-    - Panel 3 saniyə hərəkətsizlikdən sonra avtomatik itəcək.
-2.  **Real EPG Parser:**
-    - `https://epg.pw/xmltv/feed/az.xml` mənbəsindən məlumatları `DOMParser` vasitəsilə oxuyacaq.
-    - Hər bir kanalın `tvg-id` dəyərinə uyğun olaraq hal-hazırda hansı verilişin getdiyini tapacaq.
-    - Verilişin başlama və bitmə vaxtına görə tərəqqi çubuğunu (`progress bar`) avtomatik yeniləyəcək.
+- **Adult Filter:** APK-da tətbiq etdiyimiz 18+ gizlətmə/açma məntiqi bura da əlavə ediləcək.
+- **Dashboard Search:** APK-dakı kimi dərhal klaviaturanı açan axtarış motoru.
 
 ### [Gradle Configuration]
-- `versionCode` **195**, `versionName` **"4.1.0"** (Ultimate Edition) olaraq yenilənəcək.
+- `versionCode` **197**, `versionName` **"5.0.0"** (The Absolute Mirror) olaraq yenilənəcək.
 
 ## Verification Plan
 
 ### Manual Verification
-1.  **Səs Paneli:** Pultda səs düymələrini sıxdıqda ekranda qızılı rəngli çubuğun çıxdığını və səs səviyyəsinin (0-100%) düzgün dəyişdiyini yoxlamaq.
-2.  **EPG Data:** Kanalları gəzərkən "Yayım məlumatı yoxdur" yerinə real veriliş adlarının (məs: "Hədəf", "Kino") gəldiyini təsdiqləmək.
-3.  **EPG Progress:** Verilişin nə qədərinin getdiyini göstərən yaşıl/qızılı çubuğun pleyer menyusunda (OSD) hərəkət etdiyini görmək.
+1.  **APK 18+ Testi:** Ayarlardan "Böyüklər üçün məzmun"u açıb PIN yazdıqdan sonra kanalların gəldiyini yoxlamaq.
+2.  **Smart TV Mirror Testi:** TV-dəki pleyeri APK ilə yan-yana qoyub heç bir fərq (rəng, ölçü, yerləşmə) olmadığını təsdiqləmək.
+3.  **Hər iki tərəfdə EPG:** Canlı yayım zamanı real proqram məlumatlarının hər iki tərəfdə eyni saniyədə yeniləndiyini yoxlamaq.

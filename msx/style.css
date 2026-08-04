@@ -1,109 +1,105 @@
 :root {
     --bg-main: #0A0A0A;
     --bg-sidebar: #121212;
-    --gold-primary: #FFD700;
+    --gold: #FFD700;
     --gold-dark: #B8860B;
-    --glass-white: rgba(255, 255, 255, 0.10); /* #1AFFFFFF */
-    --glass-white-heavy: rgba(255, 255, 255, 0.20); /* #33FFFFFF */
-    --text-primary: #FFFFFF;
-    --text-secondary: #B0B0B0;
-    --focus-color: #FFD700;
+    --glass: rgba(255, 255, 255, 0.10);
+    --glass-heavy: rgba(255, 255, 255, 0.20);
+    --white: #FFFFFF;
+    --gray: #B0B0B0;
     --black: #000000;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Arial', sans-serif; overflow: hidden; }
-body { background: var(--bg-main); color: var(--text-primary); width: 100vw; height: 100vh; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; }
+body { background: var(--bg-main); color: var(--white); width: 100vw; height: 100vh; }
 
-.screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; background: var(--bg-main); }
+.screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; background: var(--bg-main); z-index: 10; }
 .screen.active { display: flex; flex-direction: column; }
 
-/* Backgrounds */
-.panoramic-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1920') center/cover no-repeat; opacity: 0.4; z-index: -1; }
-.dark-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: -1; }
+/* Orijinal Background System */
+.app-background { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1920') center/cover no-repeat; opacity: 0.5; z-index: 1; }
+.app-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 2; }
 
-/* Splash Screen (activity_main.xml - loadingLayout) */
+/* Splash Screen (Absolute Copy) */
 #splash-screen { justify-content: center; align-items: center; background: #000; z-index: 1000; }
-.splash-title { font-size: 54sp; font-weight: bold; letter-spacing: 0.2em; animation: splashAnim 3s infinite; }
-@keyframes splashAnim { 0% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.6; } }
+.splash-title { font-size: 54px; font-weight: bold; letter-spacing: 0.2em; color: var(--white); animation: splashFade 3s infinite; }
+@keyframes splashFade { 0% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 0.5; } }
 
-/* Dashboard Header (activity_main.xml - titleContainer) */
-.dashboard-content { padding: 15px 40px 40px 40px; }
-.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.app-title { font-size: 40px; font-weight: 900; background: linear-gradient(180deg, #FFE700, #B8860B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 4px 8px rgba(0,0,0,0.8); }
-
-/* Widgets */
-.header-right { text-align: right; }
-.clock-text { font-size: 32px; font-weight: bold; }
-.date-text { font-size: 16px; color: var(--text-secondary); }
-
-/* Cards (activity_main.xml - cardsContainer) */
-.cards-row { display: flex; gap: 16px; margin-bottom: 12px; }
-.main-card { flex: 1; height: 170px; background: var(--bg-sidebar); border-radius: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden; }
-.main-card::before { content: ""; position: absolute; width: 100%; height: 100%; background: var(--glass-white); }
-.card-icon { font-size: 50px; color: var(--gold-primary); z-index: 1; margin-bottom: 12px; }
-.card-label { font-size: 20px; font-weight: bold; z-index: 1; }
-
-/* Radio Card (activity_main.xml - cardRadio) */
-.radio-bar { height: 80px; background: var(--bg-sidebar); border-radius: 12px; margin: 10px 0; display: flex; align-items: center; padding: 0 32px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; position: relative; }
-.radio-bar::before { content: ""; position: absolute; top:0; left:0; width: 100%; height: 100%; background: var(--glass-white); }
-.radio-icon { font-size: 32px; color: var(--gold-primary); z-index: 1; }
-.radio-info { flex: 1; margin-left: 24px; z-index: 1; }
-.radio-title { font-size: 20px; font-weight: bold; }
-.radio-subtitle { font-size: 12px; color: var(--gold-dark); opacity: 0.9; }
-
-/* Sections (Resume, Currency) */
-.section-header { font-size: 18px; font-weight: bold; color: var(--gold-primary); margin: 24px 10px 8px 10px; letter-spacing: 0.1em; }
-.horizontal-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 10px; }
-.resume-card { width: 160px; height: 100px; background: var(--bg-sidebar); border-radius: 10px; flex-shrink: 0; position: relative; overflow: hidden; }
-.resume-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.4; }
-.resume-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; padding: 8px; text-align: center; }
-.resume-name { font-size: 12px; font-weight: bold; }
-.resume-progress { position: absolute; bottom: 0; left:0; height: 4px; background: var(--gold-primary); }
-
-/* Focus System (Android Studio duplicateParentState emulation) */
-.focusable.focused { background: var(--gold-primary) !important; color: var(--black) !important; transform: scale(1.05); border: none; box-shadow: 0 0 30px var(--gold-primary); }
+/* Focus System (Android Selector Copy) */
+.focusable.focused { background: var(--gold) !important; color: var(--black) !important; transform: scale(1.05); border: none; box-shadow: 0 0 30px var(--gold); z-index: 100; }
 .focusable.focused * { color: var(--black) !important; }
-.focusable.focused .card-icon, .focusable.focused .radio-icon { color: var(--black) !important; }
 
-/* TV View (activity_live_tv.xml) */
-.tv-layout { display: flex; height: 100%; }
-.tv-sidebar { flex: 1.8; background: var(--bg-sidebar); padding: 12px; border-right: 1px solid #222; }
-.tv-main { flex: 2.8; padding: 8px; display: flex; flex-direction: column; }
-.tv-preview { flex: 3.4; background: var(--bg-sidebar); padding: 16px; display: flex; flex-direction: column; }
+/* Dashboard (activity_main.xml Mirror) */
+.dashboard-scroll { width: 100%; height: 100%; overflow-y: auto; z-index: 20; padding: 15px 40px 40px 40px; }
+.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.premium-title { font-size: 40px; font-weight: 900; background: linear-gradient(180deg, #FFE700 0%, #B8860B 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-.search-box { background: var(--glass-white); padding: 8px; border-radius: 10px; margin-bottom: 12px; display: flex; align-items: center; }
-.search-input { flex: 1; background: transparent; border: none; color: white; font-size: 14px; padding-left: 8px; }
+.cards-row { display: flex; gap: 16px; margin-bottom: 12px; }
+.card { flex: 1; height: 170px; border-radius: 15px; overflow: hidden; }
+.glass-bg { background: var(--glass); width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
+.card-icon { font-size: 50px; color: var(--gold); margin-bottom: 12px; }
+.card-label { font-size: 20px; font-weight: bold; }
 
-.list-container { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+.section-label { font-size: 14px; color: var(--gray); margin: 12px 0 10px 10px; opacity: 0.8; }
+.radio-bar { height: 80px; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+.radio-inner { display: flex; align-items: center; padding: 0 32px; width: 100%; height: 100%; }
+.radio-text { flex: 1; margin-left: 24px; }
+.radio-title { font-size: 20px; font-weight: bold; }
+.radio-subtitle { font-size: 12px; color: var(--gold-dark); }
+
+.section-header { font-size: 18px; font-weight: bold; color: var(--gold); margin: 24px 0 8px 10px; letter-spacing: 0.1em; }
+.horizontal-list { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 5px; }
+
+.footer-row { display: flex; justify-content: flex-end; gap: 16px; margin-top: 16px; }
+button { padding: 12px 30px; border-radius: 10px; font-size: 16px; font-weight: bold; border: none; }
+.btn-glass { background: var(--glass-heavy); color: var(--white); }
+.btn-gold { background: var(--gold); color: var(--black); }
+
+/* TV View (LiveTvActivity.xml Mirror) */
+.tv-layout { display: flex; width: 100%; height: 100%; z-index: 20; }
+.tv-sidebar { flex: 1.8; padding: 12px; border-right: 1px solid #333; }
+.tv-main { flex: 2.8; padding: 8px; }
+.tv-preview { flex: 3.4; padding: 16px; }
+.bg-sidebar { background: var(--bg-sidebar); }
+
+.sidebar-label { font-size: 14px; font-weight: bold; color: var(--gold); letter-spacing: 0.2em; margin-bottom: 16px; margin-left: 8px; }
+.list-vertical { height: calc(100% - 80px); overflow-y: auto; scroll-behavior: smooth; }
+
+.list-header { padding: 8px; border-radius: 10px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px; }
+.search-input { flex: 1; background: transparent; border: none; color: white; font-size: 14px; }
+
 .item-channel { padding: 10px; border-radius: 10px; display: flex; align-items: center; margin-bottom: 2px; }
-.chan-logo { width: 50px; height: 50px; background: var(--glass-white); border-radius: 8px; padding: 4px; object-fit: contain; }
-.chan-name { flex: 1; margin-left: 16px; font-size: 16px; font-weight: bold; }
+.chan-logo { width: 50px; height: 50px; border-radius: 8px; padding: 4px; object-fit: contain; background: var(--white); }
+.chan-name { margin-left: 16px; font-size: 16px; font-weight: bold; }
 
-/* Mini Player */
-.mini-player-box { width: 100%; height: 260px; border-radius: 12px; background: #000; overflow: hidden; }
-.mini-player-box video { width: 100%; height: 100%; object-fit: contain; }
+.mini-player-frame { width: 100%; height: 260px; border-radius: 12px; background: #000; overflow: hidden; }
+.mini-player-frame video { width: 100%; height: 100%; object-fit: contain; }
 
-/* Player View (activity_player.xml) */
-#player-view { background: #000; }
-#player-view video { width: 100%; height: 100%; }
-.osd-layer { position: absolute; bottom: 0; left: 0; width: 100%; padding: 24px 36px 28px 36px; background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, transparent 100%); z-index: 100; transition: opacity 0.5s; }
+.epg-progress-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+#epg-progress-fill { height: 100%; background: #2196F3; width: 0%; }
+
+/* Player & OSD (PlayerActivity.xml Mirror) */
+#main-player { width: 100%; height: 100%; }
+.osd-layer { position: absolute; bottom: 0; left: 0; width: 100%; padding: 24px 36px 28px 36px; background: linear-gradient(0deg, rgba(0,0,0,0.95) 0%, transparent 100%); z-index: 100; transition: opacity 0.5s; }
 .osd-hidden { opacity: 0; pointer-events: none; }
-.osd-top { display: flex; align-items: center; }
-.osd-logo { width: 80px; height: 80px; background: #fff; padding: 4px; border-radius: 5px; }
+.osd-content { display: flex; align-items: center; }
+#ivChannelLogo { width: 80px; height: 80px; background: #fff; padding: 4px; border-radius: 5px; }
 .osd-info { flex: 1; margin-left: 24px; }
-.osd-ch-name { font-size: 28px; font-weight: bold; }
-.osd-epg { font-size: 20px; color: rgba(255,255,255,0.8); margin-top: 4px; }
+.osd-info h1 { font-size: 28px; font-weight: bold; }
+.osd-info p { font-size: 20px; color: rgba(255,255,255,0.8); margin-top: 4px; }
+.osd-meta { text-align: right; margin-left: 16px; }
+.badge { background: var(--gold); color: #000; font-size: 14px; font-weight: bold; padding: 4px 10px; border-radius: 4px; }
 
-/* Volume UI (activity_player.xml - volumeLayout) */
-#volume-ui { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); width: 400px; background: var(--glass-white); padding: 20px; border-radius: 15px; display: flex; align-items: center; z-index: 200; transition: opacity 0.3s; }
-.vol-hidden { opacity: 0; }
-.vol-bar { flex: 1; height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px; margin: 0 16px; overflow: hidden; }
-.vol-fill { height: 100%; background: var(--gold-primary); }
+#volume-ui { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); width: 400px; background: var(--glass); padding: 20px; border-radius: 15px; display: flex; align-items: center; z-index: 200; border: 1px solid rgba(255,255,255,0.1); }
+.vol-bar-bg { flex: 1; height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px; margin: 0 16px; overflow: hidden; }
+#vol-fill { height: 100%; background: var(--gold); }
 .vol-val { font-size: 32px; font-weight: bold; min-width: 80px; text-align: right; }
 
-/* Overlays */
-#numeric-input { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--glass-white); padding: 20px 40px; border-radius: 15px; font-size: 80px; font-weight: bold; z-index: 300; }
-#aspect-toast { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: var(--glass-white); padding: 12px 24px; border-radius: 10px; color: var(--gold-primary); font-size: 22px; font-weight: bold; z-index: 300; }
+.dialog-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; display:flex; justify-content:center; align-items:center; }
+.dialog-card, .pin-box { background:var(--bg-sidebar); padding:40px; border-radius:20px; border:2px solid var(--gold); text-align:center; min-width:400px; }
 
 .hidden { display: none !important; }
+.text-gold { color: var(--gold); }
+.text-red { color: #ef4444; }
+.text-secondary { color: var(--gray); }
 ::-webkit-scrollbar { width: 0; }

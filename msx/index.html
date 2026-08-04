@@ -3,140 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AUREX PLAYER MIRROR TV</title>
+    <title>AUREX PLAYER TV</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body class="bg-main">
     <div id="app">
-        <!-- Background Layer -->
-        <div class="panoramic-bg"></div>
-        <div class="dark-overlay"></div>
+        <!-- Orijinal Arxa Fon -->
+        <div class="app-background"></div>
+        <div class="app-overlay"></div>
 
-        <!-- Splash Screen -->
+        <!-- Splash Screen (Mütləq Kopya) -->
         <div id="splash-screen" class="screen active">
-            <h1 class="splash-title text-gold">AUREX PLAYER</h1>
+            <div class="splash-content">
+                <h1 class="splash-title">AUREX PLAYER</h1>
+            </div>
         </div>
 
-        <!-- Login Screen -->
+        <!-- Login / MAC Səhifəsi -->
         <div id="login-screen" class="screen">
-            <div class="login-container">
-                <h1 class="text-gold">MAC ADRESİ</h1>
-                <p>Zəhmət olmasa cihazın MAC ünvanını daxil edin:</p>
+            <div class="dialog-card">
+                <h1 class="text-gold">GİRİŞ</h1>
+                <p>Zəhmət olmasa MAC ünvanını daxil edin:</p>
                 <input type="text" id="mac-input" class="focusable" placeholder="00:00:00:00:00:00">
-                <button id="btn-login" class="focusable btn-gold">GİRİŞ ET</button>
+                <button id="btn-login" class="focusable btn-gold">DAXİL OL</button>
                 <p id="login-error" class="text-red hidden"></p>
+                <div class="mac-display text-gold">MAC: <span id="device-mac">--:--:--:--:--</span></div>
             </div>
         </div>
 
-        <!-- Dashboard (MainActivity.xml) -->
+        <!-- Dashboard (activity_main.xml Mirror) -->
         <div id="dashboard" class="screen">
-            <div class="dashboard-content">
-                <header class="header-row">
-                    <h1 class="app-title">AUREX PLAYER</h1>
-                    <div class="header-right">
-                        <div id="weather-box" class="hidden">
-                            <span id="weather-emoji">☀️</span> <span id="weather-temp">--°C</span>
+            <div class="dashboard-scroll">
+                <div class="dashboard-container">
+                    <!-- Header -->
+                    <div class="header-row">
+                        <h1 id="app-title" class="premium-title">AUREX PLAYER</h1>
+                        <div class="header-right">
+                            <div id="weather-widget" class="widget-row hidden">
+                                <span id="weather-emoji">☀️</span>
+                                <span id="weather-temp">--°C</span>
+                            </div>
+                            <div class="clock-group">
+                                <div id="clock" class="text-white">00:00</div>
+                                <div id="date" class="text-secondary">Cümə, 24 İyul</div>
+                            </div>
                         </div>
-                        <div id="clock" class="clock-text">00:00</div>
-                        <div id="date" class="date-text">Cümə, 24 İyul</div>
                     </div>
-                </header>
 
-                <div class="cards-row">
-                    <div id="cardLiveTv" class="main-card focusable" data-action="live-tv">
-                        <span class="card-icon">📺</span>
-                        <span class="card-label">CANLI TV</span>
+                    <!-- Main Cards (weightSum="4") -->
+                    <div class="cards-row">
+                        <div class="card focusable" data-action="live-tv">
+                            <div class="card-inner glass-bg">
+                                <span class="card-icon">📺</span>
+                                <span class="card-label">CANLI TV</span>
+                            </div>
+                        </div>
+                        <div class="card focusable" data-action="movies">
+                            <div class="card-inner glass-bg">
+                                <span class="card-icon">🎬</span>
+                                <span class="card-label">FİLMLƏR</span>
+                            </div>
+                        </div>
+                        <div class="card focusable" data-action="series">
+                            <div class="card-inner glass-bg">
+                                <span class="card-icon">🎭</span>
+                                <span class="card-label">SERİALLAR</span>
+                            </div>
+                        </div>
+                        <div class="card focusable" data-action="favorites">
+                            <div class="card-inner glass-bg">
+                                <span class="card-icon">⭐</span>
+                                <span class="card-label">SEVİMLİLƏR</span>
+                            </div>
+                        </div>
                     </div>
-                    <div id="cardMovies" class="main-card focusable" data-action="movies">
-                        <span class="card-icon">🎬</span>
-                        <span class="card-label">FİLMLƏR</span>
-                    </div>
-                    <div id="cardSeries" class="main-card focusable" data-action="series">
-                        <span class="card-icon">🎭</span>
-                        <span class="card-label">SERİALLAR</span>
-                    </div>
-                    <div id="cardFavorites" class="main-card focusable" data-action="favorites">
-                        <span class="card-icon">⭐</span>
-                        <span class="card-label">SEVİMLİLƏR</span>
-                    </div>
-                </div>
 
-                <div id="cardRadio" class="radio-bar focusable" data-action="radio">
-                    <span class="radio-icon">📻</span>
-                    <div class="radio-info">
-                        <div class="radio-title">ONLAYN RADİO</div>
-                        <div class="radio-subtitle">Dünyanın ən populyar radio stansiyaları</div>
+                    <!-- Radio Section -->
+                    <div class="section-label">Musiqi və Əyləncə</div>
+                    <div id="cardRadio" class="radio-bar focusable" data-action="radio">
+                        <div class="radio-inner glass-bg">
+                            <span class="radio-icon">📻</span>
+                            <div class="radio-text">
+                                <div class="radio-title">ONLAYN RADİO</div>
+                                <div class="radio-subtitle">Dünyanın ən populyar radio stansiyaları</div>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <div id="resumeSection" class="hidden">
-                    <div class="section-header">İZLƏMƏYƏ DAVAM ET</div>
-                    <div id="resume-list" class="horizontal-scroll"></div>
-                </div>
+                    <!-- Resume Section -->
+                    <div id="resumeSection" class="section hidden">
+                        <div class="section-header">İZLƏMƏYƏ DAVAM ET</div>
+                        <div id="resume-list" class="horizontal-list"></div>
+                    </div>
 
-                <div id="currencySection" class="hidden">
-                    <div class="section-header">GÜNLÜK MƏZƏNNƏLƏR (AZN)</div>
-                    <div id="currency-list" class="horizontal-scroll"></div>
+                    <!-- Currency Section -->
+                    <div id="currencySection" class="section hidden">
+                        <div class="section-header">GÜNLÜK MƏZƏNNƏLƏR (AZN)</div>
+                        <div id="currency-list" class="horizontal-list"></div>
+                    </div>
+
+                    <!-- Footer Buttons -->
+                    <div class="footer-row">
+                        <button class="focusable btn-glass" data-action="settings">AYARLAR</button>
+                        <button class="focusable btn-gold" data-action="search">AXTARIŞ</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- TV Panel (LiveTvActivity.xml) -->
+        <!-- TV View (LiveTvActivity.xml Mirror) -->
         <div id="tv-panel" class="screen">
             <div class="tv-layout">
-                <div class="tv-sidebar">
-                    <h5 class="text-gold" style="margin-bottom: 16px;">MENU</h5>
-                    <div id="category-list" class="list-container"></div>
+                <div class="tv-sidebar bg-sidebar">
+                    <div class="sidebar-label">MENU</div>
+                    <div id="category-list" class="list-vertical"></div>
                 </div>
                 <div class="tv-main">
-                    <div class="search-box">
-                        <span class="text-white">KANALLAR</span>
-                        <input type="text" id="etSearch" class="search-input focusable" placeholder="Axtar...">
+                    <div class="list-header glass-bg">
+                        <h3 id="tv-panel-title">KANALLAR</h3>
+                        <input type="text" id="etSearch" class="focusable" placeholder="Axtar...">
                     </div>
-                    <div id="channel-list" class="list-container"></div>
+                    <div id="channel-list" class="list-vertical"></div>
                 </div>
-                <div class="tv-preview">
-                    <div class="mini-player-box">
+                <div class="tv-preview bg-sidebar">
+                    <div class="mini-player-frame">
                         <video id="mini-player" autoplay muted></video>
                     </div>
-                    <div class="preview-info">
-                        <img id="current-logo" src="" class="chan-logo" alt="">
-                        <div id="current-name" class="chan-name text-gold" style="margin-top: 16px; font-size: 22px;">Kanal Seçin</div>
-                        <div id="epg-title" style="margin-top: 8px; font-size: 16px; color: #888;">EPG Məlumatı yoxdur</div>
+                    <div class="preview-meta">
+                        <img id="current-logo" src="" class="glass-bg" alt="">
+                        <div class="preview-text">
+                            <h2 id="current-name" class="text-gold">Kanal Seçin</h2>
+                            <p id="epg-title">Yayım məlumatı...</p>
+                            <div class="epg-progress-bg"><div id="epg-progress-fill"></div></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Player View (PlayerActivity.xml) -->
+        <!-- Player (PlayerActivity.xml Mirror) -->
         <div id="player-view" class="screen">
             <video id="main-player" autoplay></video>
-
+            <!-- OSD -->
             <div id="osdLayout" class="osd-layer osd-hidden">
-                <div class="osd-top">
-                    <img id="ivChannelLogo" src="" class="osd-logo" alt="">
+                <div class="osd-content">
+                    <img id="ivChannelLogo" src="" alt="">
                     <div class="osd-info">
-                        <div id="tvChannelName" class="osd-ch-name">Kanal Adı</div>
-                        <div id="tvEpgInfo" class="osd-epg">Yayım Məlumatı...</div>
+                        <h1 id="tvChannelName">Kanal Adı</h1>
+                        <p id="tvEpgInfo">Yayım Məlumatı...</p>
                     </div>
-                    <div class="header-right">
-                        <div id="osd-clock" class="clock-text" style="font-size: 26px;">00:00</div>
-                        <div id="tvQuality" class="badge" style="margin-top: 6px;">4K</div>
+                    <div class="osd-meta">
+                        <div id="osd-clock">00:00</div>
+                        <div id="tvQuality" class="badge">HD</div>
+                    </div>
+                </div>
+                <div id="vod-progress" class="hidden">
+                    <div class="progress-bar-bg"><div id="progress-fill"></div></div>
+                    <div class="time-labels">
+                        <span id="cur-time">00:00</span>
+                        <span id="total-time">00:00</span>
                     </div>
                 </div>
             </div>
-
-            <div id="volumeLayout" class="vol-hidden">
-                <div id="volume-ui">
-                    <span style="font-size: 32px;">🔊</span>
-                    <div class="vol-bar"><div id="vol-fill" class="vol-fill"></div></div>
-                    <span id="tvVolumePercent" class="vol-val">50%</span>
-                </div>
+            <!-- Volume -->
+            <div id="volume-ui" class="vol-hidden">
+                <span>🔊</span>
+                <div class="vol-bar-bg"><div id="vol-fill"></div></div>
+                <span id="vol-val">50%</span>
             </div>
-
+            <!-- Numeric -->
             <div id="numeric-input" class="hidden">0</div>
-            <div id="aspect-toast" class="hidden">FIT</div>
+        </div>
+
+        <!-- PIN Pad -->
+        <div id="pin-pad" class="dialog-overlay hidden">
+            <div class="pin-box">
+                <h2 class="text-gold">PIN KOD</h2>
+                <div id="pin-stars">****</div>
+                <p class="pin-hint">Pultun rəqəmlərindən istifadə edin</p>
+            </div>
         </div>
     </div>
     <script src="app.js"></script>
