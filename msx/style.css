@@ -17,24 +17,51 @@ body { background: var(--bg-main); color: var(--white); width: 100vw; height: 10
 .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; background: var(--bg-main); z-index: 10; }
 .screen.active { display: flex; flex-direction: column; }
 
-/* Orijinal Background System */
-.app-background { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1920') center/cover no-repeat; opacity: 0.6; z-index: 1; }
+/* Orijinal Background System (Ken Burns Effect) */
+.app-background {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1920') center/cover no-repeat;
+    opacity: 0.6;
+    z-index: 1;
+    animation: kenBurns 4000ms linear forwards;
+}
+@keyframes kenBurns {
+    from { transform: scale(1.0); }
+    to { transform: scale(1.15); }
+}
+
 .app-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 2; }
 
 /* Splash Screen (1:1 Mirror) */
 #splash-screen { justify-content: center; align-items: center; background: #000; z-index: 1000; }
 .splash-content { text-align: center; }
-.splash-title { font-size: 64px; font-weight: 900; letter-spacing: 0.3em; color: var(--white); animation: splashAnim 3s infinite; }
+.splash-title {
+    font-size: 64px;
+    font-weight: 900;
+    letter-spacing: 0.3em;
+    color: var(--white);
+    background: linear-gradient(to right, #ffffff, #ffd700, #ffffff);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 1500ms linear infinite;
+}
 .splash-subtitle { font-size: 18px; color: var(--gold); letter-spacing: 0.5em; margin-top: 10px; opacity: 0.8; }
-@keyframes splashAnim { 0% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 0.6; } }
+
+@keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
 
 /* Focus System (Android Selector Mimic) */
-.focusable { transition: transform 0.2s, background 0.2s, box-shadow 0.2s; border: 2px solid transparent; }
+.focusable { transition: transform 200ms, background 200ms, box-shadow 200ms; border: 2px solid transparent; }
 .focusable.focused {
     transform: scale(1.05) !important;
     background: var(--gold) !important;
     color: var(--black) !important;
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.5) !important;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.8) !important;
     border-color: var(--white) !important;
     z-index: 100 !important;
 }
@@ -47,7 +74,7 @@ body { background: var(--bg-main); color: var(--white); width: 100vw; height: 10
     font-size: 44px; font-weight: 900; letter-spacing: 0.1em;
     background: linear-gradient(180deg, #FFE700 0%, #FFD700 40%, #B8860B 70%, #8B6508 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    text-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.5));
 }
 .widget-row { display: flex; align-items: center; gap: 15px; margin-right: 30px; }
 #weather-emoji { font-size: 32px; }

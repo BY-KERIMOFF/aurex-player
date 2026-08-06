@@ -66,6 +66,7 @@ let state = {
 // --- System Core ---
 
 window.onload = () => {
+    if (initSecurity()) return;
     initFocusSystem();
     setupClock();
     startLaunchSequence();
@@ -237,6 +238,15 @@ function showDashboard() {
     updateFocus();
 }
 
+function showError(title, msg) {
+    const overlay = document.getElementById('error-overlay');
+    document.getElementById('error-title').innerText = title;
+    document.getElementById('error-message').innerText = msg;
+    overlay.classList.remove('hidden');
+    state.focusedArea = 'error-retry';
+    updateFocus();
+}
+
 function updateDashboardUI() {
     const isKids = state.kidsModeActive;
     document.getElementById('card-movies').style.display = isKids ? 'none' : 'flex';
@@ -340,6 +350,7 @@ function updateFocus() {
     else if (state.focusedArea === 'tv-back') selector = '#btn-tv-back';
     else if (state.focusedArea === 'speed-back') selector = '#btn-speed-back';
     else if (state.focusedArea === 'speed-start') selector = '#btn-start-test';
+    else if (state.focusedArea === 'error-retry') selector = '#btn-error-retry';
 
     const elements = document.querySelectorAll(selector);
     const el = elements[state.focusedIndex] || elements[0];
@@ -634,19 +645,72 @@ function updateSpeedUI(mbps) {
 
 function fetchWeather() {
     fetch(CONFIG.weatherApi).then(r => r.json()).then(data => {
-        document.getElementById('weather-temp').innerText = `${Math.round(data.current_weather.temperature)}°C`;
-        // Mapping codes to emojis...
+        const temp = Math.round(data.current_weather.temperature);
+        const code = data.current_weather.weathercode;
+        document.getElementById('weather-temp').innerText = `${temp}°C`;
+        document.getElementById('weather-emoji').innerText = getWeatherEmoji(code);
     }).catch(() => {});
 }
 
+function getWeatherEmoji(code) {
+    // 1:1 Mirror of WeatherManager.kt
+    if (code === 0) return "☀️";
+    if ([1, 2, 3].includes(code)) return "🌤️";
+    if ([45, 48].includes(code)) return "🌫️";
+    if ([51, 53, 55, 61, 63, 65].includes(code)) return "🌧️";
+    if ([71, 73, 75, 77, 85, 86].includes(code)) return "❄️";
+    if ([95, 96, 99].includes(code)) return "⛈️";
+    return "☁️";
+}
+
 function fetchCurrency() {
-    // Simple mock or JSON fetch if backend supports it
+    // CBAR logic: USD, EUR, RUB, TRY, GBP, GEL
+    const mockData = [
+        { code: 'USD', value: '1.7000' },
+        { code: 'EUR', value: '1.8450' },
+        { code: 'RUB', value: '0.0185' },
+        { code: 'TRY', value: '0.0510' },
+        { code: 'GBP', value: '2.1600' },
+        { code: 'GEL', value: '0.6300' }
+    ];
+
     document.getElementById('currency-section').classList.remove('hidden');
-    document.getElementById('currency-list').innerHTML = `
-        <div class="speed-card glass-bg" style="min-width: 120px;">USD: 1.70</div>
-        <div class="speed-card glass-bg" style="min-width: 120px;">EUR: 1.84</div>
-        <div class="speed-card glass-bg" style="min-width: 120px;">RUB: 0.018</div>
-    `;
+    document.getElementById('currency-list').innerHTML = mockData.map(item => `
+        <div class="speed-card glass-bg" style="min-width: 130px; padding: 15px;">
+            <small style="color: var(--gray)">${item.code}</small>
+            <div style="font-weight: 900; color: var(--gold); margin-top: 5px;">${item.value}</div>
+        </div>
+    `).join('');
+}
+
+// --- Security: Self-Defense (Android Mirror) ---
+
+function initSecurity() {
+    let violations = parseInt(localStorage.getItem('aurex_violations')) || 0;
+
+    if (localStorage.getItem('aurex_perm_block') === 'true') {
+        showError('BLOKLANDI', 'Cihaz təhlükəsizlik səbəbi ilə bloklanıb.');
+        return true;
+    }
+
+    // Basic DevTools Detection (Browser equivalent of Sniffer/Debugger)
+    const detect = () => {
+        const start = Date.now();
+        debugger;
+        if (Date.now() - start > 100) {
+            violations++;
+            localStorage.setItem('aurex_violations', violations);
+            if (violations >= 3) {
+                localStorage.setItem('aurex_perm_block', 'true');
+                location.reload();
+            } else {
+                alert(`Təhlükəsizlik xəbərdarlığı! (${violations}/3)`);
+            }
+        }
+    };
+
+    setInterval(detect, 5000);
+    return false;
 }
 
 function updatePreview(chan) {
