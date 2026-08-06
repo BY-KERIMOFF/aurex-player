@@ -1,0 +1,13 @@
+{
+    "id": "com.bykerimoff.player",
+    "version": "1.0.0",
+    "vendor": "BY-KERIMOFF",
+    "type": "web",
+    "main": "index.html",
+    "title": "Aurex Player",
+    "icon": "icon.png",
+    "largeIcon": "largeIcon.png",
+    "backgroundImage": "background.png",
+    "uiRevision": "2",
+    "resolution": "1920x1080"
+}
