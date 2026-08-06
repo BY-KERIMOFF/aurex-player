@@ -446,9 +446,21 @@ public class PlayerActivity extends AppCompatActivity {
                     .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
                     .setEnableDecoderFallback(true);
 
+            // Maksimal Performans üçün Aqressiv Buferləmə (30s - 90s)
+            androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(
+                            30000, // minBufferMs (30s öncədən yüklə)
+                            90000, // maxBufferMs (Maksimum 90s yaddaşda saxla)
+                            5000,  // bufferForPlaybackMs (5s olanda başlat)
+                            10000  // bufferForPlaybackAfterRebufferMs (Donma olsa 10s gözlə)
+                    )
+                    .setPrioritizeTimeOverSizeThresholds(true) // Vaxta üstünlük ver (zeyf şəbəkə üçün)
+                    .build();
+
             exoPlayer = new ExoPlayer.Builder(this, renderersFactory)
                     .setMediaSourceFactory(mediaSourceFactory)
                     .setTrackSelector(trackSelector)
+                    .setLoadControl(loadControl)
                     .build();
             binding.playerView.setPlayer(exoPlayer);
             exoPlayer.addListener(new Player.Listener() {

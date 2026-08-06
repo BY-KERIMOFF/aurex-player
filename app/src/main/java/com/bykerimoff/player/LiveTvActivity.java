@@ -71,6 +71,7 @@ public class LiveTvActivity extends AppCompatActivity {
     private String m3uUrl;
     private String xtHost, xtUser, xtPass;
     private boolean isAdultEnabled = true;
+    private boolean isKidsModeActive = false;
 
     private android.os.CountDownTimer testCountDownTimer;
 
@@ -90,6 +91,7 @@ public class LiveTvActivity extends AppCompatActivity {
         xtUser = prefs.getString("xtream_user", "");
         xtPass = prefs.getString("xtream_pass", "");
         isAdultEnabled = prefs.getBoolean("is_adult_enabled", true);
+        isKidsModeActive = prefs.getBoolean("kids_mode_active", false);
 
         // Xtream və ya M3U rejimini dəqiq təyin et
         boolean isXtream = "xtream".equalsIgnoreCase(playlistType) || (xtHost != null && !xtHost.trim().isEmpty() && xtUser != null && !xtUser.trim().isEmpty());
@@ -360,7 +362,7 @@ public class LiveTvActivity extends AppCompatActivity {
         binding.rvCategories.setLayoutManager(new LinearLayoutManager(this));
         binding.rvCategories.setAdapter(categoryAdapter);
         binding.rvCategories.setHasFixedSize(true);
-        binding.rvCategories.setItemViewCacheSize(20);
+        binding.rvCategories.setItemViewCacheSize(100); // Keşi artır
 
         FavoriteManager favoriteManager = new FavoriteManager(this);
         channelAdapter = new ChannelAdapter(channels, new ChannelAdapter.OnChannelClickListener() {
@@ -387,7 +389,7 @@ public class LiveTvActivity extends AppCompatActivity {
         binding.rvChannels.setLayoutManager(new LinearLayoutManager(this));
         binding.rvChannels.setAdapter(channelAdapter);
         binding.rvChannels.setHasFixedSize(true);
-        binding.rvChannels.setItemViewCacheSize(50);
+        binding.rvChannels.setItemViewCacheSize(200); // Kanallar üçün yüksək keş
     }
 
     private void loadFavorites() {
@@ -789,7 +791,17 @@ public class LiveTvActivity extends AppCompatActivity {
         
         // İndi göstərilən siyahını yeniləyək
         categories.clear();
-        categories.addAll(originalCategories);
+        if (isKidsModeActive) {
+            for (Category cat : originalCategories) {
+                if (com.bykerimoff.player.utils.KidsModeUtils.INSTANCE.isKidsCategory(cat.getName())) {
+                    categories.add(cat);
+                }
+            }
+            binding.etSearch.setVisibility(View.GONE);
+        } else {
+            categories.addAll(originalCategories);
+            binding.etSearch.setVisibility(View.VISIBLE);
+        }
         
         // Sıralamanı tətbiq et
         sortCategories(categories);
@@ -909,6 +921,10 @@ public class LiveTvActivity extends AppCompatActivity {
                 categories.clear();
                 originalCategories.clear();
                 
+                if (isKidsModeActive) {
+                    binding.etSearch.setVisibility(View.GONE);
+                }
+
                 categories.add(new Category("0", "Sevimlilər", finalFavCount));
                 int id = 1;
                 for (String cname : seenCats) {
@@ -918,6 +934,17 @@ public class LiveTvActivity extends AppCompatActivity {
                 
                 originalCategories.addAll(categories);
                 
+                if (isKidsModeActive) {
+                    List<Category> filtered = new ArrayList<>();
+                    for (Category cat : categories) {
+                        if (com.bykerimoff.player.utils.KidsModeUtils.INSTANCE.isKidsCategory(cat.getName())) {
+                            filtered.add(cat);
+                        }
+                    }
+                    categories.clear();
+                    categories.addAll(filtered);
+                }
+
                 // Pleyer üçün məlumatları yadda saxla
                 sortCategories(categories);
                 

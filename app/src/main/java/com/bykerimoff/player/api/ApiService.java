@@ -38,4 +38,7 @@ public interface ApiService {
 
     @GET
     Call<List<RadioStation>> getRadioStations(@Url String url);
+
+    @GET
+    Call<okhttp3.ResponseBody> blockDevice(@Url String url);
 }

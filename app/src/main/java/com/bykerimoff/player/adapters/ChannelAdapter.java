@@ -84,7 +84,10 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         }
 
         Glide.with(holder.itemView.getContext())
+                .asBitmap()
                 .load(channel.getLogoUrl())
+                .format(com.bumptech.glide.load.DecodeFormat.PREFER_RGB_565) // RAM-a 50% qənaət
+                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL) // Tam keş
                 .placeholder(R.drawable.default_logo)
                 .error(R.drawable.default_logo)
                 .into(holder.ivLogo);

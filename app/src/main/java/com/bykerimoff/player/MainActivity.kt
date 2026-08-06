@@ -68,6 +68,13 @@ class MainActivity : AppCompatActivity() {
         if (checkSecurity()) return
 
         val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        
+        // Daimi bloklama yoxlanışı
+        if (prefs.getBoolean("is_permanently_blocked", false)) {
+            showSecurityError("Cihaz təhlükəsizlik səbəbi ilə daxili sistem tərəfindən daimi olaraq bloklanıb.")
+            return
+        }
+
         val lockEnabled = prefs.getBoolean("app_lock_enabled", false)
         val isAlreadyUnlocked = intent.getBooleanExtra("is_unlocked", false)
 
@@ -116,13 +123,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkSecurity(): Boolean {
-        // Developer/Release fərqi qoymadan VPN və Proxy-ni həmişə yoxla
-        if (SecurityUtils.isVpnActive(this)) {
-            showSecurityError("VPN istifadəsi qadağandır! Zəhmət olmasa VPN-i söndürüb yenidən cəhd edin.")
+        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        
+        // 1. Sniffer və ya Debugger aşkar edilərsə ciddiyə al
+        val isTampered = SecurityUtils.isSnifferAppInstalled(this) || SecurityUtils.isDebuggerActive()
+        
+        if (isTampered) {
+            val violations = prefs.getInt("security_violations", 0) + 1
+            prefs.edit().putInt("security_violations", violations).apply()
+            
+            if (violations >= 3) {
+                triggerPermanentBlock("Kod izləmə cəhdi (Sniffer/Debugger)")
+                return true
+            }
+            
+            showSecurityError("Təhlükəsizlik qaydaları pozuldu! Bu hal davam etsə cihazınız daimi bloklanacaq ($violations/3)")
             return true
         }
-        if (SecurityUtils.isSnifferAppInstalled(this)) {
-            showSecurityError("Cihazda şəbəkə tutucu (Sniffer) proqram aşkar edildi! Təhlükəsizlik üçün həmin proqramı silin.")
+
+        // 2. VPN və Proxy yoxla
+        if (SecurityUtils.isVpnActive(this)) {
+            showSecurityError("VPN istifadəsi qadağandır! Zəhmət olmasa VPN-i söndürüb yenidən cəhd edin.")
             return true
         }
         if (SecurityUtils.isProxyActive()) {
@@ -130,8 +151,33 @@ class MainActivity : AppCompatActivity() {
             return true
         }
 
-        // VPN və Proxy yoxlanışı kifayətdir (USB Debugging və Debugger TV Box uyğunluğu üçün söndürüldü)
+        // 3. Emulator və Root yoxla
+        if (SecurityUtils.isEmulator()) {
+            showSecurityError("Tətbiqin emulator (PC) üzərində işlədilməsi qadağandır!")
+            return true
+        }
+        
+        if (SecurityUtils.isRooted()) {
+            // Root üçün yalnız xəbərdarlıq verək və ya bloklayaq (sizin seçiminiz)
+            // showSecurityError("Root olunmuş cihazlarda tətbiqin işləməsi tövsiyə olunmur.")
+            // return true
+        }
+
         return false
+    }
+
+    private fun triggerPermanentBlock(reason: String) {
+        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("is_permanently_blocked", true).apply()
+        
+        // Serverə bildiriş göndər
+        val blockUrl = "api.php?mac=$deviceMac&action=block_device&reason=" + java.net.URLEncoder.encode(reason, "UTF-8")
+        ApiClient.getService().blockDevice(blockUrl).enqueue(object : Callback<okhttp3.ResponseBody> {
+            override fun onResponse(call: Call<okhttp3.ResponseBody>, response: Response<okhttp3.ResponseBody>) {}
+            override fun onFailure(call: Call<okhttp3.ResponseBody>, t: Throwable) {}
+        })
+
+        showSecurityError("CİHAZ BLOKLANDI!\n$reason")
     }
 
     private fun showSecurityError(message: String) {
@@ -220,6 +266,8 @@ class MainActivity : AppCompatActivity() {
         setupFocusEffect(binding.cardSeries)
         setupFocusEffect(binding.cardFavorites)
         setupFocusEffect(binding.cardRadio)
+        setupFocusEffect(binding.cardSpeedTest)
+        setupFocusEffect(binding.cardKidsMode)
         setupFocusEffect(binding.btnSettings)
         setupFocusEffect(binding.btnSearch)
 
@@ -252,6 +300,14 @@ class MainActivity : AppCompatActivity() {
 
         binding.cardRadio.setOnClickListener {
             startActivity(Intent(this@MainActivity, RadioActivity::class.java))
+        }
+
+        binding.cardSpeedTest.setOnClickListener {
+            startActivity(Intent(this@MainActivity, SpeedTestActivity::class.java))
+        }
+
+        binding.cardKidsMode.setOnClickListener {
+            toggleKidsMode()
         }
 
         binding.btnSettings.setOnClickListener {
@@ -527,6 +583,10 @@ class MainActivity : AppCompatActivity() {
         binding.dashboardLayout.visibility = View.VISIBLE
         binding.errorOverlay.visibility = View.GONE
 
+        val isKidsMode = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+            .getBoolean("kids_mode_active", false)
+        updateDashboardForKidsMode(isKidsMode)
+
         // Fokusun Canlı TV-yə verilməsi
         binding.cardLiveTv.requestFocus()
 
@@ -775,5 +835,53 @@ class MainActivity : AppCompatActivity() {
             textView.invalidate()
         }
         animator.start()
+    }
+
+    private fun toggleKidsMode() {
+        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val isKidsMode = prefs.getBoolean("kids_mode_active", false)
+
+        if (isKidsMode) {
+            // Rejimdən çıxmaq üçün PİN tələb et
+            com.bykerimoff.player.utils.PinDialog.show(this, object : com.bykerimoff.player.utils.PinDialog.PinListener {
+                override fun onSuccess() {
+                    prefs.edit().putBoolean("kids_mode_active", false).apply()
+                    Toast.makeText(this@MainActivity, "Uşaq rejimindən çıxıldı", Toast.LENGTH_SHORT).show()
+                    updateDashboardForKidsMode(false)
+                }
+                override fun onCancel() {}
+            })
+        } else {
+            // Aktiv et
+            prefs.edit().putBoolean("kids_mode_active", true).apply()
+            Toast.makeText(this, "Uşaq rejimi aktiv edildi", Toast.LENGTH_SHORT).show()
+            updateDashboardForKidsMode(true)
+        }
+    }
+
+    private fun updateDashboardForKidsMode(isActive: Boolean) {
+        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val isVod = prefs.getBoolean("is_vod_enabled", true)
+        val isSeries = prefs.getBoolean("is_series_enabled", true)
+
+        if (isActive) {
+            binding.cardMovies.visibility = View.GONE
+            binding.cardSeries.visibility = View.GONE
+            binding.cardRadio.visibility = View.GONE
+            binding.cardFavorites.visibility = View.GONE
+            binding.btnSettings.visibility = View.GONE
+            binding.btnSearch.visibility = View.GONE
+            binding.tvKidsModeAction.text = "REJİMDƏN ÇIX"
+            binding.tvKidsModeSubtitle.text = "⚠️ Təhlükəsiz Rejim Aktivdir"
+            binding.cardsContainer.weightSum = 1.0f
+        } else {
+            showDashboard(isVod, isSeries)
+            binding.cardRadio.visibility = View.VISIBLE
+            binding.cardFavorites.visibility = View.VISIBLE
+            binding.btnSettings.visibility = View.VISIBLE
+            binding.btnSearch.visibility = View.VISIBLE
+            binding.tvKidsModeAction.text = "AKTİV ET"
+            binding.tvKidsModeSubtitle.text = "Yalnız uşaqlar üçün kontent"
+        }
     }
 }

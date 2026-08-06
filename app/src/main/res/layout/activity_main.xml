@@ -417,6 +417,145 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- Dedicated Speed Test Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Şəbəkə Diaqnostikası"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:layout_marginTop="12dp"
+                android:layout_marginStart="10dp"
+                android:alpha="0.8" />
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardSpeedTest"
+                android:layout_width="match_parent"
+                android:layout_height="80dp"
+                android:layout_margin="10dp"
+                android:focusable="true"
+                android:clickable="true"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                android:backgroundTint="@color/bg_sidebar">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:background="@drawable/glass_card_bg">
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:src="@android:drawable/ic_menu_compass"
+                        android:scaleType="fitCenter"
+                        app:tint="@color/gold_primary" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="24dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="SÜRƏT TESTİ"
+                            android:textColor="@color/white"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="İnternet bağlantınızın keyfiyyətini yoxlayın"
+                            android:textColor="@color/gold_dark"
+                            android:textSize="12sp"
+                            android:alpha="0.9" />
+                    </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="YOXLA"
+                        android:textColor="@color/gold_primary"
+                        android:textStyle="bold"
+                        android:alpha="0.8" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Kids Mode Section -->
+            <TextView
+                android:id="@+id/tvKidsModeSectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Valideyn Nəzarəti"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:layout_marginTop="12dp"
+                android:layout_marginStart="10dp"
+                android:alpha="0.8" />
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardKidsMode"
+                android:layout_width="match_parent"
+                android:layout_height="80dp"
+                android:layout_margin="10dp"
+                android:focusable="true"
+                android:clickable="true"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                android:backgroundTint="@color/bg_sidebar">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:background="@drawable/glass_card_bg">
+                    <ImageView
+                        android:id="@+id/ivKidsModeIcon"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:src="@android:drawable/ic_menu_view"
+                        android:scaleType="fitCenter"
+                        app:tint="@color/gold_primary" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="24dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:id="@+id/tvKidsModeTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="UŞAQ REJİMİ"
+                            android:textColor="@color/white"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/tvKidsModeSubtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Yalnız uşaqlar üçün kontent"
+                            android:textColor="@color/gold_dark"
+                            android:textSize="12sp"
+                            android:alpha="0.9" />
+                    </LinearLayout>
+                    <TextView
+                        android:id="@+id/tvKidsModeAction"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="AKTİV ET"
+                        android:textColor="@color/gold_primary"
+                        android:textStyle="bold"
+                        android:alpha="0.8" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+
+
             <!-- İzləməyə Davam Et Section -->
             <LinearLayout
                 android:id="@+id/resumeSection"

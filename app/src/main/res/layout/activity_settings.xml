@@ -311,6 +311,15 @@
                         android:text="İnternet Trafikinə Qənaət (Data Saver)"
                         android:textColor="@color/white"
                         android:buttonTint="@color/gold_primary" />
+
+                    <Button
+                        android:id="@+id/btnSpeedTest"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="İnternet Sürət Testi (Speed Test)"
+                        android:backgroundTint="@color/gold_dark"
+                        android:textColor="@color/white" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

@@ -60,6 +60,10 @@
             android:name=".RadioActivity"
             android:screenOrientation="landscape" />
 
+        <activity
+            android:name=".SpeedTestActivity"
+            android:screenOrientation="landscape" />
+
 
 
         <receiver

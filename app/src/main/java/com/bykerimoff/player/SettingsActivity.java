@@ -111,6 +111,7 @@ public class SettingsActivity extends AppCompatActivity {
         setupFocusEffect(binding.rbViewList);
         setupFocusEffect(binding.rbViewCompact);
         setupFocusEffect(binding.cbDataSaver);
+        setupFocusEffect(binding.btnSpeedTest);
         
         setupFocusEffect(binding.rbSortDefault);
         setupFocusEffect(binding.rbSortName);
@@ -190,6 +191,10 @@ public class SettingsActivity extends AppCompatActivity {
             
             prefs.edit().putString("view_mode", mode).apply();
             Toast.makeText(this, "Görünüş rejimi dəyişdirildi", Toast.LENGTH_SHORT).show();
+        });
+
+        binding.btnSpeedTest.setOnClickListener(v -> {
+            startActivity(new Intent(this, SpeedTestActivity.class));
         });
 
         binding.rgSortChoice.setOnCheckedChangeListener((group, checkedId) -> {
