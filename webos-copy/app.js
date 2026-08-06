@@ -142,8 +142,12 @@ async function performAuth(mac) {
                     playChannel(last);
                 }
             }
+        } else if (data.status === 'not_found') {
+            showError('Aktiv Edilməyib', 'Bu MAC ünvanı aktiv edilməyib.');
+        } else if (data.status === 'blocked') {
+            showError('⛔ Cihaz Bloklanıb', data.message || 'Cihaz bloklanıb!');
         } else {
-            showLogin(data.message || 'Giriş uğursuz oldu.');
+            showError('Giriş Xətası', data.message || 'Giriş uğursuz oldu.');
         }
     } catch (e) {
         showLogin('Bağlantı xətası.');
@@ -314,6 +318,11 @@ function showError(title, msg) {
     const overlay = document.getElementById('error-overlay');
     document.getElementById('error-title').innerText = title;
     document.getElementById('error-message').innerText = msg;
+
+    // APK-dakı kimi MAC ünvanını ekranda göstər
+    const mac = state.mac || getDeviceMAC();
+    document.getElementById('error-mac-display').innerText = `MAC: ${mac}`;
+
     overlay.classList.remove('hidden');
     state.focusedArea = 'error-retry';
     updateFocus();

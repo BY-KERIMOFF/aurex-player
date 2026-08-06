@@ -100,16 +100,15 @@ async function startLaunchSequence() {
     const autoMac = urlParams.get('mac');
 
     if (autoMac) {
-        state.mac = autoMac.toUpperCase();
+        state.mac = normalizeMac(autoMac);
+        localStorage.setItem('aurex_mac', state.mac);
+    } else if (!state.mac) {
+        state.mac = getDeviceMAC();
         localStorage.setItem('aurex_mac', state.mac);
     }
 
     setTimeout(async () => {
-        if (state.mac) {
-            await performAuth(state.mac);
-        } else {
-            showLogin();
-        }
+        await performAuth(state.mac);
     }, 3500);
 }
 
@@ -144,10 +143,10 @@ async function performAuth(mac) {
                 }
             }
         } else {
-            showLogin(data.message || 'Giriş uğursuz oldu.');
+            showError('Giriş Xətası', data.message || 'Giriş uğursuz oldu.');
         }
     } catch (e) {
-        showLogin('Bağlantı xətası.');
+        showError('Giriş Xətası', 'Bağlantı xətası.');
     }
 }
 
@@ -228,10 +227,61 @@ function showScreen(id) {
     state.screen = id;
 }
 
+function normalizeMac(raw) {
+    const clean = raw.toUpperCase().replace(/[^0-9A-F]/g, '').padEnd(12, '0').slice(0, 12);
+    return clean.match(/.{2}/g).join(':');
+}
+
+function generateDeterministicMac() {
+    const source = [
+        navigator.userAgent,
+        navigator.platform,
+        navigator.language,
+        window.location.hostname,
+        screen.width,
+        screen.height
+    ].join('|');
+
+    let hashA = 0x1f3d5b79;
+    let hashB = 0x3c6ef372;
+
+    for (let i = 0; i < source.length; i++) {
+        const code = source.charCodeAt(i);
+        hashA = Math.imul(hashA ^ code, 0x85ebca6b) >>> 0;
+        hashB = Math.imul(hashB ^ code, 0xc2b2ae35) >>> 0;
+        hashA ^= (hashB >>> 8);
+        hashB ^= (hashA << 8);
+    }
+
+    const parts = [];
+    for (let i = 0; i < 3; i++) {
+        parts.push(((hashA >> (i * 8)) & 0xFF).toString(16).padStart(2, '0'));
+    }
+    for (let i = 0; i < 3; i++) {
+        parts.push(((hashB >> (i * 8)) & 0xFF).toString(16).padStart(2, '0'));
+    }
+
+    return normalizeMac(parts.join(''));
+}
+
+function getDeviceMAC() {
+    let mac = localStorage.getItem('aurex_mac') || localStorage.getItem('aurex_generated_mac');
+    if (!mac) {
+        mac = generateDeterministicMac();
+        localStorage.setItem('aurex_generated_mac', mac);
+    }
+    return normalizeMac(mac);
+}
+
 function showLogin(err = '') {
     showScreen('login-screen');
     state.focusedArea = 'mac-input';
-    document.getElementById('device-mac').innerText = "Veb Pleyer"; // Web version limitation
+    const mac = state.mac || getDeviceMAC();
+    document.getElementById('device-mac').innerText = mac;
+    const inputEl = document.getElementById('mac-input');
+    if (inputEl && !inputEl.value) {
+        inputEl.value = mac;
+    }
     if (err) {
         const el = document.getElementById('login-error');
         el.innerText = err;
