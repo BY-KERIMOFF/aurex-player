@@ -94,6 +94,16 @@ function setupClock() {
 
 async function startLaunchSequence() {
     showScreen('splash-screen');
+
+    // URL-dən və ya yaddaşdan MAC-ı götür (Avtomatik giriş üçün)
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoMac = urlParams.get('mac');
+
+    if (autoMac) {
+        state.mac = autoMac.toUpperCase();
+        localStorage.setItem('aurex_mac', state.mac);
+    }
+
     setTimeout(async () => {
         if (state.mac) {
             await performAuth(state.mac);
