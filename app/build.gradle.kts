@@ -14,8 +14,8 @@ android {
         applicationId = "com.bykerimoff.player"
         minSdk = 21
         targetSdk = 36
-        versionCode = 207
-        versionName = "6.3.4"
+        versionCode = 261
+        versionName = "6.9.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         

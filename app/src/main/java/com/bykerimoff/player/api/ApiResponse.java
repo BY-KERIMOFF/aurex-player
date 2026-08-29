@@ -117,11 +117,23 @@ public class ApiResponse {
     @SerializedName("test_warning")
     private String testWarning;
 
+    @SerializedName("showAnnouncement")
+    private Object showAnnouncementField;
+
+    @SerializedName("announcement")
+    private String announcement;
+
+    @SerializedName("announcementColor")
+    private String announcementColor;
+
     @SerializedName("detail")
     private String detail;
 
     @SerializedName("is_adult")
     private int isAdult;
+
+    @SerializedName("is_sport")
+    private int isSport;
 
     public static class XtreamInfo {
         @SerializedName("host")
@@ -258,7 +270,27 @@ public class ApiResponse {
         return isAdult == 1;
     }
 
+    public boolean isSportEnabled() {
+        return isSport == 1;
+    }
+
     public String getDetail() {
         return detail;
+    }
+
+    public boolean isShowAnnouncement() {
+        if (showAnnouncementField == null) return false;
+        if (showAnnouncementField instanceof Boolean) return (Boolean) showAnnouncementField;
+        if (showAnnouncementField instanceof Number) return ((Number) showAnnouncementField).intValue() == 1;
+        String val = String.valueOf(showAnnouncementField).trim().toLowerCase();
+        return val.equals("1") || val.equals("true");
+    }
+
+    public String getAnnouncement() {
+        return (announcement != null && !announcement.isEmpty()) ? announcement : null;
+    }
+
+    public String getAnnouncementColor() {
+        return announcementColor;
     }
 }

@@ -28,13 +28,18 @@
 
         <TextView
             android:id="@+id/tvAnnouncement"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingHorizontal="10dp"
             android:textColor="@color/white"
-            android:textSize="18sp"
+            android:textSize="20sp"
             android:textStyle="bold"
             android:singleLine="true"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:scrollHorizontally="true"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
             android:text="Aurex Player" />
     </FrameLayout>
 
@@ -88,6 +93,15 @@
                     android:textColor="#D0FFFFFF"
                     android:textSize="20sp"
                     android:layout_marginTop="4dp" />
+
+                <ProgressBar
+                    android:id="@+id/epgProgress"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:progress="0"
+                    android:progressTint="@android:color/holo_blue_light" />
             </LinearLayout>
 
             <LinearLayout

@@ -48,6 +48,11 @@ public class DataManager {
         return xmltvCache;
     }
 
+    public static String getXmltvProgram(String key) {
+        if (xmltvCache == null) return null;
+        return xmltvCache.get(key);
+    }
+
     public static void setAdminAnnouncement(String announcement) {
         adminAnnouncement = announcement;
     }

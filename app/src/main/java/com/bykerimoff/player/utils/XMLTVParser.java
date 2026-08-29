@@ -1,5 +1,6 @@
 package com.bykerimoff.player.utils;
 
+import android.content.Context;
 import android.util.Log;
 import android.util.Xml;
 
@@ -30,10 +31,28 @@ public class XMLTVParser {
         "https://epg.pw/xmltv/feed/us.xml"
     };
 
-    public static void syncDefaultSources() {
+    public static void syncDefaultSources(Context context) {
+        // 1. Yerli faylı yüklə
+        parseFromAssets(context, "local_epg.xml");
+
+        // 2. Onlayn mənbələri yüklə
         for (String url : DEFAULT_SOURCES) {
             downloadAndParse(url);
         }
+    }
+
+    public static void parseFromAssets(Context context, String fileName) {
+        new Thread(() -> {
+            try {
+                Log.d(TAG, "Parsing EPG from assets: " + fileName);
+                InputStream is = context.getAssets().open(fileName);
+                Map<String, String> epgMap = parse(is);
+                DataManager.mergeXmltvCache(epgMap);
+                Log.d(TAG, "Local EPG parsed and merged.");
+            } catch (Exception e) {
+                Log.e(TAG, "Error parsing local EPG: " + e.getMessage());
+            }
+        }).start();
     }
 
     public static String normalizeName(String name) {
@@ -71,6 +90,20 @@ public class XMLTVParser {
                 Log.e(TAG, "Error downloading/parsing EPG (" + urlString + "): " + e.getMessage());
             }
         }).start();
+    }
+
+    public interface EpgCallback {
+        void onResult(com.bykerimoff.player.models.EpgProgram program);
+    }
+
+    public static void getProgramForChannel(String channelName, EpgCallback callback) {
+        String normalized = normalizeName(channelName);
+        String title = DataManager.getXmltvProgram(normalized);
+        if (title != null) {
+            callback.onResult(new com.bykerimoff.player.models.EpgProgram(title, 0, 0, "", false));
+        } else {
+            callback.onResult(null);
+        }
     }
 
     private static Map<String, String> parse(InputStream is) throws Exception {

@@ -7,21 +7,63 @@ import android.view.View;
 import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.exoplayer.ExoPlayer;
 
 import com.bykerimoff.player.databinding.ActivitySettingsBinding;
 import com.bykerimoff.player.utils.MacUtils;
 import com.bykerimoff.player.utils.PinDialog;
 import com.bykerimoff.player.utils.SleepTimerManager;
 import com.bykerimoff.player.utils.WallpaperManager;
+import com.bykerimoff.player.utils.ThemeManager;
 import com.bykerimoff.player.adapters.WallpaperAdapter;
 
 public class SettingsActivity extends AppCompatActivity {
 
     private ActivitySettingsBinding binding;
     private SharedPreferences prefs;
+    private ExoPlayer backgroundPlayer;
+
+    private final ActivityResultLauncher<String[]> imagePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.OpenDocument(),
+            uri -> {
+                if (uri != null) {
+                    try {
+                        getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        WallpaperManager.INSTANCE.setCustomImageUri(this, uri.toString());
+                        WallpaperManager.INSTANCE.setWallpaperType(this, WallpaperManager.WallpaperType.CUSTOM_IMAGE);
+                        WallpaperManager.INSTANCE.applyWallpaper(this, binding.ivAppBackground);
+                        initBackgroundVideo();
+                        Toast.makeText(this, "Şəkil fon kimi təyin edildi", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Xəta: Fayl icazəsi alınmadı", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+    );
+
+    private final ActivityResultLauncher<String[]> videoPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.OpenDocument(),
+            uri -> {
+                if (uri != null) {
+                    try {
+                        getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        WallpaperManager.INSTANCE.setCustomVideoUri(this, uri.toString());
+                        WallpaperManager.INSTANCE.setWallpaperType(this, WallpaperManager.WallpaperType.CUSTOM_VIDEO);
+                        initBackgroundVideo();
+                        Toast.makeText(this, "Video fon kimi təyin edildi", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Xəta: Fayl icazəsi alınmadı", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,9 +74,61 @@ public class SettingsActivity extends AppCompatActivity {
         prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
 
         WallpaperManager.INSTANCE.applyWallpaper(this, binding.ivAppBackground);
+        initBackgroundVideo();
         loadInfo();
         setupListeners();
         setupWallpaperList();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        initBackgroundVideo();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (backgroundPlayer != null) {
+            backgroundPlayer.release();
+            backgroundPlayer = null;
+        }
+    }
+
+    private void initBackgroundVideo() {
+        WallpaperManager.WallpaperType type = WallpaperManager.INSTANCE.getWallpaperType(this);
+        String videoUriStr = WallpaperManager.INSTANCE.getCustomVideoUri(this);
+
+        if (type == WallpaperManager.WallpaperType.CUSTOM_VIDEO && videoUriStr != null) {
+            binding.ivAppBackground.setVisibility(View.GONE);
+            binding.playerViewBackground.setVisibility(View.VISIBLE);
+            
+            if (backgroundPlayer == null) {
+                backgroundPlayer = new ExoPlayer.Builder(this).build();
+                binding.playerViewBackground.setPlayer(backgroundPlayer);
+                backgroundPlayer.setRepeatMode(Player.REPEAT_MODE_ALL);
+                backgroundPlayer.setVolume(0f);
+            }
+            
+            try {
+                MediaItem mediaItem = MediaItem.fromUri(android.net.Uri.parse(videoUriStr));
+                backgroundPlayer.setMediaItem(mediaItem);
+                backgroundPlayer.prepare();
+                backgroundPlayer.play();
+            } catch (Exception e) {
+                e.printStackTrace();
+                binding.ivAppBackground.setVisibility(View.VISIBLE);
+                binding.playerViewBackground.setVisibility(View.GONE);
+            }
+        } else {
+            binding.ivAppBackground.setVisibility(View.VISIBLE);
+            binding.playerViewBackground.setVisibility(View.GONE);
+            if (backgroundPlayer != null) {
+                backgroundPlayer.stop();
+                backgroundPlayer.release();
+                backgroundPlayer = null;
+            }
+        }
     }
 
     private void loadInfo() {
@@ -51,6 +145,13 @@ public class SettingsActivity extends AppCompatActivity {
         binding.cbAutoStartLast.setChecked(prefs.getBoolean("auto_start_last_channel", true));
         binding.cbUseExternalPlayer.setChecked(prefs.getBoolean("use_external_player", false));
         binding.cbDataSaver.setChecked(prefs.getBoolean("data_saver_enabled", false));
+        
+        int bufferSec = prefs.getInt("network_buffer_seconds", 5);
+        if (bufferSec == 0) binding.rbBuffer0.setChecked(true);
+        else if (bufferSec == 10) binding.rbBuffer10.setChecked(true);
+        else if (bufferSec == 30) binding.rbBuffer30.setChecked(true);
+        else binding.rbBuffer5.setChecked(true);
+
         binding.etEpgUrl.setText(prefs.getString("manual_epg_url", ""));
 
         String dns = prefs.getString("dns_type", "system");
@@ -98,6 +199,16 @@ public class SettingsActivity extends AppCompatActivity {
         setupFocusEffect(binding.btnTimer60);
         setupFocusEffect(binding.btnTimer120);
         
+        setupFocusEffect(binding.btnUploadImage);
+        setupFocusEffect(binding.btnUploadVideo);
+        setupFocusEffect(binding.btnResetWallpaper);
+        
+        setupFocusEffect(binding.themeGold);
+        setupFocusEffect(binding.themeBlue);
+        setupFocusEffect(binding.themeRed);
+        setupFocusEffect(binding.themeGreen);
+        setupFocusEffect(binding.themeSilver);
+        
         setupFocusEffect(binding.cbAppLock);
         setupFocusEffect(binding.btnChangePin);
         setupFocusEffect(binding.btnPrivacyPolicy);
@@ -112,6 +223,11 @@ public class SettingsActivity extends AppCompatActivity {
         setupFocusEffect(binding.rbViewCompact);
         setupFocusEffect(binding.cbDataSaver);
         setupFocusEffect(binding.btnSpeedTest);
+        
+        setupFocusEffect(binding.rbBuffer0);
+        setupFocusEffect(binding.rbBuffer5);
+        setupFocusEffect(binding.rbBuffer10);
+        setupFocusEffect(binding.rbBuffer30);
         
         setupFocusEffect(binding.rbSortDefault);
         setupFocusEffect(binding.rbSortName);
@@ -197,6 +313,16 @@ public class SettingsActivity extends AppCompatActivity {
             startActivity(new Intent(this, SpeedTestActivity.class));
         });
 
+        binding.rgBufferChoice.setOnCheckedChangeListener((group, checkedId) -> {
+            int seconds = 5;
+            if (checkedId == R.id.rbBuffer0) seconds = 0;
+            else if (checkedId == R.id.rbBuffer10) seconds = 10;
+            else if (checkedId == R.id.rbBuffer30) seconds = 30;
+            
+            prefs.edit().putInt("network_buffer_seconds", seconds).apply();
+            Toast.makeText(this, "Buffer müddəti: " + seconds + " san.", Toast.LENGTH_SHORT).show();
+        });
+
         binding.rgSortChoice.setOnCheckedChangeListener((group, checkedId) -> {
             String mode = "default";
             if (checkedId == R.id.rbSortName) mode = "name";
@@ -211,7 +337,7 @@ public class SettingsActivity extends AppCompatActivity {
             prefs.edit().putString("manual_epg_url", manualEpg).apply();
             
             // Həm daxili mənbələri, həm də manual linki yenilə
-            com.bykerimoff.player.utils.XMLTVParser.syncDefaultSources();
+            com.bykerimoff.player.utils.XMLTVParser.syncDefaultSources(this);
             if (!manualEpg.isEmpty()) {
                 com.bykerimoff.player.utils.XMLTVParser.downloadAndParse(manualEpg);
             }
@@ -231,7 +357,30 @@ public class SettingsActivity extends AppCompatActivity {
         binding.btnTimer60.setOnClickListener(v -> setSleepTimer(60));
         binding.btnTimer120.setOnClickListener(v -> setSleepTimer(120));
 
+        binding.btnUploadImage.setOnClickListener(v -> imagePickerLauncher.launch(new String[]{"image/*"}));
+        binding.btnUploadVideo.setOnClickListener(v -> videoPickerLauncher.launch(new String[]{"video/*"}));
+        
+        binding.btnResetWallpaper.setOnClickListener(v -> {
+            WallpaperManager.INSTANCE.setWallpaperType(this, WallpaperManager.WallpaperType.DEFAULT);
+            WallpaperManager.INSTANCE.applyWallpaper(this, binding.ivAppBackground);
+            initBackgroundVideo();
+            Toast.makeText(this, "Standart fon bərpa edildi", Toast.LENGTH_SHORT).show();
+        });
+
+        binding.themeGold.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.GOLD));
+        binding.themeBlue.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.NEON_BLUE));
+        binding.themeRed.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.RUBY_RED));
+        binding.themeGreen.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.EMERALD_GREEN));
+        binding.themeSilver.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.SILVER));
+
         binding.btnBack.setOnClickListener(v -> finish());
+    }
+
+    private void updateTheme(ThemeManager.AppTheme theme) {
+        ThemeManager.INSTANCE.setTheme(this, theme);
+        Toast.makeText(this, "Tema dəyişdirildi: " + theme.getNameAz(), Toast.LENGTH_SHORT).show();
+        // UI-da bəzi elementləri dərhal yeniləyək
+        recreate(); 
     }
 
     private void setSleepTimer(int minutes) {
@@ -281,8 +430,10 @@ public class SettingsActivity extends AppCompatActivity {
     private void setupWallpaperList() {
         int currentIndex = WallpaperManager.INSTANCE.getCurrentWallpaperIndex(this);
         WallpaperAdapter adapter = new WallpaperAdapter(WallpaperManager.INSTANCE.getWallpapers(), currentIndex, index -> {
+            WallpaperManager.INSTANCE.setWallpaperType(this, WallpaperManager.WallpaperType.DEFAULT);
             WallpaperManager.INSTANCE.setCurrentWallpaperIndex(this, index);
             WallpaperManager.INSTANCE.applyWallpaper(this, binding.ivAppBackground);
+            initBackgroundVideo();
             // Digər ekranlar açılanda yeni fonu görəcək
             Toast.makeText(this, "Arxa fon dəyişdirildi", Toast.LENGTH_SHORT).show();
         });

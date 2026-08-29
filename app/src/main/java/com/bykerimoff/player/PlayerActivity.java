@@ -1,5 +1,6 @@
 package com.bykerimoff.player;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -24,7 +25,9 @@ import androidx.media3.common.Format;
 import androidx.media3.common.Tracks;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.TrackSelectionOverride;
 import java.util.Collections;
+import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.media3.ui.CaptionStyleCompat;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -82,13 +85,18 @@ public class PlayerActivity extends AppCompatActivity {
     private String playerType = "exo2";
     
     private String channelNumberInput = "";
+    private String volumeNumberInput = "";
+    private boolean isVolumeInputMode = false;
     private final Handler channelSwitchHandler = new Handler(Looper.getMainLooper());
     private final Runnable channelSwitchRunnable = this::processNumericInput;
+    private final Runnable volumeInputRunnable = this::processVolumeInput;
     
     private int retryCount = 0;
     private final int MAX_RETRIES = 5;
     private String currentPlayingChannelId = "";
     private List<Channel> playbackList = new ArrayList<>(); // Pleyerin real çalğı siyahısı
+    private int currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
+    private boolean isVod = false;
 
     private final Runnable bufferingTimeoutRunnable = new Runnable() {
         @Override
@@ -97,54 +105,21 @@ public class PlayerActivity extends AppCompatActivity {
                 if (retryCount < MAX_RETRIES) {
                     retryCount++;
                     exoPlayer.prepare();
-                    exoPlayer.play();
                 } else {
-                    showErrorOverlay("Yayım Gecikir", "Kanal açılmır və ya internet zəifdir");
+                    showTechnicalError();
                 }
             }
         }
     };
-    
-    private final Handler progressHandler = new Handler(Looper.getMainLooper());
-    private final Runnable updateProgressRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (exoPlayer != null && exoPlayer.isPlaying()) {
-                long duration = exoPlayer.getDuration();
-                long current = exoPlayer.getCurrentPosition();
-                if (duration > 0) {
-                    binding.vodProgressLayout.setVisibility(View.VISIBLE);
-                    binding.vodSeekBar.setMax((int) duration);
-                    binding.vodSeekBar.setProgress((int) current);
-                    binding.tvCurrentPosition.setText(formatTime(current));
-                    binding.tvTotalDuration.setText(formatTime(duration));
-                } else {
-                    binding.vodProgressLayout.setVisibility(View.GONE);
-                }
-            }
-            progressHandler.postDelayed(this, 1000);
-        }
-    };
 
-    private final Handler categorySwitchHandler = new Handler(Looper.getMainLooper());
-    private Runnable categorySwitchRunnable;
-    
-    private static final Map<String, String> epgCache = new HashMap<>();
+    private void showTechnicalError() {
+        binding.errorLayout.setVisibility(View.VISIBLE);
+        binding.bufferingLayout.setVisibility(View.GONE);
+    }
 
-    private CategoryAdapter playerCategoryAdapter;
-    private ChannelAdapter channelAdapter;
-    private List<Channel> allCategoryChannels = new ArrayList<>();
-    private String currentPlaylistType = "m3u";
-    private int currentResizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL;
-    
-    private List<EpgProgram> archiveList = new ArrayList<>();
-    private ArchiveAdapter archiveAdapter;
-    
-    private List<TrackAdapter.TrackInfo> trackList = new ArrayList<>();
-    private TrackAdapter trackAdapter;
-    private int currentTrackType = -1;
-
-    private android.os.CountDownTimer testCountDownTimer;
+    private void hideTechnicalError() {
+        binding.errorLayout.setVisibility(View.GONE);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -153,831 +128,773 @@ public class PlayerActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-
-        // Başlanğıc kanallarını yüklə
-        currentCategoryChannels = new ArrayList<>(DataManager.getCurrentChannelList());
-        channelList = new ArrayList<>(currentCategoryChannels);
-        playbackList = new ArrayList<>(channelList);
-        currentIndex = getIntent().getIntExtra("channel_index", 0);
         
-        if (currentIndex >= 0 && currentIndex < playbackList.size()) {
-            currentPlayingChannelId = playbackList.get(currentIndex).getId();
-        }
+        SharedPreferences settingsPrefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
+        playerType = settingsPrefs.getString("player_type", "exo2");
 
-        SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-        playerType = prefs.getString("player_type", "exo2");
-        currentPlaylistType = prefs.getString("playlist_type", "m3u");
-
-        initExoPlayer(playerType);
-        setupPlayerChannelList();
-        setupPlayerCategoryList();
-        setupArchiveList();
-        setupTrackList();
-        
-
-        progressHandler.post(updateProgressRunnable);
-
-        binding.vodSeekBar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && exoPlayer != null) {
-                    exoPlayer.seekTo(progress);
-                }
-            }
-            @Override
-            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
-            @Override
-            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
-        });
-
-        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                if (binding.playerChannelSidebar.getVisibility() == View.VISIBLE) {
-                    binding.playerChannelSidebar.setVisibility(View.GONE);
-                } else if (binding.rvPlayerCategories.getVisibility() == View.VISIBLE) {
-                    binding.rvPlayerCategories.setVisibility(View.GONE);
-                } else if (binding.playerArchiveSidebar.getVisibility() == View.VISIBLE) {
-                    binding.playerArchiveSidebar.setVisibility(View.GONE);
-                } else if (binding.playerTracksSidebar.getVisibility() == View.VISIBLE) {
-                    binding.playerTracksSidebar.setVisibility(View.GONE);
-                } else {
-                    setEnabled(false);
-                    onBackPressed();
-                }
-            }
-        });
-
-        if (channelList != null && !channelList.isEmpty()) {
-            loadChannel(channelList.get(currentIndex));
-        }
-
-        setupAnnouncement();
-        setupPlayerSearch();
-    }
-
-    private void setupAnnouncement() {
-        SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-        
-        // Serverdən gələn elan göstərmə əmrini yoxla
-        boolean showAnnouncement = DataManager.isShowAnnouncementGlobal() || 
-                prefs.getBoolean("show_announcement_global", true);
-        
-        if (!showAnnouncement) {
-            binding.announcementContainer.setVisibility(View.GONE);
+        channelList = DataManager.getCurrentChannelList();
+        if (channelList == null || channelList.isEmpty()) {
+            finish();
             return;
         }
 
-        String announcement = DataManager.getAdminAnnouncement();
-        String colorHex = DataManager.getAdminAnnouncementColor();
-        
-        if (announcement == null || announcement.isEmpty()) announcement = prefs.getString("last_announcement", "");
-        if (colorHex == null || colorHex.isEmpty()) colorHex = prefs.getString("last_announcement_color", "");
+        currentCategoryChannels = new ArrayList<>(channelList);
+        playbackList = new ArrayList<>(channelList);
+        currentIndex = getIntent().getIntExtra("channel_index", 0);
+        long resumePos = getIntent().getLongExtra("resume_position", 0);
 
-        if (announcement != null && !announcement.isEmpty()) {
-            String cleanAnnouncement = announcement.replace("\n", "  |  ");
-            binding.tvAnnouncement.setText(cleanAnnouncement);
-            if (!colorHex.isEmpty()) {
-                try {
-                    binding.tvAnnouncement.setTextColor(android.graphics.Color.parseColor(colorHex));
-                } catch (Exception e) {
-                    binding.tvAnnouncement.setTextColor(android.graphics.Color.WHITE);
+        initExoPlayer();
+        
+        // Determine if it's VOD based on URL extension or activity flag
+        Channel initialChannel = playbackList.get(currentIndex);
+        isVod = com.bykerimoff.player.utils.M3UParser.isVodChannel(initialChannel.getStreamUrl());
+        
+        if (resumePos > 0 && isVod) {
+            playChannel(currentIndex, resumePos);
+        } else {
+            playChannel(currentIndex);
+        }
+        setupSidebars();
+        setupNumericOverlay();
+    }
+
+    private void setupNumericOverlay() {
+        binding.tvNumericInput.setVisibility(View.GONE);
+    }
+
+    @OptIn(markerClass = UnstableApi.class)
+    private void initExoPlayer() {
+        trackSelector = new DefaultTrackSelector(this);
+        
+        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
+                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+                .setEnableDecoderFallback(true);
+
+        OkHttpDataSource.Factory dataSourceFactory = NetworkUtils.getDataSourceFactory(this);
+        
+        DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory()
+                .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES 
+                                   | DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
+                                   | DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM
+                                   | DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS);
+
+        DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory);
+
+        androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        5000,
+                        15000,
+                        1000,
+                        2000
+                )
+                .build();
+
+        exoPlayer = new ExoPlayer.Builder(this, renderersFactory)
+                .setTrackSelector(trackSelector)
+                .setMediaSourceFactory(mediaSourceFactory)
+                .setLoadControl(loadControl)
+                .build();
+
+        binding.playerView.setPlayer(exoPlayer);
+        
+        exoPlayer.addListener(new Player.Listener() {
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                if (state == Player.STATE_BUFFERING) {
+                    binding.bufferingLayout.setVisibility(View.VISIBLE);
+                    osdHandler.removeCallbacks(bufferingTimeoutRunnable);
+                    osdHandler.postDelayed(bufferingTimeoutRunnable, 15000); 
+                } else {
+                    binding.bufferingLayout.setVisibility(View.GONE);
+                    osdHandler.removeCallbacks(bufferingTimeoutRunnable);
+                    if (state == Player.STATE_READY) {
+                        hideTechnicalError();
+                        retryCount = 0;
+                        updateQualityAndFps();
+                    }
                 }
-            } else {
+            }
+
+            @Override
+            public void onPlayerError(@NonNull androidx.media3.common.PlaybackException error) {
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        if (exoPlayer != null) {
+                            exoPlayer.prepare();
+                            exoPlayer.play();
+                        }
+                    }, 2000);
+                } else {
+                    showTechnicalError();
+                }
+            }
+
+            @Override
+            public void onTracksChanged(@NonNull Tracks tracks) {
+                updateQualityAndFps();
+            }
+        });
+
+        CaptionStyleCompat style = new CaptionStyleCompat(
+                android.graphics.Color.WHITE,
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT,
+                CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+                android.graphics.Color.BLACK,
+                null
+        );
+        if (binding.playerView.getSubtitleView() != null) {
+            binding.playerView.getSubtitleView().setApplyEmbeddedStyles(false);
+            binding.playerView.getSubtitleView().setApplyEmbeddedFontSizes(false);
+            binding.playerView.getSubtitleView().setStyle(style);
+            binding.playerView.getSubtitleView().setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 24f);
+        }
+    }
+
+    private void updateQualityAndFps() {
+        if (exoPlayer == null) return;
+        Format videoFormat = exoPlayer.getVideoFormat();
+        if (videoFormat != null) {
+            String quality = videoFormat.width + "x" + videoFormat.height;
+            
+            binding.tvQuality.setText(quality);
+            binding.tvQualityCorner.setText(quality);
+            
+            if (videoFormat.frameRate > 0) {
+                String fps = Math.round(videoFormat.frameRate) + " FPS";
+                binding.tvFps.setText(fps);
+                binding.tvFpsCorner.setText(fps);
+            }
+        }
+    }
+
+    private void playChannel(int index) {
+        playChannel(index, 0);
+    }
+
+    private void playChannel(int index, long startPosition) {
+        if (index < 0 || index >= playbackList.size()) return;
+        currentIndex = index;
+        Channel channel = playbackList.get(currentIndex);
+        currentPlayingChannelId = channel.getId();
+
+        hideTechnicalError();
+        binding.bufferingLayout.setVisibility(View.VISIBLE);
+        binding.miniInfoLayout.setVisibility(View.GONE); // Hide mini info on channel change
+        
+        isVod = com.bykerimoff.player.utils.M3UParser.isVodChannel(channel.getStreamUrl());
+
+        // Stop current playback before switching to prevent audio overlap
+        if (exoPlayer != null) {
+            exoPlayer.stop();
+            exoPlayer.clearMediaItems();
+        }
+
+        binding.tvChannelName.setText((currentIndex + 1) + ". " + channel.getName());
+        Glide.with(this).load(channel.getLogoUrl()).placeholder(R.drawable.default_logo).into(binding.ivChannelLogo);
+
+        String url = channel.getStreamUrl();
+        MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(url));
+        
+        String lower = url.toLowerCase(Locale.ROOT);
+        if (lower.contains("m3u8") || lower.contains("stream.php") || lower.contains(".php") || lower.contains("/hls/")) {
+            builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+        } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts")) {
+            builder.setMimeType(MimeTypes.VIDEO_MP2T);
+        } else if (lower.contains(".mpd")) {
+            builder.setMimeType(MimeTypes.APPLICATION_MPD);
+        }
+
+        exoPlayer.setMediaItem(builder.build());
+        if (startPosition > 0) {
+            exoPlayer.seekTo(startPosition);
+        }
+        exoPlayer.prepare();
+        exoPlayer.play();
+
+        showOSD();
+        updateEpg(channel);
+        updateAnnouncement(channel);
+        
+        RecentChannelsManager.addRecentChannel(this, channel);
+        
+        // Save for Resume Playback if VOD
+        if (isVod) {
+            saveResumePosition();
+        }
+
+        // Save the last watched channel URL for auto-start feature
+        SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
+        prefs.edit()
+            .putString("last_channel_url", channel.getStreamUrl())
+            .putBoolean("last_is_vod", isVod)
+            .apply();
+    }
+
+    private void saveResumePosition() {
+        if (exoPlayer == null || playbackList == null || playbackList.isEmpty()) return;
+        Channel current = playbackList.get(currentIndex);
+        long pos = exoPlayer.getCurrentPosition();
+        long dur = exoPlayer.getDuration();
+        
+        if (dur > 0 && pos > 0 && pos < dur - 10000) { // Don't save if finished
+            ResumeManager.INSTANCE.saveProgress(this, new ResumeItem(
+                current.getId(), current.getName(), current.getLogoUrl(), 
+                current.getStreamUrl(), current.getCategoryName(), pos, dur, System.currentTimeMillis()
+            ));
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (isVod) saveResumePosition();
+    }
+
+    private void updateAnnouncement(Channel channel) {
+        SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
+        boolean show = prefs.getBoolean("show_announcement_global", true); // Default to true if not set
+        String text = prefs.getString("announcement_text", "");
+        String colorStr = prefs.getString("announcement_color", "#FFD700");
+
+        if (show && text != null && !text.isEmpty()) {
+            binding.announcementContainer.setVisibility(View.VISIBLE);
+            binding.tvAnnouncement.setText(text);
+            try {
+                binding.tvAnnouncement.setTextColor(android.graphics.Color.parseColor(colorStr));
+            } catch (Exception e) {
                 binding.tvAnnouncement.setTextColor(android.graphics.Color.WHITE);
             }
-            binding.announcementContainer.setVisibility(View.VISIBLE);
-            startAnnouncementAnimation();
+            
+            binding.tvAnnouncement.setSelected(true); 
+            
+            // Remove automatic hide after 10s to keep it as a ticker if enabled
         } else {
             binding.announcementContainer.setVisibility(View.GONE);
         }
     }
 
-    private void startAnnouncementAnimation() {
-        binding.tvAnnouncement.post(() -> {
-            float screenWidth = getResources().getDisplayMetrics().widthPixels;
-            // Mətnin real ölçüsünü hesabla
-            String text = binding.tvAnnouncement.getText().toString();
-            float textWidth = binding.tvAnnouncement.getPaint().measureText(text);
-
-            // Mətnin kəsilməsinin qarşısını almaq üçün genişliyi proqramatik təyin et
-            android.view.ViewGroup.LayoutParams params = binding.tvAnnouncement.getLayoutParams();
-            params.width = (int) textWidth + 100;
-            binding.tvAnnouncement.setLayoutParams(params);
-            
-            // Animasiya məsafəsi: Ekranın sağından başlayıb, mətn tam bitənə qədər sola
-            android.view.animation.TranslateAnimation animation = new android.view.animation.TranslateAnimation(screenWidth, -textWidth - 500, 0, 0);
-            
-            // Dinamik Sürət: Hər piksel üçün 12ms (Mətn uzandıqca vaxt artır, sürət sabit qalır)
-            long dynamicDuration = (long) ((screenWidth + textWidth) * 12);
-            animation.setDuration(Math.max(20000, dynamicDuration)); // Minimum 20 saniyə
-            
-            animation.setRepeatCount(android.view.animation.Animation.INFINITE);
-            animation.setInterpolator(new android.view.animation.LinearInterpolator());
-            binding.tvAnnouncement.startAnimation(animation);
+    private void updateEpg(Channel channel) {
+        binding.tvEpgInfo.setText("Proqram məlumatı yüklənir...");
+        com.bykerimoff.player.utils.XMLTVParser.getProgramForChannel(channel.getName(), new com.bykerimoff.player.utils.XMLTVParser.EpgCallback() {
+            @Override
+            public void onResult(com.bykerimoff.player.models.EpgProgram program) {
+                runOnUiThread(() -> {
+                    if (program != null) {
+                        binding.tvEpgInfo.setText(program.getTitle());
+                        if (program.getStartTime() > 0 && program.getEndTime() > 0) {
+                            long total = program.getEndTime() - program.getStartTime();
+                            long current = System.currentTimeMillis() - program.getStartTime();
+                            int progress = (int) ((current * 100) / total);
+                            binding.epgProgress.setProgress(Math.max(0, Math.min(100, progress)));
+                        }
+                    } else {
+                        binding.tvEpgInfo.setText("EPG Məlumatı yoxdur");
+                        binding.epgProgress.setProgress(0);
+                    }
+                });
+            }
         });
     }
 
-    private void setupPlayerChannelList() {
-        if (channelList == null) return;
-        if (channelAdapter == null) {
-            channelAdapter = new ChannelAdapter(channelList, new ChannelAdapter.OnChannelClickListener() {
-                @Override
-                public void onChannelClick(Channel channel) {
-                    playSelectedChannel(channel);
-                }
-                @Override
-                public void onChannelFocus(Channel channel) {}
-                @Override
-                public void onChannelLongClick(Channel channel) {
-                    FavoriteManager fm = new FavoriteManager(PlayerActivity.this);
-                    boolean isAdded = fm.toggleFavorite(channel.getId());
-                    channelAdapter.notifyDataSetChanged();
-                    Toast.makeText(PlayerActivity.this, isAdded ? "Sevimli siyahısına əlavə edildi" : "Sevimli siyahısından çıxarıldı", Toast.LENGTH_SHORT).show();
-                }
-            });
-            binding.rvPlayerChannels.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
-            binding.rvPlayerChannels.setAdapter(channelAdapter);
-        } else {
-            channelAdapter.updateData(channelList);
-        }
+    private void showOSD() {
+        binding.osdLayout.setVisibility(View.VISIBLE);
+        binding.miniInfoLayout.setVisibility(View.GONE);
+        osdHandler.removeCallbacksAndMessages(null);
+        osdHandler.postDelayed(() -> {
+            binding.osdLayout.setVisibility(View.GONE);
+        }, 5000);
     }
 
-    private void playSelectedChannel(Channel channel) {
-        playbackList = new ArrayList<>(channelList);
-        currentCategoryChannels = new ArrayList<>(playbackList); // Seçilən siyahını cari kateqoriya siyahısı kimi yadda saxla
-        currentIndex = playbackList.indexOf(channel);
-        currentPlayingChannelId = channel.getId();
-        loadChannel(channel);
-        binding.playerChannelSidebar.setVisibility(View.GONE);
-        binding.rvPlayerCategories.setVisibility(View.GONE);
-    }
-
-    private void setupPlayerCategoryList() {
-        List<Category> categories = DataManager.getCurrentCategoryList();
-        if (categories == null || categories.isEmpty()) return;
-        playerCategoryAdapter = new CategoryAdapter(categories, category -> {
-            if (categorySwitchRunnable != null) categorySwitchHandler.removeCallbacks(categorySwitchRunnable);
-            updateChannelsByCategory(category);
-            
-            // Kateqoriya seçiləndə kanallara keç və dərhal fokusla
-            binding.tvPlayerSidebarTitle.setText("KANALLAR");
-            binding.playerChannelSidebar.setVisibility(View.VISIBLE);
-            binding.rvPlayerChannels.postDelayed(() -> {
-                binding.rvPlayerChannels.requestFocus();
-                View first = binding.rvPlayerChannels.getChildAt(0);
-                if (first != null) first.requestFocus();
-                else {
-                    binding.rvPlayerChannels.scrollToPosition(0);
-                    binding.rvPlayerChannels.postDelayed(() -> {
-                        RecyclerView.ViewHolder vh = binding.rvPlayerChannels.findViewHolderForAdapterPosition(0);
-                        if (vh != null) vh.itemView.requestFocus();
-                    }, 50);
-                }
-            }, 100);
-        });
-        playerCategoryAdapter.setOnCategoryFocusListener(category -> {
-            if (binding.rvPlayerChannels.hasFocus()) return;
-            if (categorySwitchRunnable != null) categorySwitchHandler.removeCallbacks(categorySwitchRunnable);
-            categorySwitchRunnable = () -> updateChannelsByCategory(category);
-            categorySwitchHandler.postDelayed(categorySwitchRunnable, 250);
-        });
+    private void setupSidebars() {
+        binding.rvPlayerChannels.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
         binding.rvPlayerCategories.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
-        binding.rvPlayerCategories.setAdapter(playerCategoryAdapter);
-    }
+        binding.rvTracks.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
 
-    private void updateChannelsByCategory(Category category) {
-        String key = "xtream".equalsIgnoreCase(currentPlaylistType) ? category.getId() : category.getName();
-        List<Channel> categoryChannels;
-        if ("0".equals(category.getId()) || "Sevimlilər".equals(category.getName())) {
-            categoryChannels = new ArrayList<>();
-            FavoriteManager fm = new FavoriteManager(this);
-            for (Channel c : DataManager.getCurrentChannelList()) {
-                if (fm.isFavorite(c.getId())) categoryChannels.add(c);
-            }
-        } else {
-            categoryChannels = DataManager.getCurrentChannelMap().get(key);
-        }
-        if (categoryChannels != null) {
-            allCategoryChannels = new ArrayList<>(categoryChannels);
-            currentCategoryChannels = new ArrayList<>(allCategoryChannels); // Kateqoriyanı yadda saxla
-            channelList = new ArrayList<>(allCategoryChannels);
-            setupPlayerChannelList();
-            
-            int scrollPos = -1;
-            for (int i = 0; i < channelList.size(); i++) {
-                if (channelList.get(i).getId().equals(currentPlayingChannelId)) {
-                    scrollPos = i;
-                    break;
+        ChannelAdapter channelAdapter = new ChannelAdapter(playbackList, new ChannelAdapter.OnChannelClickListener() {
+            @Override
+            public void onChannelClick(Channel channel) {
+                int index = playbackList.indexOf(channel);
+                if (index != -1) {
+                    playChannel(index);
+                    binding.playerChannelSidebar.setVisibility(View.GONE);
                 }
             }
-            if (scrollPos != -1) binding.rvPlayerChannels.scrollToPosition(scrollPos);
-            else binding.rvPlayerChannels.scrollToPosition(0);
-        }
-    }
 
+            @Override
+            public void onChannelFocus(Channel channel) {}
 
-
-    private void setupArchiveList() {
-        archiveAdapter = new ArchiveAdapter(archiveList, new ArchiveAdapter.OnProgramClickListener() {
-            @Override public void onProgramClick(EpgProgram program) { playArchiveProgram(program); binding.playerArchiveSidebar.setVisibility(View.GONE); }
-            @Override public void onProgramLongClick(EpgProgram program) {}
+            @Override
+            public void onChannelLongClick(Channel channel) {}
         });
-        binding.rvArchive.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
-        binding.rvArchive.setAdapter(archiveAdapter);
-    }
+        binding.rvPlayerChannels.setAdapter(channelAdapter);
 
-    private void playArchiveProgram(EpgProgram program) {
-        if (channelList == null || currentIndex < 0 || currentIndex >= channelList.size()) return;
-        Channel channel = channelList.get(currentIndex);
-        if (currentPlaylistType.equalsIgnoreCase("xtream")) {
-            try {
-                SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-                String startTimeStr = new SimpleDateFormat("yyyy-MM-dd:HH-mm", Locale.US).format(new Date(program.getStartTime()));
-                int durationMinutes = (int) ((program.getEndTime() - program.getStartTime()) / 60000);
-                String archiveUrl = prefs.getString("xtream_host", "") + "/timeshift/" + prefs.getString("xtream_user", "") + "/" + prefs.getString("xtream_pass", "") + "/" + durationMinutes + "/" + startTimeStr + "/" + channel.getId() + ".ts";
-                if (exoPlayer == null) initExoPlayer(playerType);
-                exoPlayer.stop(); exoPlayer.clearMediaItems();
-                exoPlayer.setMediaItem(MediaItem.fromUri(archiveUrl));
-                exoPlayer.prepare(); exoPlayer.play();
-                binding.tvEpgInfo.setText("ARXİV: " + program.getTitle());
-                binding.tvQuality.setText("ARXİV");
-                binding.vodProgressLayout.setVisibility(View.VISIBLE);
-                showOsd();
-            } catch (Exception e) { showErrorOverlay("Arxiv xətası", "Yayım başladıla bilmədi"); }
-        } else {
-            String catchupUrl = channel.getCatchupSource();
-            if (catchupUrl == null || catchupUrl.isEmpty()) catchupUrl = channel.getStreamUrl();
-            long startUnix = program.getStartTime() / 1000;
-            String finalUrl = catchupUrl.replace("${start}", String.valueOf(startUnix)).replace("{utc}", String.valueOf(startUnix)).replace("${offset}", "0");
-            if (exoPlayer == null) initExoPlayer(playerType);
-            exoPlayer.stop(); exoPlayer.clearMediaItems();
-            exoPlayer.setMediaItem(MediaItem.fromUri(finalUrl));
-            exoPlayer.prepare(); exoPlayer.play();
-            binding.tvEpgInfo.setText("ARXİV: " + program.getTitle());
-            binding.vodProgressLayout.setVisibility(View.VISIBLE);
-            showOsd();
-        }
-    }
-
-
-
-    @OptIn(markerClass = UnstableApi.class)
-    private void initExoPlayer(String mode) {
-        if (exoPlayer == null) {
-            OkHttpDataSource.Factory dataSourceFactory = NetworkUtils.getDataSourceFactory(this);
-            
-            DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory()
-                    .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES 
-                                       | DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
-                                       | DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM
-                                       | DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS);
-
-            DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory);
-            
-            trackSelector = new DefaultTrackSelector(this);
-            trackSelector.setParameters(trackSelector.buildUponParameters()
-                    .setExceedAudioConstraintsIfNecessary(true)
-                    .setExceedRendererCapabilitiesIfNecessary(true)
-                    .setExceedVideoConstraintsIfNecessary(true)
-            );
-
-            DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
-                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-                    .setEnableDecoderFallback(true);
-
-            // Maksimal Performans üçün Aqressiv Buferləmə (30s - 90s)
-            androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
-                    .setBufferDurationsMs(
-                            30000, // minBufferMs (30s öncədən yüklə)
-                            90000, // maxBufferMs (Maksimum 90s yaddaşda saxla)
-                            5000,  // bufferForPlaybackMs (5s olanda başlat)
-                            10000  // bufferForPlaybackAfterRebufferMs (Donma olsa 10s gözlə)
-                    )
-                    .setPrioritizeTimeOverSizeThresholds(true) // Vaxta üstünlük ver (zeyf şəbəkə üçün)
-                    .build();
-
-            exoPlayer = new ExoPlayer.Builder(this, renderersFactory)
-                    .setMediaSourceFactory(mediaSourceFactory)
-                    .setTrackSelector(trackSelector)
-                    .setLoadControl(loadControl)
-                    .build();
-            binding.playerView.setPlayer(exoPlayer);
-            exoPlayer.addListener(new Player.Listener() {
-                @Override public void onPlaybackStateChanged(int state) {
-                    if (state == Player.STATE_BUFFERING) { binding.bufferingLayout.setVisibility(View.VISIBLE); osdHandler.postDelayed(bufferingTimeoutRunnable, 15000); }
-                    else { binding.bufferingLayout.setVisibility(View.GONE); osdHandler.removeCallbacks(bufferingTimeoutRunnable); }
-                }
-                @Override public void onVideoSizeChanged(@NonNull androidx.media3.common.VideoSize videoSize) {
-                    if (videoSize.width > 0) binding.tvQuality.setText(videoSize.width + "x" + videoSize.height);
-                }
-                @Override public void onPlayerError(@NonNull androidx.media3.common.PlaybackException error) {
-                    if (retryCount < MAX_RETRIES) { retryCount++; osdHandler.postDelayed(() -> { if (exoPlayer != null) { exoPlayer.prepare(); exoPlayer.play(); } }, 1500); }
-                    else showErrorOverlay("Müvəqqəti texniki nasazlıq", "Yayım tezliklə bərpa olunacaq");
-                }
-                
-                @Override
-                public void onTracksChanged(@NonNull androidx.media3.common.Tracks tracks) {}
-            });
-        }
-    }
-
-    private void loadChannel(Channel channel) {
-        if (exoPlayer == null) initExoPlayer(playerType);
-        retryCount = 0; exoPlayer.stop(); exoPlayer.clearMediaItems();
-        binding.vodProgressLayout.setVisibility(View.GONE);
-        
-        String url = channel.getStreamUrl();
-        MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(url));
-        String low = url.toLowerCase();
-        if (low.contains("m3u8") || low.contains(".php")) builder.setMimeType(MimeTypes.APPLICATION_M3U8);
-        else if (low.contains(".ts") || low.contains("/live/")) builder.setMimeType(MimeTypes.VIDEO_MP2T);
-        
-        exoPlayer.setMediaItem(builder.build());
-        exoPlayer.prepare(); exoPlayer.play();
-        
-        binding.tvChannelName.setText(channel.getName());
-        if (binding.ivChannelLogo != null) {
-            Glide.with(this).load(channel.getLogoUrl()).placeholder(R.drawable.default_logo).error(R.drawable.default_logo).into(binding.ivChannelLogo);
-        }
-        
-        if (channelAdapter != null) channelAdapter.setSelectedPosition(currentIndex);
-        fetchEpg(channel.getId());
-        showOsd();
-        startTestCountdownInPlayer();
-        
-        // Son baxılan kanalı avtomatik açılış üçün yadda saxla
-        getSharedPreferences("neoplay_prefs", MODE_PRIVATE).edit()
-                .putString("last_channel_url", channel.getStreamUrl())
-                .apply();
-        
-        // Son baxılanlar siyahısına əlavə et
-        RecentChannelsManager.INSTANCE.addChannel(this, channel);
-    }
-
-    private void fetchEpg(String channelId) {
-        if (epgCache.containsKey(channelId)) { binding.tvEpgInfo.setText(epgCache.get(channelId)); return; }
-        checkXmltvEpg(channelId);
-    }
-
-    private void checkXmltvEpg(String channelId) {
-        Map<String, String> xmltv = DataManager.getXmltvCache();
-        if (xmltv != null && !xmltv.isEmpty()) {
-            Channel current = null;
-            if (channelList != null && currentIndex >= 0 && currentIndex < channelList.size()) current = channelList.get(currentIndex);
-            if (current != null) {
-                String title = xmltv.get(current.getTvgId());
-                if (title == null) title = xmltv.get(current.getName());
-                if (title != null) { epgCache.put(channelId, title); binding.tvEpgInfo.setText(title); return; }
-            }
-        }
-        binding.tvEpgInfo.setText("EPG məlumatı yoxdur");
-    }
-
-    private String formatTime(long ms) {
-        long s = (ms / 1000) % 60; long m = (ms / (1000 * 60)) % 60; long h = (ms / (1000 * 60 * 60));
-        return h > 0 ? String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s) : String.format(Locale.getDefault(), "%02d:%02d", m, s);
-    }
-
-    @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        int keyCode = event.getKeyCode();
-        if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (keyCode == KeyEvent.KEYCODE_CHANNEL_UP || keyCode == KeyEvent.KEYCODE_PAGE_UP || keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
-                playNextChannel(); return true;
-            }
-            if (keyCode == KeyEvent.KEYCODE_CHANNEL_DOWN || keyCode == KeyEvent.KEYCODE_PAGE_DOWN || keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
-                playPreviousChannel(); return true;
-            }
-        }
-        return super.dispatchKeyEvent(event);
-    }
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) { appendNumericInput(keyCode - KeyEvent.KEYCODE_0); return true; }
-        
-        boolean isCatOpen = binding.rvPlayerCategories.getVisibility() == View.VISIBLE;
-        boolean isChanOpen = binding.playerChannelSidebar.getVisibility() == View.VISIBLE;
-        boolean isAnyOpen = isCatOpen || isChanOpen || binding.playerArchiveSidebar.getVisibility() == View.VISIBLE || binding.playerTracksSidebar.getVisibility() == View.VISIBLE;
-        
-        // VOD (Film/Serial) yoxlanışı
-        boolean isVod = exoPlayer != null && !exoPlayer.isCurrentMediaItemLive() && exoPlayer.getDuration() > 0;
-
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_NUMPAD_ENTER:
-                if (event.getAction() == KeyEvent.ACTION_DOWN) event.startTracking();
-                if (isVod && !isAnyOpen) {
-                    if (exoPlayer.isPlaying()) exoPlayer.pause();
-                    else exoPlayer.play();
-                    showOsd();
-                    return true;
-                }
-                return true;
-
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-            case KeyEvent.KEYCODE_MEDIA_REWIND:
-                if (isVod && !isAnyOpen) {
-                    // VOD rejimi -> 15 saniyə GERİ
-                    exoPlayer.seekTo(Math.max(0, exoPlayer.getCurrentPosition() - 15000));
-                    showOsd();
-                    return true;
-                }
-                if (isChanOpen) {
-                    // Kanallardan Kateqoriyalara keç
-                    binding.rvPlayerCategories.setVisibility(View.VISIBLE);
-                    binding.rvPlayerCategories.requestFocus();
-                    return true;
-                }
-                // Yayım gedərkən SOL -> Kateqoriyaları aç
-                binding.rvPlayerCategories.setVisibility(View.VISIBLE);
-                binding.rvPlayerCategories.requestFocus();
-                return true;
-
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
-            case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
-                if (isVod && !isAnyOpen) {
-                    // VOD rejimi -> 15 saniyə İRƏLİ
-                    exoPlayer.seekTo(Math.min(exoPlayer.getDuration(), exoPlayer.getCurrentPosition() + 15000));
-                    showOsd();
-                    return true;
-                }
-                if (isCatOpen) {
-                    // Kateqoriyadan Kanallara keç
-                    binding.playerChannelSidebar.setVisibility(View.VISIBLE);
-                    binding.rvPlayerChannels.requestFocus();
-                    return true;
-                }
-                // Yayım gedərkən SAĞ -> Kateqoriyaları aç
-                binding.rvPlayerCategories.setVisibility(View.VISIBLE);
-                binding.rvPlayerCategories.requestFocus();
-                return true;
-
-            case KeyEvent.KEYCODE_DPAD_UP:
-                if (binding.etPlayerSearch.hasFocus()) return true; // Axtarışdan yuxarı getmə
-                if (binding.rvPlayerChannels.hasFocus()) {
-                    View f = binding.rvPlayerChannels.getFocusedChild();
-                    if (f != null && binding.rvPlayerChannels.getChildAdapterPosition(f) == 0) {
-                        binding.etPlayerSearch.requestFocus();
-                        return true;
-                    }
-                }
-                if (binding.rvPlayerCategories.hasFocus()) { handleLoop(binding.rvPlayerCategories, playerCategoryAdapter.getItemCount(), true); return true; }
-                if (binding.rvPlayerChannels.hasFocus()) { handleLoop(binding.rvPlayerChannels, channelAdapter.getItemCount(), true); return true; }
-                if (binding.rvTracks.hasFocus()) { handleLoop(binding.rvTracks, trackAdapter.getItemCount(), true); return true; }
-                if (binding.rvArchive.hasFocus()) { handleLoop(binding.rvArchive, archiveAdapter.getItemCount(), true); return true; }
-                if (isAnyOpen) return true;
-                playNextChannel(); return true;
-
-            case KeyEvent.KEYCODE_DPAD_DOWN:
-                if (binding.etPlayerSearch.hasFocus()) {
-                    binding.rvPlayerChannels.requestFocus();
-                    return true;
-                }
-                if (binding.rvPlayerCategories.hasFocus()) { handleLoop(binding.rvPlayerCategories, playerCategoryAdapter.getItemCount(), false); return true; }
-                if (binding.rvPlayerChannels.hasFocus()) { handleLoop(binding.rvPlayerChannels, channelAdapter.getItemCount(), false); return true; }
-                if (binding.rvTracks.hasFocus()) { handleLoop(binding.rvTracks, trackAdapter.getItemCount(), false); return true; }
-                if (binding.rvArchive.hasFocus()) { handleLoop(binding.rvArchive, archiveAdapter.getItemCount(), false); return true; }
-                if (isAnyOpen) return true;
-                playPreviousChannel(); return true;
-
-            case KeyEvent.KEYCODE_VOLUME_UP:
-            case KeyEvent.KEYCODE_VOLUME_DOWN:
-                osdHandler.postDelayed(this::updateVolumeUI, 50); return super.onKeyDown(keyCode, event);
-                
-            case KeyEvent.KEYCODE_PROG_RED:
-                showTrackSidebar(androidx.media3.common.C.TRACK_TYPE_TEXT); return true;
-            case KeyEvent.KEYCODE_PROG_GREEN:
-                showTrackSidebar(androidx.media3.common.C.TRACK_TYPE_AUDIO); return true;
-            case KeyEvent.KEYCODE_PROG_YELLOW:
-            case KeyEvent.KEYCODE_Y:
-                toggleAspectRatio(); return true;
-            case KeyEvent.KEYCODE_PROG_BLUE:
-                showCurrentCategoryChannels();
-                return true;
-            case KeyEvent.KEYCODE_MEDIA_PLAY:
-                if (exoPlayer != null && !exoPlayer.isPlaying()) exoPlayer.play();
-                return true;
-            case KeyEvent.KEYCODE_MEDIA_PAUSE:
-                if (exoPlayer != null && exoPlayer.isPlaying()) exoPlayer.pause();
-                return true;
-            case KeyEvent.KEYCODE_MEDIA_STOP:
-                if (exoPlayer != null) exoPlayer.stop();
-                return true;
-            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                if (exoPlayer != null) {
-                    if (exoPlayer.isPlaying()) exoPlayer.pause();
-                    else exoPlayer.play();
-                }
-                return true;
-        }
-        return super.onKeyDown(keyCode, event);
-    }
-
-    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
-            if (event.isTracking() && !event.isCanceled()) {
-                if (binding.rvPlayerCategories.getVisibility() == View.VISIBLE && binding.rvPlayerCategories.hasFocus()) {
-                    // Kateqoriya üzərində OK -> Klik hadisəsini tetikle
-                    View f = binding.rvPlayerCategories.getFocusedChild();
-                    if (f != null) f.performClick();
-                } else if (binding.playerChannelSidebar.getVisibility() == View.VISIBLE) {
-                    View f = binding.rvPlayerChannels.getFocusedChild();
-                    if (f != null) {
-                        int p = binding.rvPlayerChannels.getChildAdapterPosition(f);
-                        if (p != -1 && p < channelList.size()) playSelectedChannel(channelList.get(p));
-                    }
-                } else if (binding.playerTracksSidebar.getVisibility() == View.VISIBLE) {
-                    View f = binding.rvTracks.getFocusedChild();
-                    if (f != null) f.performClick();
-                } else if (binding.playerArchiveSidebar.getVisibility() == View.VISIBLE) {
-                    View f = binding.rvArchive.getFocusedChild();
-                    if (f != null) f.performClick();
-                } else {
-                    // Canlı TV-də OK -> Birbaşa Kanal Siyahısını aç (Cari kateqoriya üzrə)
-                    boolean isVod = exoPlayer != null && !exoPlayer.isCurrentMediaItemLive() && exoPlayer.getDuration() > 0;
-                    if (!isVod) {
-                        showCurrentCategoryChannels();
-                    }
-                }
-            }
-            return true;
-        }
-        return super.onKeyUp(keyCode, event);
-    }
-
-    private void setupPlayerSearch() {
+        // Axtarış funksiyası
         binding.etPlayerSearch.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                filterChannelsByPlayerSearch(s.toString());
+                filterSidebarChannels(s.toString());
             }
             @Override
             public void afterTextChanged(Editable s) {}
         });
-        
-        binding.etPlayerSearch.setOnEditorActionListener((v, actionId, event) -> {
-            binding.rvPlayerChannels.requestFocus();
-            return true;
-        });
     }
 
-    private void filterChannelsByPlayerSearch(String query) {
-        if (query.isEmpty()) {
-            channelList = new ArrayList<>(playbackList);
-        } else {
-            List<Channel> filtered = new ArrayList<>();
-            for (Channel c : playbackList) {
-                if (c.getName().toLowerCase().contains(query.toLowerCase())) {
-                    filtered.add(c);
+    private void filterSidebarChannels(String query) {
+        List<Channel> filtered = new ArrayList<>();
+        for (Channel c : playbackList) {
+            if (c.getName().toLowerCase().contains(query.toLowerCase())) {
+                filtered.add(c);
+            }
+        }
+        binding.rvPlayerChannels.setAdapter(new ChannelAdapter(filtered, new ChannelAdapter.OnChannelClickListener() {
+            @Override
+            public void onChannelClick(Channel channel) {
+                int index = playbackList.indexOf(channel);
+                if (index != -1) {
+                    playChannel(index);
+                    binding.playerChannelSidebar.setVisibility(View.GONE);
                 }
             }
-            channelList = filtered;
-        }
-        setupPlayerChannelList();
+            @Override
+            public void onChannelFocus(Channel channel) {}
+            @Override
+            public void onChannelLongClick(Channel channel) {}
+        }));
     }
 
-    private void showCurrentCategoryChannels() {
-        channelList = new ArrayList<>(playbackList); // Baxılan siyahını istifadə et
-        binding.tvPlayerSidebarTitle.setText("KANALLAR");
-        binding.etPlayerSearch.setText(""); // Axtarışı sıfırla
-        setupPlayerChannelList();
-        
-        binding.playerChannelSidebar.setVisibility(View.VISIBLE);
-        binding.rvPlayerCategories.setVisibility(View.GONE);
-        
-        binding.etPlayerSearch.requestFocus(); // Siyahı açılanda axtarışa fokuslan
-        
-        binding.rvPlayerChannels.postDelayed(() -> {
-            int s = -1;
-            for (int i = 0; i < channelList.size(); i++) if (channelList.get(i).getId().equals(currentPlayingChannelId)) { s = i; break; }
-            
-            if (s != -1) {
-                binding.rvPlayerChannels.scrollToPosition(s);
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
+            int digit = keyCode - KeyEvent.KEYCODE_0;
+            if (isVolumeInputMode || binding.volumeLayout.getVisibility() == View.VISIBLE) {
+                isVolumeInputMode = true;
+                volumeNumberInput += digit;
+                if (volumeNumberInput.length() > 3) volumeNumberInput = volumeNumberInput.substring(1);
+                
+                binding.tvVolumePercent.setText(volumeNumberInput + "%");
+                binding.volumeLayout.setVisibility(View.VISIBLE);
+                
+                osdHandler.removeCallbacks(volumeInputRunnable);
+                osdHandler.postDelayed(volumeInputRunnable, 2000);
+            } else {
+                channelNumberInput += digit;
+                binding.tvNumericInput.setText(channelNumberInput);
+                binding.tvNumericInput.setVisibility(View.VISIBLE);
+                channelSwitchHandler.removeCallbacks(channelSwitchRunnable);
+                channelSwitchHandler.postDelayed(channelSwitchRunnable, 2000);
             }
-        }, 100);
+            return true;
+        }
+
+        boolean isSidebarVisible = binding.playerChannelSidebar.getVisibility() == View.VISIBLE ||
+                binding.rvPlayerCategories.getVisibility() == View.VISIBLE ||
+                binding.playerTracksSidebar.getVisibility() == View.VISIBLE ||
+                binding.playerArchiveSidebar.getVisibility() == View.VISIBLE;
+
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_VOLUME_UP:
+                adjustVolume(true);
+                return true;
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+                adjustVolume(false);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_CHANNEL_UP:
+            case KeyEvent.KEYCODE_PAGE_UP:
+                if (!isSidebarVisible) {
+                    playNext();
+                    return true;
+                } else if (handleCircularFocus(true)) {
+                    return true;
+                }
+                break;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_CHANNEL_DOWN:
+            case KeyEvent.KEYCODE_PAGE_DOWN:
+                if (!isSidebarVisible) {
+                    playPrevious();
+                    return true;
+                } else if (handleCircularFocus(false)) {
+                    return true;
+                }
+                break;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                if (!isSidebarVisible) {
+                    if (isVod) {
+                        exoPlayer.seekTo(Math.max(0, exoPlayer.getCurrentPosition() - 30000));
+                        showOSD();
+                        return true;
+                    }
+                    showCategorySidebar();
+                    return true;
+                }
+                break;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                if (!isSidebarVisible && isVod) {
+                    exoPlayer.seekTo(Math.min(exoPlayer.getDuration(), exoPlayer.getCurrentPosition() + 30000));
+                    showOSD();
+                    return true;
+                }
+                break;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                if (!isSidebarVisible) {
+                    if (isVod) {
+                        if (exoPlayer.isPlaying()) exoPlayer.pause();
+                        else exoPlayer.play();
+                        showOSD();
+                        return true;
+                    }
+                    toggleSidebar();
+                    return true;
+                }
+                break;
+            case KeyEvent.KEYCODE_PROG_RED:
+            case KeyEvent.KEYCODE_F1: // Audio tracks
+                showTracksSidebar(1);
+                return true;
+            case KeyEvent.KEYCODE_PROG_GREEN:
+            case KeyEvent.KEYCODE_F2: // Subtitles
+                showTracksSidebar(2);
+                return true;
+            case KeyEvent.KEYCODE_PROG_YELLOW:
+            case KeyEvent.KEYCODE_F3: // Aspect ratio
+                cycleAspectRatio();
+                return true;
+            case KeyEvent.KEYCODE_BACK:
+                if (binding.playerChannelSidebar.getVisibility() == View.VISIBLE) {
+                    binding.playerChannelSidebar.setVisibility(View.GONE);
+                    return true;
+                }
+                if (binding.rvPlayerCategories.getVisibility() == View.VISIBLE) {
+                    binding.rvPlayerCategories.setVisibility(View.GONE);
+                    return true;
+                }
+                if (binding.playerTracksSidebar.getVisibility() == View.VISIBLE) {
+                    binding.playerTracksSidebar.setVisibility(View.GONE);
+                    return true;
+                }
+                break;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
-    private void showRecentChannels() {
-        List<Channel> recents = RecentChannelsManager.INSTANCE.getRecentChannels(this);
-        if (recents.isEmpty()) {
-            Toast.makeText(this, "Son baxılan kanal yoxdur", Toast.LENGTH_SHORT).show();
+    private void cycleAspectRatio() {
+        switch (currentAspectRatioMode) {
+            case AspectRatioFrameLayout.RESIZE_MODE_FILL:
+                currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
+                break;
+            case AspectRatioFrameLayout.RESIZE_MODE_FIT:
+                currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
+                break;
+            case AspectRatioFrameLayout.RESIZE_MODE_ZOOM:
+            default:
+                currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
+                break;
+        }
+        
+        binding.playerView.setResizeMode(currentAspectRatioMode);
+        
+        String modeName;
+        switch (currentAspectRatioMode) {
+            case AspectRatioFrameLayout.RESIZE_MODE_FIT: modeName = "Orijinal (Fit)"; break;
+            case AspectRatioFrameLayout.RESIZE_MODE_FILL: modeName = "Tam Ekran (Fill)"; break;
+            case AspectRatioFrameLayout.RESIZE_MODE_ZOOM: modeName = "Yaxınlaşdırılmış (Zoom)"; break;
+            default: modeName = "Standart"; break;
+        }
+        
+        binding.tvAspectRatioStatus.setText("Görüntü: " + modeName);
+        binding.tvAspectRatioStatus.setVisibility(View.VISIBLE);
+        osdHandler.removeCallbacks(aspectRatioHideRunnable);
+        osdHandler.postDelayed(aspectRatioHideRunnable, 3000);
+    }
+
+    private final Runnable aspectRatioHideRunnable = () -> binding.tvAspectRatioStatus.setVisibility(View.GONE);
+
+    private boolean handleCircularFocus(boolean isUp) {
+        View focused = getCurrentFocus();
+        if (focused == null) return false;
+
+        if (binding.playerChannelSidebar.getVisibility() == View.VISIBLE) {
+            // Channel Sidebar (Search + List)
+            if (focused.getId() == binding.etPlayerSearch.getId()) {
+                if (isUp) {
+                    // Search-də yuxarı basanda ən sonuncu kanala get
+                    int count = binding.rvPlayerChannels.getAdapter() != null ? binding.rvPlayerChannels.getAdapter().getItemCount() : 0;
+                    if (count > 0) {
+                        binding.rvPlayerChannels.scrollToPosition(count - 1);
+                        binding.rvPlayerChannels.postDelayed(() -> {
+                            RecyclerView.ViewHolder vh = binding.rvPlayerChannels.findViewHolderForAdapterPosition(count - 1);
+                            if (vh != null) vh.itemView.requestFocus();
+                            else if (binding.rvPlayerChannels.getLayoutManager() != null) {
+                                View v = binding.rvPlayerChannels.getLayoutManager().findViewByPosition(count - 1);
+                                if (v != null) v.requestFocus();
+                            }
+                        }, 100);
+                        return true;
+                    }
+                }
+            } else {
+                int pos = getRvPosition(binding.rvPlayerChannels, focused);
+                if (pos != RecyclerView.NO_POSITION) {
+                    int count = binding.rvPlayerChannels.getAdapter() != null ? binding.rvPlayerChannels.getAdapter().getItemCount() : 0;
+                    if (isUp && pos == 0) {
+                        binding.etPlayerSearch.requestFocus();
+                        return true;
+                    } else if (!isUp && pos == count - 1) {
+                        binding.etPlayerSearch.requestFocus();
+                        return true;
+                    }
+                }
+            }
+        } else if (binding.rvPlayerCategories.getVisibility() == View.VISIBLE) {
+            // Category Sidebar (Simple loop)
+            int pos = getRvPosition(binding.rvPlayerCategories, focused);
+            if (pos != RecyclerView.NO_POSITION) {
+                int count = binding.rvPlayerCategories.getAdapter() != null ? binding.rvPlayerCategories.getAdapter().getItemCount() : 0;
+                if (isUp && pos == 0) {
+                    binding.rvPlayerCategories.scrollToPosition(count - 1);
+                    binding.rvPlayerCategories.postDelayed(() -> {
+                        RecyclerView.ViewHolder vh = binding.rvPlayerCategories.findViewHolderForAdapterPosition(count - 1);
+                        if (vh != null) vh.itemView.requestFocus();
+                        else if (binding.rvPlayerCategories.getLayoutManager() != null) {
+                            View v = binding.rvPlayerCategories.getLayoutManager().findViewByPosition(count - 1);
+                            if (v != null) v.requestFocus();
+                        }
+                    }, 100);
+                    return true;
+                } else if (!isUp && pos == count - 1) {
+                    binding.rvPlayerCategories.scrollToPosition(0);
+                    binding.rvPlayerCategories.postDelayed(() -> {
+                        RecyclerView.ViewHolder vh = binding.rvPlayerCategories.findViewHolderForAdapterPosition(0);
+                        if (vh != null) vh.itemView.requestFocus();
+                        else if (binding.rvPlayerCategories.getLayoutManager() != null) {
+                            View v = binding.rvPlayerCategories.getLayoutManager().findViewByPosition(0);
+                            if (v != null) v.requestFocus();
+                        }
+                    }, 100);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private int getRvPosition(RecyclerView rv, View focused) {
+        int pos = rv.getChildLayoutPosition(focused);
+        if (pos == RecyclerView.NO_POSITION) {
+            if (focused.getParent() instanceof View) {
+                View parent = (View) focused.getParent();
+                while (parent != null && parent != rv) {
+                    pos = rv.getChildLayoutPosition(parent);
+                    if (pos != RecyclerView.NO_POSITION) break;
+                    if (!(parent.getParent() instanceof View)) break;
+                    parent = (View) parent.getParent();
+                }
+            }
+        }
+        return pos;
+    }
+
+    private void showTracksSidebar(int type) {
+        List<TrackAdapter.TrackInfo> trackList = new ArrayList<>();
+        Tracks tracks = exoPlayer.getCurrentTracks();
+        
+        int trackType = (type == 1) ? C.TRACK_TYPE_AUDIO : C.TRACK_TYPE_TEXT;
+        binding.tvTracksTitle.setText(type == 1 ? "SƏS DİLLƏRİ" : "ALTYAZILAR");
+
+        // Add "OFF" option for subtitles
+        if (type == 2) {
+            boolean isNoneSelected = true;
+            for (Tracks.Group group : tracks.getGroups()) {
+                if (group.getType() == C.TRACK_TYPE_TEXT && group.isSelected()) {
+                    isNoneSelected = false;
+                    break;
+                }
+            }
+            trackList.add(new TrackAdapter.TrackInfo("Söndür", null, -1, isNoneSelected));
+        }
+
+        for (Tracks.Group group : tracks.getGroups()) {
+            if (group.getType() == trackType) {
+                for (int i = 0; i < group.length; i++) {
+                    Format format = group.getTrackFormat(i);
+                    String label = (format.language != null) ? format.language : "Naməlum";
+                    if (format.label != null) label += " (" + format.label + ")";
+                    
+                    trackList.add(new TrackAdapter.TrackInfo(label, group, i, group.isTrackSelected(i)));
+                }
+            }
+        }
+        
+        if (trackList.isEmpty()) {
+            Toast.makeText(this, "Bu kanal üçün uyğun trek tapılmadı", Toast.LENGTH_SHORT).show();
             return;
         }
-        
-        channelList = new ArrayList<>(recents);
-        binding.tvPlayerSidebarTitle.setText("SON BAXILANLAR");
-        setupPlayerChannelList();
-        
-        binding.playerChannelSidebar.setVisibility(View.VISIBLE);
-        binding.rvPlayerCategories.setVisibility(View.GONE);
-        
-        binding.rvPlayerChannels.scrollToPosition(0);
-        binding.rvPlayerChannels.postDelayed(() -> {
-            RecyclerView.ViewHolder vh = binding.rvPlayerChannels.findViewHolderForAdapterPosition(0);
-            if (vh != null) vh.itemView.requestFocus();
-            else binding.rvPlayerChannels.requestFocus();
-        }, 100);
-    }
 
-    private void handleLoop(RecyclerView rv, int count, boolean up) {
-        if (count == 0) return;
-        View f = rv.getFocusedChild();
-        int cur = (f != null) ? rv.getChildAdapterPosition(f) : -1;
-        int nxt = up ? (cur <= 0 ? count - 1 : cur - 1) : (cur >= count - 1 ? 0 : cur + 1);
-        rv.scrollToPosition(nxt);
-        rv.postDelayed(() -> {
-            RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(nxt);
-            if (vh != null) vh.itemView.requestFocus();
-        }, 50);
-    }
-
-    private void handleChannelLoopInternal(boolean up) {
-        if (channelAdapter == null) return;
-        int count = channelAdapter.getItemCount();
-        handleLoop(binding.rvPlayerChannels, count, up);
-    }
-
-    private void setupTrackList() {
-        trackAdapter = new TrackAdapter(trackList, track -> {
-            if (exoPlayer == null) return;
-            androidx.media3.common.TrackSelectionParameters p;
-            if (track.trackIndex == -1) p = exoPlayer.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(currentTrackType, true).build();
-            else p = exoPlayer.getTrackSelectionParameters().buildUpon().setOverrideForType(new androidx.media3.common.TrackSelectionOverride(track.group.getMediaTrackGroup(), track.trackIndex)).setTrackTypeDisabled(currentTrackType, false).build();
-            exoPlayer.setTrackSelectionParameters(p);
-            exoPlayer.play(); // Dəyişiklikdən sonra donmanın qarşısını al
-            binding.playerTracksSidebar.setVisibility(View.GONE);
-        });
-        binding.rvTracks.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
-        binding.rvTracks.setAdapter(trackAdapter);
-    }
-
-    private void showTrackSidebar(int type) {
-        if (exoPlayer == null) return;
-        this.currentTrackType = type;
-        
-        // Başlığı təyin et
-        if (type == androidx.media3.common.C.TRACK_TYPE_TEXT) {
-            binding.tvPlayerSidebarTitle.setText("ALT YAZI");
-        } else if (type == androidx.media3.common.C.TRACK_TYPE_AUDIO) {
-            binding.tvPlayerSidebarTitle.setText("SES DİLİ");
-        }
-        
-        trackList.clear();
-        Tracks trs = exoPlayer.getCurrentTracks();
-        for (Tracks.Group g : trs.getGroups()) {
-            if (g.getType() == type) {
-                for (int i = 0; i < g.length; i++) {
-                    Format fmt = g.getTrackFormat(i);
-                    String lbl = fmt.label != null ? fmt.label : (fmt.language != null ? fmt.language : "Dil " + (i + 1));
-                    trackList.add(new TrackAdapter.TrackInfo(lbl, g, i, g.isTrackSelected(i)));
-                }
+        binding.rvTracks.setAdapter(new TrackAdapter(trackList, track -> {
+            if (track.trackIndex == -1) {
+                exoPlayer.setTrackSelectionParameters(
+                    exoPlayer.getTrackSelectionParameters().buildUpon()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                        .build()
+                );
+            } else {
+                exoPlayer.setTrackSelectionParameters(
+                    exoPlayer.getTrackSelectionParameters().buildUpon()
+                        .setTrackTypeDisabled(type == 1 ? C.TRACK_TYPE_AUDIO : C.TRACK_TYPE_TEXT, false)
+                        .setOverrideForType(new TrackSelectionOverride(track.group.getMediaTrackGroup(), track.trackIndex))
+                        .build()
+                );
             }
-        }
-        if (trackList.isEmpty()) { Toast.makeText(this, "Seçim yoxdur", Toast.LENGTH_SHORT).show(); return; }
-        trackAdapter.notifyDataSetChanged();
+            binding.playerTracksSidebar.setVisibility(View.GONE);
+        }));
         binding.playerTracksSidebar.setVisibility(View.VISIBLE);
         binding.rvTracks.requestFocus();
     }
 
-    private void toggleChannelSidebar() { showCurrentCategoryChannels(); }
-
-    private void playNextChannel() {
-        if (playbackList != null && !playbackList.isEmpty()) {
-            currentIndex++; if (currentIndex >= playbackList.size()) currentIndex = 0;
-            Channel n = playbackList.get(currentIndex); currentPlayingChannelId = n.getId(); loadChannel(n);
-        }
+    private void processNumericInput() {
+        try {
+            int num = Integer.parseInt(channelNumberInput);
+            if (num > 0 && num <= playbackList.size()) {
+                playChannel(num - 1);
+            }
+        } catch (Exception ignored) {}
+        channelNumberInput = "";
+        binding.tvNumericInput.setVisibility(View.GONE);
     }
 
-    private void playPreviousChannel() {
-        if (playbackList != null && !playbackList.isEmpty()) {
-            currentIndex--; if (currentIndex < 0) currentIndex = playbackList.size() - 1;
-            Channel p = playbackList.get(currentIndex); currentPlayingChannelId = p.getId(); loadChannel(p);
-        }
+    private void processVolumeInput() {
+        try {
+            int vol = Integer.parseInt(volumeNumberInput);
+            if (vol >= 0 && vol <= 100) {
+                int maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                int targetVol = (vol * maxVol) / 100;
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, 0);
+                updateVolumeUI();
+            }
+        } catch (Exception ignored) {}
+        volumeNumberInput = "";
+        isVolumeInputMode = false;
+        osdHandler.postDelayed(() -> binding.volumeLayout.setVisibility(View.GONE), 2000);
+    }
+
+    private void adjustVolume(boolean increase) {
+        isVolumeInputMode = false;
+        volumeNumberInput = "";
+        audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, 
+            increase ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER, 
+            0);
+        updateVolumeUI();
     }
 
     private void updateVolumeUI() {
-        if (audioManager == null) return;
+        int current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         int max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-        int cur = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-        int pct = (cur * 100) / (max == 0 ? 1 : max);
+        int percent = (current * 100) / max;
+        
+        binding.volumeProgress.setProgress(percent);
+        binding.tvVolumePercent.setText(percent + "%");
         binding.volumeLayout.setVisibility(View.VISIBLE);
-        binding.volumeProgress.setProgress(pct);
-        binding.tvVolumePercent.setText(pct + "%");
-        osdHandler.removeCallbacks(volumeHideRunnable);
-        osdHandler.postDelayed(volumeHideRunnable, 3000);
+        
+        osdHandler.removeCallbacksAndMessages(null); // OSD-ni gizlətməmək üçün (isteğe bağlı)
+        osdHandler.removeCallbacks(volumeInputRunnable);
+        osdHandler.postDelayed(() -> {
+            if (!isVolumeInputMode) binding.volumeLayout.setVisibility(View.GONE);
+        }, 3000);
     }
 
-    private final Runnable volumeHideRunnable = () -> binding.volumeLayout.setVisibility(View.GONE);
-    private final Runnable osdHideRunnable = () -> binding.osdLayout.setVisibility(View.GONE);
+    private void playNext() {
+        if (currentIndex < playbackList.size() - 1) {
+            playChannel(currentIndex + 1);
+        } else {
+            playChannel(0);
+        }
+    }
 
-    @Override
-    protected void onStop() { super.onStop(); if (exoPlayer != null) { savePlaybackProgress(); exoPlayer.pause(); } }
+    private void playPrevious() {
+        if (currentIndex > 0) {
+            playChannel(currentIndex - 1);
+        } else {
+            playChannel(playbackList.size() - 1);
+        }
+    }
 
-    private void savePlaybackProgress() {
-        if (exoPlayer != null && !exoPlayer.isCurrentMediaItemLive() && exoPlayer.getDuration() > 0) {
-            if (playbackList != null && currentIndex >= 0 && currentIndex < playbackList.size()) {
-                Channel c = playbackList.get(currentIndex);
-                if (exoPlayer.getCurrentPosition() > exoPlayer.getDuration() * 0.95) { ResumeManager.INSTANCE.removeProgress(this, c.getStreamUrl()); return; }
-                ResumeItem item = new ResumeItem(c.getId(), c.getName(), c.getLogoUrl(), c.getRawEncryptedUrl(), c.getCategoryName(), exoPlayer.getCurrentPosition(), exoPlayer.getDuration(), System.currentTimeMillis());
-                ResumeManager.INSTANCE.saveProgress(this, item);
+    private void showCategorySidebar() {
+        if (binding.rvPlayerCategories.getVisibility() == View.VISIBLE) {
+            binding.rvPlayerCategories.setVisibility(View.GONE);
+        } else {
+            binding.playerChannelSidebar.setVisibility(View.GONE);
+            binding.playerTracksSidebar.setVisibility(View.GONE);
+            binding.playerArchiveSidebar.setVisibility(View.GONE);
+            
+            List<Category> categoryList = DataManager.getCurrentCategoryList();
+            if (categoryList == null || categoryList.isEmpty()) {
+                Toast.makeText(this, "Kateqoriya siyahısı hələ yüklənməyib", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            CategoryAdapter adapter = new CategoryAdapter(categoryList, category -> {
+                updatePlaybackListByCategory(category);
+                binding.rvPlayerCategories.setVisibility(View.GONE);
+                // Save last category ID
+                getSharedPreferences("neoplay_prefs", MODE_PRIVATE).edit()
+                    .putString("last_category_id", category.getId())
+                    .apply();
+                
+                new Handler(Looper.getMainLooper()).postDelayed(this::toggleSidebar, 100);
+            });
+            binding.rvPlayerCategories.setAdapter(adapter);
+            binding.rvPlayerCategories.setVisibility(View.VISIBLE);
+            binding.rvPlayerCategories.requestFocus();
+        }
+    }
+
+    private void updatePlaybackListByCategory(Category category) {
+        List<Channel> newList = new ArrayList<>();
+        if ("all".equals(category.getId())) {
+            newList.addAll(DataManager.getAllChannels());
+        } else if ("0".equals(category.getId())) {
+            FavoriteManager favManager = new FavoriteManager(this);
+            for (Channel c : DataManager.getAllChannels()) {
+                if (favManager.isFavorite(c.getId())) newList.add(c);
+            }
+        } else {
+            List<Channel> list = DataManager.getCurrentChannelMap().get(category.getId());
+            if (list != null) newList.addAll(list);
+        }
+        
+        if (!newList.isEmpty()) {
+            playbackList.clear();
+            playbackList.addAll(newList);
+            // Siyahı yenilənəndə mövcud adapteri də yeniləmək lazımdır (Sidebar aktivdirsə)
+            setupSidebars(); 
+        }
+    }
+
+    private void toggleSidebar() {
+        if (binding.playerChannelSidebar.getVisibility() == View.VISIBLE) {
+            binding.playerChannelSidebar.setVisibility(View.GONE);
+        } else {
+            binding.rvPlayerCategories.setVisibility(View.GONE);
+            binding.playerTracksSidebar.setVisibility(View.GONE);
+            binding.playerArchiveSidebar.setVisibility(View.GONE);
+            
+            binding.playerChannelSidebar.setVisibility(View.VISIBLE);
+            binding.rvPlayerChannels.requestFocus();
         }
     }
 
     @Override
-    protected void onDestroy() { super.onDestroy(); progressHandler.removeCallbacksAndMessages(null); osdHandler.removeCallbacksAndMessages(null); if (exoPlayer != null) exoPlayer.release(); }
-
-    private void showErrorOverlay(String t, String s) {
-        binding.errorLayout.setVisibility(View.VISIBLE);
-        binding.osdLayout.setVisibility(View.GONE);
-        binding.tvErrorTitle.setText(t.toUpperCase(Locale.ROOT));
-        binding.tvErrorSubtitle.setText(s);
-    }
-
-    private void showOsd() {
-        binding.osdLayout.setVisibility(View.VISIBLE);
-        osdHandler.removeCallbacks(osdHideRunnable);
-        osdHandler.postDelayed(osdHideRunnable, 5000);
-    }
-
-    private void appendNumericInput(int d) {
-        channelNumberInput += d;
-        binding.tvNumericInput.setText(channelNumberInput);
-        binding.tvNumericInput.setVisibility(View.VISIBLE);
-        channelSwitchHandler.removeCallbacks(channelSwitchRunnable);
-        channelSwitchHandler.postDelayed(channelSwitchRunnable, 2500);
-    }
-
-    private void processNumericInput() {
-        try {
-            int t = Integer.parseInt(channelNumberInput) - 1;
-            if (channelList != null && t >= 0 && t < channelList.size()) { currentIndex = t; loadChannel(channelList.get(currentIndex)); }
-        } catch (Exception e) { e.printStackTrace(); }
-        channelNumberInput = ""; binding.tvNumericInput.setVisibility(View.GONE);
-    }
-
-    @OptIn(markerClass = UnstableApi.class)
-    private void toggleAspectRatio() {
-        String modeName = "FIT";
-        switch (currentResizeMode) {
-            case androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT:
-                currentResizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL;
-                modeName = "FILL";
-                break;
-            case androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL:
-                currentResizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
-                modeName = "ZOOM";
-                break;
-            default:
-                currentResizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT;
-                modeName = "FIT";
-                break;
+    protected void onDestroy() {
+        super.onDestroy();
+        if (exoPlayer != null) {
+            exoPlayer.release();
+            exoPlayer = null;
         }
-        binding.playerView.setResizeMode(currentResizeMode);
-        Toast.makeText(this, "Ekran rejimi: " + modeName, Toast.LENGTH_SHORT).show();
-    }
-
-    private void startTestCountdownInPlayer() {
-        SharedPreferences p = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-        long exp = p.getLong("test_expire_time", 0L);
-        if (exp > System.currentTimeMillis()) {
-            if (testCountDownTimer != null) testCountDownTimer.cancel();
-            testCountDownTimer = new android.os.CountDownTimer(exp - System.currentTimeMillis(), 1000) {
-                @Override public void onTick(long ms) {
-                    binding.testBannerPlayer.setVisibility(View.VISIBLE);
-                    int remaining = (int) (ms / 1000);
-                    String timeLeft = String.format(Locale.getDefault(), "%02d:%02d:%02d", ms/3600000, (ms%3600000)/60000, (ms%60000)/1000);
-                    binding.testTimerPlayer.setText("Test: " + timeLeft);
-
-                    int color;
-                    if (remaining < 60) {
-                        color = android.graphics.Color.RED;
-                    } else if (remaining < 300) {
-                        color = android.graphics.Color.parseColor("#FFA500"); // Orange
-                    } else {
-                        color = android.graphics.Color.parseColor("#D4AF37"); // Gold
-                    }
-
-                    binding.testTitlePlayer.setTextColor(color);
-                    binding.testTimerPlayer.setTextColor(color);
-
-                    // 5 dəqiqədən az qaldıqda marqatla
-                    if (remaining < 300) {
-                        if (binding.testBannerPlayer.getAnimation() == null) {
-                            binding.testBannerPlayer.startAnimation(android.view.animation.AnimationUtils.loadAnimation(PlayerActivity.this, R.anim.blink));
-                        }
-                    } else {
-                        binding.testBannerPlayer.clearAnimation();
-                    }
-                }
-                @Override public void onFinish() { finish(); }
-            }.start();
-        } else binding.testBannerPlayer.setVisibility(View.GONE);
     }
 }

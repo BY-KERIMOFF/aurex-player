@@ -79,13 +79,25 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         Channel channel = channels.get(position);
         holder.tvName.setText(channel.getName());
         
+        if (holder.tvNumber != null) {
+            holder.tvNumber.setText(String.valueOf(position + 1));
+        }
+        
         if (favoriteManager == null) {
             favoriteManager = new FavoriteManager(holder.itemView.getContext());
         }
 
+        String logoUrl = channel.getLogoUrl();
+        if (logoUrl == null || logoUrl.isEmpty()) {
+            logoUrl = com.bykerimoff.player.utils.LogoManager.INSTANCE.getLogoForChannel(channel.getName());
+            if (logoUrl != null) {
+                channel.setLogoUrl(logoUrl);
+            }
+        }
+
         Glide.with(holder.itemView.getContext())
                 .asBitmap()
-                .load(channel.getLogoUrl())
+                .load(logoUrl)
                 .format(com.bumptech.glide.load.DecodeFormat.PREFER_RGB_565) // RAM-a 50% qənaət
                 .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL) // Tam keş
                 .placeholder(R.drawable.default_logo)
@@ -122,14 +134,22 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         return channels.size();
     }
 
+    @Override
+    public void onViewRecycled(@NonNull ViewHolder holder) {
+        super.onViewRecycled(holder);
+        // RAM-a qənaət: View ekrandan çıxanda loqonu yaddaşdan təmizlə
+        Glide.with(holder.itemView.getContext()).clear(holder.ivLogo);
+    }
+
     static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivLogo, ivFavorite;
-        TextView tvName;
+        TextView tvName, tvNumber;
         ViewHolder(View itemView) {
             super(itemView);
             ivLogo = itemView.findViewById(R.id.ivLogo);
             ivFavorite = itemView.findViewById(R.id.ivFavorite);
             tvName = itemView.findViewById(R.id.tvChannelName);
+            tvNumber = itemView.findViewById(R.id.tvChannelNumber);
         }
     }
 }

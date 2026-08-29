@@ -5,6 +5,14 @@
     android:layout_height="match_parent">
 
     <!-- Panoramic Background -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerViewBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:use_controller="false"
+        app:resize_mode="fill"
+        android:visibility="gone" />
+
     <ImageView
         android:id="@+id/ivAppBackground"
         android:layout_width="match_parent"
@@ -312,6 +320,26 @@
                         android:textColor="@color/white"
                         android:buttonTint="@color/gold_primary" />
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Buffer (Keşləmə) Müddəti:"
+                        android:textColor="@color/gold_primary"
+                        android:textSize="16sp"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <RadioGroup
+                        android:id="@+id/rgBufferChoice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <RadioButton android:id="@+id/rbBuffer0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0 saniyə (Gecikməsiz - Sürətli internet)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbBuffer5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5 saniyə (Normal)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbBuffer10" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="10 saniyə (Stabil - Orta internet)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbBuffer30" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="30 saniyə (Maksimum - Zəif internet)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                    </RadioGroup>
+
                     <Button
                         android:id="@+id/btnSpeedTest"
                         android:layout_width="match_parent"
@@ -454,6 +482,39 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:text="Tətbiq Teması (Rəng)"
+                android:textColor="@color/text_secondary"
+                android:textSize="18sp"
+                android:layout_marginBottom="8dp" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/bg_sidebar"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:gravity="center"
+                    android:background="@drawable/glass_card_bg">
+
+                    <View android:id="@+id/themeGold" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#FFD700" android:focusable="true" android:clickable="true" />
+                    <View android:id="@+id/themeBlue" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#00F2FF" android:focusable="true" android:clickable="true" />
+                    <View android:id="@+id/themeRed" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#FF0040" android:focusable="true" android:clickable="true" />
+                    <View android:id="@+id/themeGreen" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#00FF85" android:focusable="true" android:clickable="true" />
+                    <View android:id="@+id/themeSilver" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#E0E0E0" android:focusable="true" android:clickable="true" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Wallpaper Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:text="Arxa Fon Seçimi"
                 android:textColor="@color/text_secondary"
                 android:textSize="18sp"
@@ -481,6 +542,41 @@
                         android:focusable="true"
                         android:clickable="true"
                         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="16dp">
+
+                        <Button
+                            android:id="@+id/btnUploadImage"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="ŞƏKİL YÜKLƏ"
+                            android:layout_marginEnd="8dp"
+                            android:backgroundTint="@color/gold_dark"
+                            android:textColor="@color/white" />
+
+                        <Button
+                            android:id="@+id/btnUploadVideo"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="VİDEO YÜKLƏ"
+                            android:backgroundTint="@color/gold_dark"
+                            android:textColor="@color/white" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnResetWallpaper"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="STANDART FONA QAYIT"
+                        android:backgroundTint="@color/glass_white_heavy"
+                        android:textColor="@color/white" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

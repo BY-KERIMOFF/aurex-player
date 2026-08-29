@@ -10,7 +10,8 @@ object RecentChannelsManager {
     private const val KEY_RECENT = "recent_list"
     private const val MAX_RECENT = 15
 
-    fun addChannel(context: Context, channel: Channel) {
+    @JvmStatic
+    fun addRecentChannel(context: Context, channel: Channel) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val recentList = getRecentChannels(context).toMutableList()
 

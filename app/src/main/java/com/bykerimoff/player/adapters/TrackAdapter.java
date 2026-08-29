@@ -52,6 +52,14 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.ViewHolder> 
         holder.tvName.setText(track.name);
         holder.ivCheck.setVisibility(track.isSelected ? View.VISIBLE : View.GONE);
         holder.itemView.setOnClickListener(v -> listener.onTrackClick(track));
+        
+        holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                v.startAnimation(android.view.animation.AnimationUtils.loadAnimation(v.getContext(), R.anim.scale_up));
+            } else {
+                v.startAnimation(android.view.animation.AnimationUtils.loadAnimation(v.getContext(), R.anim.scale_down));
+            }
+        });
     }
 
     @Override

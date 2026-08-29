@@ -19,6 +19,7 @@ import androidx.media3.extractor.DefaultExtractorsFactory;
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
 import androidx.media3.ui.CaptionStyleCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.bykerimoff.player.adapters.CategoryAdapter;
 import com.bykerimoff.player.adapters.ChannelAdapter;
@@ -71,6 +72,7 @@ public class LiveTvActivity extends AppCompatActivity {
     private String m3uUrl;
     private String xtHost, xtUser, xtPass;
     private boolean isAdultEnabled = true;
+    private boolean isSportEnabled = true;
     private boolean isKidsModeActive = false;
 
     private android.os.CountDownTimer testCountDownTimer;
@@ -91,6 +93,7 @@ public class LiveTvActivity extends AppCompatActivity {
         xtUser = prefs.getString("xtream_user", "");
         xtPass = prefs.getString("xtream_pass", "");
         isAdultEnabled = prefs.getBoolean("is_adult_enabled", true);
+        isSportEnabled = prefs.getBoolean("is_sport_enabled", true);
         isKidsModeActive = prefs.getBoolean("kids_mode_active", false);
 
         // Xtream və ya M3U rejimini dəqiq təyin et
@@ -102,29 +105,52 @@ public class LiveTvActivity extends AppCompatActivity {
         
         binding.btnBack.setOnClickListener(v -> finish());
         
-        String currentPlaylistId = isXtream ? (xtHost + xtUser) : m3uUrl;
+        String filterCategory = getIntent().getStringExtra("filter_category");
+        String currentPlaylistId = (isXtream ? (xtHost + xtUser) : m3uUrl) + "_" + (filterCategory != null ? filterCategory : "live");
+        
+        // 1. Check Memory Cache
         if (DataManager.getPlaylistIdentifier().equals(currentPlaylistId) && !DataManager.getAllChannels().isEmpty()) {
-            // Məlumatlar keşdə var, sürətli yüklə
-            allChannels.clear();
-            allChannels.addAll(DataManager.getAllChannels());
-            channelMap.clear();
-            channelMap.putAll(DataManager.getCurrentChannelMap());
-            categories.clear();
-            categories.addAll(DataManager.getCurrentCategoryList());
-            
-            categoryAdapter.notifyDataSetChanged();
-            handleStartCategory();
-            
-            // Arxa planda yenilə (səssiz)
+            loadFromMemory();
             refreshDataInBackground(isXtream);
-        } else {
-            // İlk dəfə və ya yeni playlist yüklə
-            if (isXtream) {
-                loadXtreamData();
+        } 
+        // 2. Check Disk Cache
+        else {
+            List<Channel> cachedChannels = com.bykerimoff.player.utils.DiskCacheManager.loadChannels(this, currentPlaylistId);
+            List<Category> cachedCategories = com.bykerimoff.player.utils.DiskCacheManager.loadCategories(this, currentPlaylistId);
+            
+            if (!cachedChannels.isEmpty()) {
+                allChannels.clear();
+                allChannels.addAll(cachedChannels);
+                categories.clear();
+                categories.addAll(cachedCategories);
+                
+                // Rebuild channel map for fast filtering
+                channelMap.clear();
+                for (Channel c : allChannels) {
+                    String catId = c.getCategoryName();
+                    if (catId == null) catId = "0";
+                    if (!channelMap.containsKey(catId)) channelMap.put(catId, new ArrayList<>());
+                    channelMap.get(catId).add(c);
+                }
+                
+                originalCategories.clear();
+                originalCategories.addAll(cachedCategories);
+                
+                categoryAdapter.notifyDataSetChanged();
+                handleStartCategory();
+                
+                // Still refresh in background silently
+                DataManager.setPlaylistIdentifier(currentPlaylistId);
+                refreshDataInBackground(isXtream);
             } else {
-                loadM3UData();
+                // 3. First time load or cache empty
+                if (isXtream) {
+                    loadXtreamData();
+                } else {
+                    loadM3UData();
+                }
+                DataManager.setPlaylistIdentifier(currentPlaylistId);
             }
-            DataManager.setPlaylistIdentifier(currentPlaylistId);
         }
 
         // Manual EPG-ni yoxla
@@ -136,12 +162,24 @@ public class LiveTvActivity extends AppCompatActivity {
         updateTestCountdown();
     }
 
+    private void loadFromMemory() {
+        allChannels.clear();
+        allChannels.addAll(DataManager.getAllChannels());
+        channelMap.clear();
+        channelMap.putAll(DataManager.getCurrentChannelMap());
+        categories.clear();
+        categories.addAll(DataManager.getCurrentCategoryList());
+        
+        categoryAdapter.notifyDataSetChanged();
+        handleStartCategory();
+    }
+
     private void refreshDataInBackground(boolean isXtream) {
         // Keş olsa belə arxa planda yeniləyək ki, kanal siyahısı aktual qalsın
         if (isXtream) {
-            loadXtreamDataSilent();
+            loadXtreamDataInternal(false);
         } else {
-            loadM3UDataSilent();
+            loadM3UFromUrl(m3uUrl);
         }
     }
 
@@ -260,8 +298,13 @@ public class LiveTvActivity extends AppCompatActivity {
 
     private void filterChannelsBySearch(String query) {
         channels.clear();
+        String lowerQuery = query.toLowerCase();
         for (Channel channel : allChannels) {
-            if (channel.getName().toLowerCase().contains(query.toLowerCase())) {
+            if (channel.getName().toLowerCase().contains(lowerQuery)) {
+                // Filtrləri yoxla
+                if (!isAdultEnabled && M3UParser.isSensitiveCategory(channel.getCategoryName())) continue;
+                if (!isSportEnabled && M3UParser.isSportCategory(channel.getCategoryName())) continue;
+                
                 channels.add(channel);
             }
         }
@@ -296,10 +339,10 @@ public class LiveTvActivity extends AppCompatActivity {
         // Daha mükəmməl buferləmə ayarları (50-60 FPS üçün)
         androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                        20000, // minBufferMs
-                        60000, // maxBufferMs
-                        2000,  // bufferForPlaybackMs
-                        5000   // bufferForPlaybackAfterRebufferMs
+                        5000,  // minBufferMs (20000 -> 5000)
+                        15000, // maxBufferMs (60000 -> 15000)
+                        1000,  // bufferForPlaybackMs (2000 -> 1000)
+                        2000   // bufferForPlaybackAfterRebufferMs (5000 -> 2000)
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build();
@@ -357,6 +400,12 @@ public class LiveTvActivity extends AppCompatActivity {
                 checkAndSetVodMode(category);
                 filterChannelsByCategory(category);
             }
+            
+            // Save selected category ID
+            getSharedPreferences("neoplay_prefs", MODE_PRIVATE).edit()
+                .putString("last_category_id", category.getId())
+                .apply();
+                
             binding.rvChannels.requestFocus();
         });
         binding.rvCategories.setLayoutManager(new LinearLayoutManager(this));
@@ -463,6 +512,10 @@ public class LiveTvActivity extends AppCompatActivity {
         loadXtreamDataInternal(true);
     }
 
+    private List<XtreamCategory> pendingXtCats = null;
+    private List<XtreamChannel> pendingXtStreams = null;
+    private String pendingXtType = "";
+
     private void loadXtreamDataInternal(boolean showProgress) {
         if (xtHost.isEmpty() || xtUser.isEmpty() || xtPass.isEmpty()) {
             Toast.makeText(this, "Xtream giriş məlumatları tapılmadı", Toast.LENGTH_SHORT).show();
@@ -489,731 +542,501 @@ public class LiveTvActivity extends AppCompatActivity {
 
         String baseUrl = cleanHost + "/player_api.php?username=" + encodedUser + "&password=" + encodedPass;
         
+        pendingXtCats = null;
+        pendingXtStreams = null;
+
         if ("VOD_MOVIES".equals(filterCategory)) {
+            pendingXtType = "movie";
             String catUrl = baseUrl + "&action=get_vod_categories";
-            ApiClient.getService().getXtreamVodCategories(catUrl).enqueue(new Callback<List<XtreamCategory>>() {
-                @Override
-                public void onResponse(Call<List<XtreamCategory>> call, Response<List<XtreamCategory>> response) {
-                    if (response.isSuccessful() && response.body() != null) {
-                        String streamUrl = baseUrl + "&action=get_vod_streams";
-                        processXtreamCategories(response.body(), streamUrl, "movie");
-                        runOnUiThread(() -> {
-                            binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                            Toast.makeText(LiveTvActivity.this, "Server xətası (Vod Cat): " + response.code(), Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                }
-                @Override
-                public void onFailure(Call<List<XtreamCategory>> call, Throwable t) {
-                    runOnUiThread(() -> {
-                        binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                        Toast.makeText(LiveTvActivity.this, "Bağlantı xətası (Vod Cat)", Toast.LENGTH_SHORT).show();
-                    });
-                }
-            });
+            String streamUrl = baseUrl + "&action=get_vod_streams";
+            
+            ApiClient.getService().getXtreamVodCategories(catUrl).enqueue(new CategoryCallback());
+            ApiClient.getService().getXtreamVod(streamUrl).enqueue(new StreamCallback());
+            
         } else if ("VOD_SERIES".equals(filterCategory)) {
+            pendingXtType = "series";
             String catUrl = baseUrl + "&action=get_series_categories";
-            ApiClient.getService().getXtreamSeriesCategories(catUrl).enqueue(new Callback<List<XtreamCategory>>() {
-                @Override
-                public void onResponse(Call<List<XtreamCategory>> call, Response<List<XtreamCategory>> response) {
-                    if (response.isSuccessful() && response.body() != null) {
-                        String streamUrl = baseUrl + "&action=get_series";
-                        processXtreamCategories(response.body(), streamUrl, "series");
-                    } else {
-                        runOnUiThread(() -> {
-                            binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                            Toast.makeText(LiveTvActivity.this, "Server xətası (Series Cat): " + response.code(), Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                }
-                @Override
-                public void onFailure(Call<List<XtreamCategory>> call, Throwable t) {
-                    runOnUiThread(() -> {
-                        binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                        Toast.makeText(LiveTvActivity.this, "Bağlantı xətası (Series Cat)", Toast.LENGTH_SHORT).show();
-                    });
-                }
-            });
+            String streamUrl = baseUrl + "&action=get_series";
+            
+            ApiClient.getService().getXtreamSeriesCategories(catUrl).enqueue(new CategoryCallback());
+            ApiClient.getService().getXtreamVod(streamUrl).enqueue(new StreamCallback()); // Both use same model
+            
         } else {
+            pendingXtType = "live";
             String catUrl = baseUrl + "&action=get_live_categories";
             String streamUrl = baseUrl + "&action=get_live_streams";
 
-            android.util.Log.d("XTREAM_DEBUG", "Live Cat URL: " + catUrl);
-            
-            // Xam cavabı yoxlamaq üçün loglama
-            ApiClient.getService().getRawResponse(catUrl).enqueue(new Callback<okhttp3.ResponseBody>() {
-                @Override
-                public void onResponse(Call<okhttp3.ResponseBody> call, Response<okhttp3.ResponseBody> response) {
-                    try {
-                        if (response.isSuccessful() && response.body() != null) {
-                            String rawJson = response.body().string();
-                            android.util.Log.d("XTREAM_RAW", "Raw JSON Response length: " + rawJson.length());
-                            if (rawJson.length() < 500) {
-                                android.util.Log.d("XTREAM_RAW", "Raw JSON Content: " + rawJson);
-                            } else {
-                                android.util.Log.d("XTREAM_RAW", "Raw JSON Content (start): " + rawJson.substring(0, 500));
-                            }
-                        } else {
-                            android.util.Log.e("XTREAM_RAW", "Raw Response failed: " + response.code());
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-                @Override
-                public void onFailure(Call<okhttp3.ResponseBody> call, Throwable t) {
-                    android.util.Log.e("XTREAM_RAW", "Raw Response failure: " + t.getMessage());
-                }
-            });
-
-            ApiClient.getService().getXtreamCategories(catUrl).enqueue(new Callback<List<XtreamCategory>>() {
-                @Override
-                public void onResponse(Call<List<XtreamCategory>> call, Response<List<XtreamCategory>> response) {
-                    android.util.Log.d("XTREAM_DEBUG", "Live Categories response success: " + response.isSuccessful() + ", size: " + (response.body() != null ? response.body().size() : "null"));
-                    if (response.isSuccessful() && response.body() != null && !response.body().isEmpty()) {
-                        processXtreamCategories(response.body(), streamUrl, "live");
-                    } else {
-                        runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
-                        String errorCode = response.code() > 0 ? " (Kod: " + response.code() + ")" : "";
-                        android.util.Log.e("XTREAM_DEBUG", "Live Categories boş və ya xətalı gəldi. M3U-ya keçid edilir...");
-                        runOnUiThread(() -> Toast.makeText(LiveTvActivity.this, "Xtream məlumatları alınmadı" + errorCode + ", M3U yüklənir...", Toast.LENGTH_LONG).show());
-                        loadM3UData();
-                    }
-                }
-                @Override
-                public void onFailure(Call<List<XtreamCategory>> call, Throwable t) {
-                    runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
-                    android.util.Log.e("XTREAM_DEBUG", "Live Categories failure: " + t.getMessage(), t);
-                    loadM3UData(); // Xəta zamanı M3U-ya keçid
-                }
-            });
+            ApiClient.getService().getXtreamCategories(catUrl).enqueue(new CategoryCallback());
+            ApiClient.getService().getXtreamChannels(streamUrl).enqueue(new StreamCallback());
         }
     }
 
-    private void processXtreamCategories(List<XtreamCategory> xtCats, String streamUrl, String type) {
-        categories.clear();
-        originalCategories.clear();
-        
-        categories.add(new Category("0", "Sevimlilər", 0));
-        for (XtreamCategory xc : xtCats) {
-            categories.add(new Category(xc.getId(), xc.getName(), 0));
+    private class CategoryCallback implements Callback<List<XtreamCategory>> {
+        @Override
+        public void onResponse(Call<List<XtreamCategory>> call, Response<List<XtreamCategory>> response) {
+            if (response.isSuccessful() && response.body() != null) {
+                pendingXtCats = response.body();
+                checkAndProcessParallel();
+            } else {
+                handleXtreamError("Category Error: " + response.code());
+            }
         }
-        
-        originalCategories.addAll(categories);
-        runOnUiThread(() -> categoryAdapter.notifyDataSetChanged());
+        @Override
+        public void onFailure(Call<List<XtreamCategory>> call, Throwable t) {
+            handleXtreamError("Category Connection Error");
+        }
+    }
 
-        if (type.equals("live")) {
-            ApiClient.getService().getXtreamChannels(streamUrl).enqueue(new Callback<List<XtreamChannel>>() {
-                @Override
-                public void onResponse(Call<List<XtreamChannel>> call, Response<List<XtreamChannel>> response) {
-                    if (response.isSuccessful() && response.body() != null) {
-                        processXtreamChannels(response.body());
-                    } else {
-                        runOnUiThread(() -> {
-                            binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                            Toast.makeText(LiveTvActivity.this, "Server xətası (Streams): " + response.code(), Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                }
-                @Override
-                public void onFailure(Call<List<XtreamChannel>> call, Throwable t) {
-                    runOnUiThread(() -> {
-                        binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                        Toast.makeText(LiveTvActivity.this, "Bağlantı xətası (Streams)", Toast.LENGTH_SHORT).show();
-                    });
-                }
-            });
+    private class StreamCallback<T> implements Callback<List<T>> {
+        @Override
+        public void onResponse(Call<List<T>> call, Response<List<T>> response) {
+            if (response.isSuccessful() && response.body() != null) {
+                pendingXtStreams = (List<XtreamChannel>) response.body();
+                checkAndProcessParallel();
+            } else {
+                handleXtreamError("Stream Error: " + response.code());
+            }
+        }
+        @Override
+        public void onFailure(Call<List<T>> call, Throwable t) {
+            handleXtreamError("Stream Connection Error");
+        }
+    }
+
+    private synchronized void checkAndProcessParallel() {
+        if (pendingXtCats != null && pendingXtStreams != null) {
+            processParallelData(pendingXtCats, pendingXtStreams, pendingXtType);
+        }
+    }
+
+    private void handleXtreamError(String msg) {
+        runOnUiThread(() -> {
+            binding.mainLoadingLayout.setVisibility(View.GONE);
+            android.util.Log.e("XTREAM_ERROR", msg);
+            // Fallback to M3U if necessary
+            if (pendingXtCats == null && pendingXtStreams == null) {
+                loadM3UData();
+            }
+        });
+    }
+
+    private void processParallelData(List<XtreamCategory> xtCats, List<XtreamChannel> xtStreams, String type) {
+        // Build map first for fast access
+        Map<String, List<Channel>> tempMap = new HashMap<>();
+        List<Channel> tempAll = new ArrayList<>(xtStreams.size());
+        
+        String cleanHost = xtHost != null ? xtHost.trim().replaceAll("/+$", "") : "";
+        if (!cleanHost.isEmpty() && !cleanHost.startsWith("http://") && !cleanHost.startsWith("https://")) {
+            cleanHost = "http://" + cleanHost;
+        }
+
+        String creds = "";
+        String vodTypePath = "";
+        if ("movie".equals(type) || "series".equals(type)) {
+            vodTypePath = type.equals("series") ? "series" : "movie";
+            creds = "/" + xtUser + "/" + xtPass + "/";
         } else {
-            fetchXtreamVod(streamUrl, type);
-        }
-    }
-
-    private void fetchXtreamVod(String url, String type) {
-        ApiClient.getService().getXtreamVod(url).enqueue(new Callback<List<XtreamChannel>>() {
-            @Override
-            public void onResponse(Call<List<XtreamChannel>> call, Response<List<XtreamChannel>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    processXtreamVod(response.body(), type);
-                } else {
-                    runOnUiThread(() -> {
-                        binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                        Toast.makeText(LiveTvActivity.this, "Server xətası (Vod): " + response.code(), Toast.LENGTH_SHORT).show();
-                    });
-                }
-            }
-            @Override
-            public void onFailure(Call<List<XtreamChannel>> call, Throwable t) {
-                runOnUiThread(() -> {
-                    binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                    Toast.makeText(LiveTvActivity.this, "Bağlantı xətası (Vod)", Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
-    }
-
-    private void processXtreamVod(List<XtreamChannel> vods, String type) {
-        android.util.Log.d("XTREAM_DEBUG", "VOD size received: " + (vods != null ? vods.size() : "null"));
-        if (vods == null || vods.isEmpty()) {
-            runOnUiThread(() -> {
-                runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
-                handleStartCategory();
-            });
-            return;
+            creds = "/live/" + xtUser + "/" + xtPass + "/";
         }
 
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        executor.execute(() -> {
-            List<Channel> tempAll = new ArrayList<>();
-            Map<String, List<Channel>> tempMap = new HashMap<>();
-
-            String cleanHost = xtHost != null ? xtHost.trim().replaceAll("/+$", "") : "";
-            if (!cleanHost.isEmpty() && !cleanHost.startsWith("http://") && !cleanHost.startsWith("https://")) {
-                cleanHost = "http://" + cleanHost;
-            }
-
-            String vodTypePath = type.equals("series") ? "series" : "movie";
+        for (XtreamChannel xc : xtStreams) {
+            String sid = xc.getStreamId();
+            if (sid == null || sid.isEmpty() || xc.getName() == null) continue;
             
-            for (XtreamChannel xc : vods) {
-                if (xc.getStreamId() == null || xc.getStreamId().isEmpty() || xc.getName() == null) continue;
-                
-                String logo = xc.getLogo();
-                // Filmlər üçün loqo axtarışını sürətləndirək (yalnız boşdursa)
-                if (logo == null || logo.isEmpty()) {
-                    logo = ""; // Filmlərdə loqo axtarışı çox vaxt apardığı üçün onu asinxron edəcəyik və ya buraxacağıq
-                }
-                
+            String streamLink;
+            if ("movie".equals(type) || "series".equals(type)) {
                 String ext = type.equals("series") ? "mkv" : xc.getContainerExtension();
-                String streamLink = cleanHost + "/" + vodTypePath + "/" + xtUser + "/" + xtPass + "/" + xc.getStreamId() + "." + ext;
-                Channel channel = new Channel(xc.getStreamId(), xc.getName(), logo, com.bykerimoff.player.utils.SecurityUtils.encryptUrl(streamLink), xc.getCategoryId());
-                tempAll.add(channel);
-                
-                String catId = xc.getCategoryId();
-                if (!tempMap.containsKey(catId)) tempMap.put(catId, new ArrayList<>());
-                tempMap.get(catId).add(channel);
+                streamLink = cleanHost + "/" + vodTypePath + creds + sid + "." + ext;
+            } else {
+                streamLink = cleanHost + creds + sid + ".ts";
             }
-            
-            runOnUiThread(() -> {
-                binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                allChannels.clear();
-                allChannels.addAll(tempAll);
-                channelMap.clear();
-                channelMap.putAll(tempMap);
-                
-                if (allChannels.isEmpty()) {
-                    Toast.makeText(LiveTvActivity.this, "Siyahı boşdur (VOD)", Toast.LENGTH_SHORT).show();
-                }
 
-                DataManager.setAllChannels(allChannels);
-                DataManager.setCurrentChannelMap(channelMap);
-                updateCategoryCounts();
-                handleStartCategory();
-            });
+            Channel channel = new Channel(sid, xc.getName(), xc.getLogo(), 
+                com.bykerimoff.player.utils.SecurityUtils.encryptUrl(streamLink), xc.getCategoryId());
+            
+            tempAll.add(channel);
+            
+            String catId = xc.getCategoryId();
+            if (catId == null) catId = "0";
+            List<Channel> list = tempMap.get(catId);
+            if (list == null) {
+                list = new ArrayList<>();
+                tempMap.put(catId, list);
+            }
+            list.add(channel);
+        }
+
+        allChannels.clear();
+        allChannels.addAll(tempAll);
+        channelMap.clear();
+        channelMap.putAll(tempMap);
+
+        originalCategories.clear();
+        originalCategories.add(new Category("0", "Sevimlilər", 0));
+        originalCategories.add(new Category("all", "Bütün Kanallar", 0));
+        for (XtreamCategory xc : xtCats) {
+            originalCategories.add(new Category(xc.getId(), xc.getName(), 0));
+        }
+
+        runOnUiThread(() -> {
+            updateCategoryCounts();
+            
+            // Save to Disk Cache
+            String filterCategory = getIntent().getStringExtra("filter_category");
+            String isXtreamStr = ("xtream".equalsIgnoreCase(playlistType) || (xtHost != null && !xtHost.trim().isEmpty())) ? "xt" : "m3u";
+            String currentPlaylistId = (isXtreamStr.equals("xt") ? (xtHost + xtUser) : m3uUrl) + "_" + (filterCategory != null ? filterCategory : "live");
+            com.bykerimoff.player.utils.DiskCacheManager.saveChannels(LiveTvActivity.this, currentPlaylistId, allChannels);
+            com.bykerimoff.player.utils.DiskCacheManager.saveCategories(LiveTvActivity.this, currentPlaylistId, categories);
+
+            binding.mainLoadingLayout.setVisibility(View.GONE);
+            handleStartCategory();
         });
     }
 
-    private void processXtreamChannels(List<XtreamChannel> xtChannels) {
-        android.util.Log.d("XTREAM_DEBUG", "Live Channels size received: " + (xtChannels != null ? xtChannels.size() : "null"));
-        
-        // Asinxron olaraq siyahını dərhal emal et və UI-ı bloklama
-        Executors.newSingleThreadExecutor().execute(() -> {
-            List<Channel> tempAll = new ArrayList<>();
-            Map<String, List<Channel>> tempMap = new HashMap<>();
-            String cleanHost = xtHost != null ? xtHost.trim().replaceAll("/+$", "") : "";
-            if (!cleanHost.isEmpty() && !cleanHost.startsWith("http://") && !cleanHost.startsWith("https://")) {
-                cleanHost = "http://" + cleanHost;
-            }
+    // Remove separate slow processing methods
+    private void processXtreamVod(List<XtreamChannel> vods, String type) {}
+    private void processXtreamChannels(List<XtreamChannel> xtChannels) {}
 
-            if (xtChannels != null && !xtChannels.isEmpty()) {
-                for (XtreamChannel xc : xtChannels) {
-                    if (xc.getStreamId() == null || xc.getName() == null) continue;
-                    
-                    String logo = xc.getLogo();
-                    if (logo == null || logo.isEmpty()) {
-                        logo = com.bykerimoff.player.utils.LogoManager.INSTANCE.getLogoForChannel(xc.getName());
-                    }
-                    
-                    String streamLink = cleanHost + "/live/" + xtUser + "/" + xtPass + "/" + xc.getStreamId() + ".ts";
-                    Channel channel = new Channel(xc.getStreamId(), xc.getName(), logo != null ? logo : "", com.bykerimoff.player.utils.SecurityUtils.encryptUrl(streamLink), xc.getCategoryId());
-                    tempAll.add(channel);
-                    
-                    String catId = xc.getCategoryId() != null ? xc.getCategoryId() : "0";
-                    if (!tempMap.containsKey(catId)) tempMap.put(catId, new ArrayList<>());
-                    tempMap.get(catId).add(channel);
+    private void handleStartCategory() {
+        String filter = getIntent().getStringExtra("filter_category");
+        if (filter != null) {
+            Category target = null;
+            if (filter.equals("Sevimlilər")) {
+                for (Category cat : originalCategories) {
+                    if ("Sevimlilər".equals(cat.getName())) { target = cat; break; }
                 }
+            } else if (filter.startsWith("VOD_")) {
+                target = originalCategories.get(1); // "all" category
             }
             
-            runOnUiThread(() -> {
-                binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                allChannels.clear();
-                allChannels.addAll(tempAll);
-                channelMap.clear();
-                channelMap.putAll(tempMap);
-                
-                if (allChannels.isEmpty()) {
-                    Toast.makeText(LiveTvActivity.this, "Kanal siyahısı boşdur", Toast.LENGTH_SHORT).show();
-                }
-
-                // Pleyer üçün məlumatları yadda saxla
-                DataManager.setAllChannels(allChannels);
-                DataManager.setCurrentChannelMap(channelMap);
-                
-                updateCategoryCounts();
-                handleStartCategory();
-            });
-        });
+            if (target != null) {
+                checkAndSetVodMode(target);
+                filterChannelsByCategory(target);
+            }
+        } else {
+            if (!originalCategories.isEmpty()) {
+                filterChannelsByCategory(originalCategories.get(1)); // All channels
+            }
+        }
     }
 
     private void updateCategoryCounts() {
-        if (originalCategories.isEmpty()) return;
-
-        Map<String, Integer> counts = new HashMap<>();
-        for (Map.Entry<String, List<Channel>> entry : channelMap.entrySet()) {
-            counts.put(entry.getKey(), entry.getValue().size());
-        }
+        FavoriteManager favoriteManager = new FavoriteManager(this);
+        Set<String> favs = favoriteManager.getFavorites();
         
-        FavoriteManager fm = new FavoriteManager(this);
-        int favs = 0;
-        if (allChannels != null && allChannels.size() < 5000) {
-            List<Channel> allCopy = new ArrayList<>(allChannels);
-            for (Channel c : allCopy) if (fm.isFavorite(c.getId())) favs++;
-        }
-
-        // Əvvəlcə orijinal siyahıda sayları yeniləyək
-        for (int i = 0; i < originalCategories.size(); i++) {
-            Category cat = originalCategories.get(i);
-            if (cat.getId().equals("0")) {
-                originalCategories.set(i, new Category("0", "Sevimlilər", favs));
-            } else {
-                Integer count = counts.get(cat.getId());
-                originalCategories.set(i, new Category(cat.getId(), cat.getName(), count == null ? 0 : count));
-            }
-        }
+        int totalKidsChannels = 0;
+        int favKidsChannels = 0;
         
-        // İndi göstərilən siyahını yeniləyək
-        categories.clear();
         if (isKidsModeActive) {
-            for (Category cat : originalCategories) {
-                if (com.bykerimoff.player.utils.KidsModeUtils.INSTANCE.isKidsCategory(cat.getName())) {
-                    categories.add(cat);
-                }
+            for (Channel c : allChannels) {
+                if (M3UParser.isKidsCategory(c.getCategoryName())) totalKidsChannels++;
             }
-            binding.etSearch.setVisibility(View.GONE);
-        } else {
-            categories.addAll(originalCategories);
-            binding.etSearch.setVisibility(View.VISIBLE);
-        }
-        
-        // Sıralamanı tətbiq et
-        sortCategories(categories);
-        DataManager.setCurrentCategoryList(categories);
-        
-        runOnUiThread(() -> categoryAdapter.notifyDataSetChanged());
-    }
-
-    private void sortCategories(List<Category> list) {
-        if (list == null || list.size() <= 1) return;
-
-        SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-        String sortMode = prefs.getString("category_sort_mode", "default");
-
-        if ("default".equals(sortMode)) return;
-
-        // Sevimlilər həmişə başda qalmalıdır
-        Category favorites = null;
-        for (Category c : list) {
-            if (c.getId().equals("0") || "Sevimlilər".equals(c.getName())) {
-                favorites = c;
-                break;
-            }
-        }
-
-        if (favorites != null) list.remove(favorites);
-
-        if ("name".equals(sortMode)) {
-            java.util.Collections.sort(list, (c1, c2) -> c1.getName().compareToIgnoreCase(c2.getName()));
-        } else if ("count".equals(sortMode)) {
-            java.util.Collections.sort(list, (c1, c2) -> Integer.compare(c2.getChannelCount(), c1.getChannelCount()));
-        }
-
-        if (favorites != null) list.add(0, favorites);
-    }
-
-    private void loadM3UFromUrl(String urlString) {
-        if (urlString == null || urlString.trim().isEmpty()) return;
-        
-        Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-                okhttp3.OkHttpClient client = com.bykerimoff.player.utils.NetworkUtils.getSafeOkHttpClient();
-                okhttp3.Request request = new okhttp3.Request.Builder()
-                        .url(urlString)
-                        .build();
-
-                try (okhttp3.Response response = client.newCall(request).execute()) {
-                    if (!response.isSuccessful()) {
-                        android.util.Log.e("M3U_LOAD", "M3U yükləmə uğursuz: " + response.code());
-                        runOnUiThread(() -> {
-                            binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                            Toast.makeText(LiveTvActivity.this, "M3U yüklənmədi (Kod: " + response.code() + ")", Toast.LENGTH_SHORT).show();
-                        });
-                        return;
-                    }
-
-                    String m3uContent = response.body().string();
-                    List<Channel> parsedChannels = M3UParser.parse(m3uContent);
-                    
-                    // Loqoları yoxla
-                    for (Channel ch : parsedChannels) {
-                        if (ch.getLogoUrl() == null || ch.getLogoUrl().isEmpty()) {
-                            String globalLogo = com.bykerimoff.player.utils.LogoManager.INSTANCE.getLogoForChannel(ch.getName());
-                            if (globalLogo != null) ch.setLogoUrl(globalLogo);
-                        }
-                    }
-                    
-                    // EPG yükləməsini başlat
-                    String epgUrl = DataManager.getGlobalEpgUrl();
-                    if (!epgUrl.isEmpty()) {
-                        XMLTVParser.downloadAndParse(epgUrl);
-                    }
-                    
-                    runOnUiThread(() -> {
-                        allChannels.clear();
-                        allChannels.addAll(parsedChannels);
-                        processLoadedChannels();
-                    });
-                }
-            } catch (Exception e) {
-                android.util.Log.e("M3U_LOAD", "M3U xətası: " + e.getMessage());
-                runOnUiThread(() -> {
-                    binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
-                    Toast.makeText(LiveTvActivity.this, "İnternet və ya M3U xətası", Toast.LENGTH_SHORT).show();
-                });
-                e.printStackTrace();
-            }
-        });
-    }
-
-    private void processLoadedChannels() {
-        runOnUiThread(() -> binding.mainLoadingLayout.setVisibility(android.view.View.GONE));
-        
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        executor.execute(() -> {
-            List<Channel> channelsCopy;
-            synchronized (allChannels) {
-                channelsCopy = new ArrayList<>(allChannels);
-            }
-            Map<String, List<Channel>> tempMap = new HashMap<>();
-            Set<String> seenCats = new LinkedHashSet<>();
-            FavoriteManager favoriteManager = new FavoriteManager(this);
-            int favCount = 0;
-
-            for (Channel channel : channelsCopy) {
-                if (favoriteManager.isFavorite(channel.getId())) favCount++;
-                String catName = channel.getCategoryName();
-                if (!tempMap.containsKey(catName)) tempMap.put(catName, new ArrayList<>());
-                tempMap.get(catName).add(channel);
-                seenCats.add(catName);
-            }
-
-            final int finalFavCount = favCount;
-            runOnUiThread(() -> {
-                channelMap.clear();
-                channelMap.putAll(tempMap);
-                categories.clear();
-                originalCategories.clear();
-                
-                if (isKidsModeActive) {
-                    binding.etSearch.setVisibility(View.GONE);
-                }
-
-                categories.add(new Category("0", "Sevimlilər", finalFavCount));
-                int id = 1;
-                for (String cname : seenCats) {
-                    List<Channel> list = channelMap.get(cname);
-                    categories.add(new Category(String.valueOf(id++), cname, list != null ? list.size() : 0));
-                }
-                
-                originalCategories.addAll(categories);
-                
-                if (isKidsModeActive) {
-                    List<Category> filtered = new ArrayList<>();
-                    for (Category cat : categories) {
-                        if (com.bykerimoff.player.utils.KidsModeUtils.INSTANCE.isKidsCategory(cat.getName())) {
-                            filtered.add(cat);
-                        }
-                    }
-                    categories.clear();
-                    categories.addAll(filtered);
-                }
-
-                // Pleyer üçün məlumatları yadda saxla
-                sortCategories(categories);
-                
-                if (allChannels.isEmpty()) {
-                    Toast.makeText(LiveTvActivity.this, "M3U siyahısı boşdur", Toast.LENGTH_SHORT).show();
-                }
-
-                DataManager.setAllChannels(allChannels);
-                DataManager.setCurrentCategoryList(categories);
-                DataManager.setCurrentChannelMap(channelMap);
-                
-                categoryAdapter.notifyDataSetChanged();
-                handleStartCategory();
-            });
-        });
-    }
-
-    private void handleStartCategory() {
-        boolean autoStart = getIntent().getBooleanExtra("auto_start", false);
-        if (autoStart) {
-            getIntent().removeExtra("auto_start"); // Təkrar işə düşməməsi üçün
-            SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-            String lastUrl = prefs.getString("last_channel_url", "");
-            if (!lastUrl.isEmpty() && !allChannels.isEmpty()) {
-                for (int i = 0; i < allChannels.size(); i++) {
-                    if (allChannels.get(i).getStreamUrl().equals(lastUrl)) {
-                        Channel target = allChannels.get(i);
-                        playChannel(target, i, new ArrayList<>(allChannels));
-                        return;
-                    }
-                }
-            }
-        }
-
-        String filterCategory = getIntent().getStringExtra("filter_category");
-        if (filterCategory != null && categories != null && !categories.isEmpty()) {
-            if ("Sevimlilər".equals(filterCategory)) {
-                loadFavorites();
-            } else if ("VOD_MOVIES".equals(filterCategory) || "VOD_SERIES".equals(filterCategory)) {
-                setVodMode(true);
-                loadVodContent();
-            } else {
-                for (Category cat : categories) {
-                    if (cat.getName().equalsIgnoreCase(filterCategory)) {
-                        filterChannelsByCategory(cat);
-                        return;
-                    }
-                }
-                setVodMode(true);
-                loadVodContent();
-            }
-        } else if (categories != null && !categories.isEmpty()) {
-            setVodMode(false);
-            
-            List<Category> catsCopy = new ArrayList<>(categories);
-            if (catsCopy.isEmpty()) return;
-
-            Category targetCategory = catsCopy.get(0);
-            if (targetCategory != null && "Sevimlilər".equals(targetCategory.getName())) {
-                FavoriteManager fm = new FavoriteManager(this);
-                boolean hasFavorites = false;
-                List<Channel> channelsCopy = new ArrayList<>(allChannels);
-                for (Channel c : channelsCopy) {
-                    if (c != null && fm.isFavorite(c.getId())) {
-                        hasFavorites = true;
+            for (String favId : favs) {
+                for (Channel c : allChannels) {
+                    if (c.getId().equals(favId) && M3UParser.isKidsCategory(c.getCategoryName())) {
+                        favKidsChannels++;
                         break;
                     }
                 }
-                
-                if (!hasFavorites && catsCopy.size() > 1) {
-                    targetCategory = catsCopy.get(1); // Birinci real kateqoriya
-                }
-            }
-            
-            if (targetCategory != null) {
-                filterChannelsByCategory(targetCategory);
             }
         }
-    }
 
-    private void checkAndSetVodMode(Category category) {
-        String key = "xtream".equalsIgnoreCase(playlistType) ? category.getId() : category.getName();
-        List<Channel> list = channelMap.get(key);
-        if (list != null && !list.isEmpty()) {
-            setVodMode(M3UParser.isVodChannel(list.get(0).getStreamUrl()));
-        } else {
-            setVodMode(false);
-        }
-    }
+        SharedPreferences settingsPrefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
+        String sortMode = settingsPrefs.getString("category_sort_mode", "default");
 
-    private void setVodMode(boolean enabled) {
-        this.isVodMode = enabled;
-        if (enabled) {
-            binding.rvChannels.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 5));
-            channelAdapter.setViewType(com.bykerimoff.player.adapters.ChannelAdapter.VIEW_TYPE_GRID);
-            binding.panelPlayer.setVisibility(android.view.View.GONE);
-            binding.tvPanelTitle.setText("FILMLƏR / SERIALYAR");
-            if (miniPlayer != null && miniPlayer.isPlaying()) {
-                miniPlayer.stop();
-            }
-            android.widget.LinearLayout.LayoutParams params = (android.widget.LinearLayout.LayoutParams) binding.panelChannels.getLayoutParams();
-            params.weight = 6.2f;
-            binding.panelChannels.setLayoutParams(params);
-        } else {
-            if ("compact".equals(viewMode)) {
-                binding.rvChannels.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
-                channelAdapter.setViewType(com.bykerimoff.player.adapters.ChannelAdapter.VIEW_TYPE_COMPACT);
-            } else if ("list".equals(viewMode)) {
-                binding.rvChannels.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
-                channelAdapter.setViewType(com.bykerimoff.player.adapters.ChannelAdapter.VIEW_TYPE_LIST);
+        for (int i = 0; i < originalCategories.size(); i++) {
+            Category cat = originalCategories.get(i);
+            String cid = cat.getId();
+            if (cid.equals("0")) {
+                int count = isKidsModeActive ? favKidsChannels : favs.size();
+                originalCategories.set(i, new Category("0", "Sevimlilər", count));
+            } else if (cid.equals("all")) {
+                int count = isKidsModeActive ? totalKidsChannels : (allChannels != null ? allChannels.size() : 0);
+                originalCategories.set(i, new Category("all", "Bütün Kanallar", count));
             } else {
-                // Classic: Yan-yana böyük loqolar (Grid 3 sütun)
-                binding.rvChannels.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 3));
-                channelAdapter.setViewType(com.bykerimoff.player.adapters.ChannelAdapter.VIEW_TYPE_GRID);
+                List<Channel> list = channelMap.get(cid);
+                int count = 0;
+                if (list != null) {
+                    if (isKidsModeActive) {
+                        for (Channel c : list) if (M3UParser.isKidsCategory(c.getCategoryName())) count++;
+                    } else {
+                        count = list.size();
+                    }
+                }
+                originalCategories.set(i, new Category(cid, cat.getName(), count));
             }
-            
-            binding.panelPlayer.setVisibility(android.view.View.VISIBLE);
-            binding.tvPanelTitle.setText("KANALLAR");
-            android.widget.LinearLayout.LayoutParams params = (android.widget.LinearLayout.LayoutParams) binding.panelChannels.getLayoutParams();
-            params.weight = 2.8f;
-            binding.panelChannels.setLayoutParams(params);
         }
+
+        List<Category> filtered = new ArrayList<>();
+        for (Category cat : originalCategories) {
+            if (cat.getChannelCount() > 0 || cat.getId().equals("all") || cat.getId().equals("0")) {
+                // Uşaq Rejimi Filtri
+                if (isKidsModeActive) {
+                    if (cat.getChannelCount() == 0) continue; // Boş bölmələri gizlə
+                    if (!cat.getId().equals("0") && !cat.getId().equals("all") && !M3UParser.isKidsCategory(cat.getName())) {
+                        continue;
+                    }
+                }
+
+                // Sensitive / Adult filter
+                if (!isAdultEnabled && M3UParser.isSensitiveCategory(cat.getName())) continue;
+                if (!isSportEnabled && M3UParser.isSportCategory(cat.getName())) continue;
+                
+                filtered.add(cat);
+            }
+        }
+
+        // Sıralama
+        if ("name".equals(sortMode)) {
+            java.util.Collections.sort(filtered, (c1, c2) -> {
+                if (c1.getId().equals("0") || c1.getId().equals("all")) return -1;
+                if (c2.getId().equals("0") || c2.getId().equals("all")) return 1;
+                return c1.getName().compareToIgnoreCase(c2.getName());
+            });
+        } else if ("count".equals(sortMode)) {
+            java.util.Collections.sort(filtered, (c1, c2) -> {
+                if (c1.getId().equals("0") || c1.getId().equals("all")) return -1;
+                if (c2.getId().equals("0") || c2.getId().equals("all")) return 1;
+                return Integer.compare(c2.getChannelCount(), c1.getChannelCount());
+            });
+        }
+
+        categories.clear();
+        categories.addAll(filtered);
+        
+        // Cache current state
+        DataManager.setCurrentCategoryList(categories);
+        DataManager.setCurrentChannelMap(channelMap);
+        DataManager.setAllChannels(allChannels);
+
+        runOnUiThread(() -> categoryAdapter.notifyDataSetChanged());
     }
 
-    private void loadVodContent() {
-        channels.clear();
-        for (Channel channel : allChannels) {
-            if (M3UParser.isVodChannel(channel.getStreamUrl())) {
-                channels.add(channel);
+    private void handleAutoStartLastChannel() {
+        SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
+        String lastUrl = prefs.getString("last_channel_url", "");
+        String lastCatId = prefs.getString("last_category_id", "all");
+        
+        if (lastUrl.isEmpty() || allChannels.isEmpty()) return;
+
+        List<Channel> targetList = new ArrayList<>();
+        if ("all".equals(lastCatId)) {
+            targetList.addAll(allChannels);
+        } else if ("0".equals(lastCatId)) {
+            FavoriteManager fav = new FavoriteManager(this);
+            for (Channel c : allChannels) {
+                if (fav.isFavorite(c.getId())) targetList.add(c);
+            }
+        } else {
+            List<Channel> list = channelMap.get(lastCatId);
+            if (list != null) targetList.addAll(list);
+            else targetList.addAll(allChannels);
+        }
+
+        for (int i = 0; i < targetList.size(); i++) {
+            Channel channel = targetList.get(i);
+            if (lastUrl.equals(channel.getStreamUrl())) {
+                if (isKidsModeActive && !M3UParser.isKidsCategory(channel.getCategoryName())) {
+                    return; 
+                }
+                
+                DataManager.setCurrentChannelList(targetList);
+                Intent intent = new Intent(this, PlayerActivity.class);
+                intent.putExtra("channel_index", i);
+                startActivity(intent);
+                getIntent().removeExtra("auto_start");
+                return;
             }
         }
-        channelAdapter.notifyDataSetChanged();
     }
 
     private void filterChannelsByCategory(Category category) {
         channels.clear();
-        String key = "xtream".equalsIgnoreCase(playlistType) ? category.getId() : category.getName();
-        List<Channel> list = channelMap.get(key);
-        if (list != null) {
-            channels.addAll(list);
+        if ("all".equals(category.getId())) {
+            for (Channel c : allChannels) {
+                if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+                channels.add(c);
+            }
+        } else if ("0".equals(category.getId())) {
+            FavoriteManager favoriteManager = new FavoriteManager(this);
+            for (Channel channel : allChannels) {
+                if (favoriteManager.isFavorite(channel.getId())) {
+                    if (isKidsModeActive && !M3UParser.isKidsCategory(channel.getCategoryName())) continue;
+                    channels.add(channel);
+                }
+            }
+        } else {
+            List<Channel> list = channelMap.get(category.getId());
+            if (list != null) {
+                for (Channel c : list) {
+                    if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+                    channels.add(c);
+                }
+            }
         }
+        
+        binding.tvPanelTitle.setText(category.getName().toUpperCase());
         channelAdapter.notifyDataSetChanged();
-        // Əgər kanallar varsa, birinci kanala fokus ver və ya siyahını yenilə
-        if (!channels.isEmpty()) {
+        
+        if (!channels.isEmpty() && !isVodMode) {
             binding.rvChannels.scrollToPosition(0);
+            playMiniStream(channels.get(0));
         }
+    }
+
+    private void checkAndSetVodMode(Category category) {
+        String filter = getIntent().getStringExtra("filter_category");
+        isVodMode = (filter != null && (filter.equals("VOD_MOVIES") || filter.equals("VOD_SERIES")));
+        setVodMode(isVodMode);
+    }
+
+    private void setVodMode(boolean active) {
+        isVodMode = active;
+        binding.panelPlayer.setVisibility(active ? View.GONE : View.VISIBLE);
+        if (active) {
+            miniPlayer.stop();
+        }
+    }
+
+    private void loadM3UFromUrl(String url) {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.execute(() -> {
+            try {
+                java.net.URL m3uUrlObj = new java.net.URL(url);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) m3uUrlObj.openConnection();
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(30000);
+                
+                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+                List<Channel> parsedChannels = M3UParser.parse(reader);
+                reader.close();
+
+                Map<String, List<Channel>> tempMap = new HashMap<>();
+                List<Channel> tempAll = new ArrayList<>();
+                Set<String> catNames = new LinkedHashSet<>();
+
+                for (Channel c : parsedChannels) {
+                    tempAll.add(c);
+                    String cat = c.getCategoryName();
+                    if (!tempMap.containsKey(cat)) tempMap.put(cat, new ArrayList<>());
+                    tempMap.get(cat).add(c);
+                    catNames.add(cat);
+                }
+
+                FavoriteManager favoriteManager = new FavoriteManager(LiveTvActivity.this);
+                int favCount = favoriteManager.getFavorites().size();
+                
+                final List<Channel> channelsCopy = new ArrayList<>(tempAll);
+                
+                runOnUiThread(() -> {
+                    originalCategories.clear();
+                    
+                    originalCategories.add(new Category("0", "Sevimlilər", favCount));
+                    originalCategories.add(new Category("all", "Bütün Kanallar", channelsCopy.size()));
+                    for (String name : catNames) {
+                        List<Channel> list = tempMap.get(name);
+                        originalCategories.add(new Category(name, name, list != null ? list.size() : 0));
+                    }
+
+                    allChannels.clear();
+                    allChannels.addAll(tempAll);
+                    channelMap.clear();
+                    channelMap.putAll(tempMap);
+                    
+                    binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                    updateCategoryCounts();
+                    handleStartCategory();
+                    
+                    if (getIntent().getBooleanExtra("auto_start", false)) {
+                        handleAutoStartLastChannel();
+                    }
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(() -> {
+                    binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                    Toast.makeText(LiveTvActivity.this, "Playlist yüklənmədi: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    updateCategoryCounts();
+                });
+            }
+        });
     }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (binding.rvChannels.hasFocus()) {
-                View focused = binding.rvChannels.getFocusedChild();
-                if (focused != null && binding.rvChannels.getChildAdapterPosition(focused) == 0) {
-                    binding.etSearch.requestFocus();
-                    return true;
-                }
-            }
-        }
-        if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-            if (binding.etSearch.hasFocus()) {
-                binding.rvChannels.requestFocus();
-                return true;
-            }
-        }
-
-        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-            if (binding.rvChannels.hasFocus() || binding.etSearch.hasFocus()) {
-                binding.rvCategories.requestFocus();
-                return true;
-            }
-        }
-        
-        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            if (binding.rvCategories.hasFocus()) {
-                binding.rvChannels.requestFocus();
-                return true;
-            }
-        }
-
-        if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (binding.rvChannels.hasFocus()) {
-                View focusedChild = binding.rvChannels.getFocusedChild();
-                if (focusedChild != null) {
-                    int pos = binding.rvChannels.getChildAdapterPosition(focusedChild);
-                    if (pos <= 0) { // Grid üçün 0 və ya daha kiçik
-                        int last = channelAdapter.getItemCount() - 1;
-                        binding.rvChannels.scrollToPosition(last);
-                        binding.rvChannels.postDelayed(() -> {
-                            androidx.recyclerview.widget.RecyclerView.ViewHolder vh = binding.rvChannels.findViewHolderForAdapterPosition(last);
-                            if (vh != null) vh.itemView.requestFocus();
-                        }, 50);
-                        return true;
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            View focused = getCurrentFocus();
+            if (focused != null && isViewInRecyclerView(focused, binding.rvCategories)) {
+                int pos = binding.rvCategories.getChildLayoutPosition(focused);
+                if (pos == RecyclerView.NO_POSITION) {
+                    View parent = (View) focused.getParent();
+                    while (parent != null && parent != binding.rvCategories) {
+                        pos = binding.rvCategories.getChildLayoutPosition(parent);
+                        if (pos != RecyclerView.NO_POSITION) break;
+                        parent = (View) parent.getParent();
                     }
                 }
-            } else if (binding.rvCategories.hasFocus()) {
-                View focusedChild = binding.rvCategories.getFocusedChild();
-                if (focusedChild != null) {
-                    int pos = binding.rvCategories.getChildAdapterPosition(focusedChild);
-                    if (pos == 0) {
-                        int last = categoryAdapter.getItemCount() - 1;
-                        binding.rvCategories.scrollToPosition(last);
+                
+                if (pos != RecyclerView.NO_POSITION) {
+                    int count = categoryAdapter.getItemCount();
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP && pos == 0) {
+                        binding.rvCategories.scrollToPosition(count - 1);
                         binding.rvCategories.postDelayed(() -> {
-                            androidx.recyclerview.widget.RecyclerView.ViewHolder vh = binding.rvCategories.findViewHolderForAdapterPosition(last);
+                            RecyclerView.ViewHolder vh = binding.rvCategories.findViewHolderForAdapterPosition(count - 1);
                             if (vh != null) vh.itemView.requestFocus();
                         }, 50);
                         return true;
-                    }
-                }
-            }
-        }
-
-        if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-            if (binding.rvChannels.hasFocus()) {
-                View focusedChild = binding.rvChannels.getFocusedChild();
-                if (focusedChild != null) {
-                    int pos = binding.rvChannels.getChildAdapterPosition(focusedChild);
-                    int lastPos = channelAdapter.getItemCount() - 1;
-                    if (pos >= lastPos) {
-                        binding.rvChannels.scrollToPosition(0);
-                        binding.rvChannels.postDelayed(() -> {
-                            androidx.recyclerview.widget.RecyclerView.ViewHolder vh = binding.rvChannels.findViewHolderForAdapterPosition(0);
-                            if (vh != null) vh.itemView.requestFocus();
-                        }, 50);
-                        return true;
-                    }
-                }
-            } else if (binding.rvCategories.hasFocus()) {
-                View focusedChild = binding.rvCategories.getFocusedChild();
-                if (focusedChild != null) {
-                    int pos = binding.rvCategories.getChildAdapterPosition(focusedChild);
-                    int lastPos = categoryAdapter.getItemCount() - 1;
-                    if (pos == lastPos) {
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && pos == count - 1) {
                         binding.rvCategories.scrollToPosition(0);
                         binding.rvCategories.postDelayed(() -> {
-                            androidx.recyclerview.widget.RecyclerView.ViewHolder vh = binding.rvCategories.findViewHolderForAdapterPosition(0);
+                            RecyclerView.ViewHolder vh = binding.rvCategories.findViewHolderForAdapterPosition(0);
                             if (vh != null) vh.itemView.requestFocus();
                         }, 50);
                         return true;
                     }
                 }
             }
-        }
-        
-        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-            event.startTracking(); // Uzun basmanı izləmək üçün
         }
         return super.onKeyDown(keyCode, event);
     }
 
-    @Override
-    public boolean onKeyLongPress(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-            // Uzun basıldıqda kateqoriyalara qayıt
-            binding.rvCategories.requestFocus();
-            return true;
+    private boolean isViewInRecyclerView(View view, RecyclerView rv) {
+        if (view == null) return false;
+        if (view == rv) return true;
+        Object parent = view.getParent();
+        while (parent instanceof View) {
+            if (parent == rv) return true;
+            parent = ((View) parent).getParent();
         }
-        return super.onKeyLongPress(keyCode, event);
+        return false;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (miniPlayer != null) {
+            miniPlayer.stop();
+        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if (miniPlayer != null) miniPlayer.stop();
+        if (miniPlayer != null) {
+            miniPlayer.stop();
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (miniPlayer != null) miniPlayer.release();
+        if (miniPlayer != null) {
+            miniPlayer.release();
+            miniPlayer = null;
+        }
+        if (testCountDownTimer != null) {
+            testCountDownTimer.cancel();
+        }
     }
 }

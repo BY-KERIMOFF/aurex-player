@@ -70,8 +70,8 @@ public class UpdateManager {
                 // Daimi yaddaşa yaz
                 context.getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
                         .edit()
-                        .putString("last_announcement", announcement)
-                        .putString("last_announcement_color", announcementColor)
+                        .putString("announcement_text", announcement)
+                        .putString("announcement_color", announcementColor)
                         .putBoolean("show_announcement_global", showAnnouncement)
                         .apply();
 

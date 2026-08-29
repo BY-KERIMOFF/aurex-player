@@ -15,7 +15,7 @@ object LogoManager {
     private val logoCache = mutableMapOf<String, String>()
     private var isLoaded = false
 
-    fun loadLogoDatabase() {
+    fun loadLogoDatabase(context: Context) {
         if (isLoaded) return
         
         Executors.newSingleThreadExecutor().execute {

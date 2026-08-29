@@ -37,6 +37,9 @@ import com.bykerimoff.player.utils.XMLTVParser
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
@@ -56,6 +59,7 @@ class MainActivity : AppCompatActivity() {
     private var pendingAuthResponse: ApiResponse? = null
     
     private var testCountDownTimer: android.os.CountDownTimer? = null
+    private var backgroundPlayer: ExoPlayer? = null
     
     @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,6 +89,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         com.bykerimoff.player.utils.WallpaperManager.applyWallpaper(this, binding.ivAppBackground)
+        initBackgroundVideo()
 
         // Elan ayarını yaddaşdan yüklə
         DataManager.setShowAnnouncementGlobal(prefs.getBoolean("show_announcement_global", true))
@@ -100,10 +105,10 @@ class MainActivity : AppCompatActivity() {
         UpdateManager(this).checkForUpdates()
 
         // Qlobal loqo bazasını yüklə
-        com.bykerimoff.player.utils.LogoManager.loadLogoDatabase()
+        com.bykerimoff.player.utils.LogoManager.loadLogoDatabase(this)
 
         // EPG Sinxronizasiyasını başlat
-        XMLTVParser.syncDefaultSources()
+        XMLTVParser.syncDefaultSources(this)
 
         startSplashAnimation()
         setupListeners()
@@ -117,8 +122,57 @@ class MainActivity : AppCompatActivity() {
         loadResumeList()
 
         if (isSplashFinished) {
+            // Dashboard kartlarını onResume-da yenilə ki, kənar fəaliyyətlərdən qayıdanda vəziyyət düzgün olsun
+            val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+            val isVod = prefs.getBoolean("is_vod_enabled", true)
+            val isSeries = prefs.getBoolean("is_series_enabled", true)
+            updateDashboardCards(isVod, isSeries)
+            
+            com.bykerimoff.player.utils.WallpaperManager.applyWallpaper(this, binding.ivAppBackground)
+            initBackgroundVideo()
+
             binding.loadingLayout.visibility = View.GONE
             binding.dashboardLayout.visibility = View.VISIBLE
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        backgroundPlayer?.release()
+        backgroundPlayer = null
+    }
+
+    private fun initBackgroundVideo() {
+        val type = com.bykerimoff.player.utils.WallpaperManager.getWallpaperType(this)
+        val videoUri = com.bykerimoff.player.utils.WallpaperManager.getCustomVideoUri(this)
+
+        if (type == com.bykerimoff.player.utils.WallpaperManager.WallpaperType.CUSTOM_VIDEO && videoUri != null) {
+            binding.ivAppBackground.visibility = View.GONE
+            binding.playerViewBackground.visibility = View.VISIBLE
+            
+            if (backgroundPlayer == null) {
+                backgroundPlayer = ExoPlayer.Builder(this).build()
+                binding.playerViewBackground.player = backgroundPlayer
+                backgroundPlayer?.repeatMode = Player.REPEAT_MODE_ALL
+                backgroundPlayer?.volume = 0f
+            }
+            
+            try {
+                val mediaItem = MediaItem.fromUri(videoUri)
+                backgroundPlayer?.setMediaItem(mediaItem)
+                backgroundPlayer?.prepare()
+                backgroundPlayer?.play()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                binding.ivAppBackground.visibility = View.VISIBLE
+                binding.playerViewBackground.visibility = View.GONE
+            }
+        } else {
+            binding.ivAppBackground.visibility = View.VISIBLE
+            binding.playerViewBackground.visibility = View.GONE
+            backgroundPlayer?.stop()
+            backgroundPlayer?.release()
+            backgroundPlayer = null
         }
     }
 
@@ -393,19 +447,27 @@ class MainActivity : AppCompatActivity() {
             val isSeries = response.isSeriesEnabled
 
             // Bütün məlumatları yadda saxla
-            getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
-                .edit()
-                .putString("expiry_date", expiry)
-                .putString("playlist_type", response.playlistType)
-                .putString("m3u_url", m3uUrl)
-                .putString("xtream_host", if (response.xtream != null) response.xtream.host else "")
-                .putString("xtream_user", if (response.xtream != null) response.xtream.username else "")
-                .putString("xtream_pass", if (response.xtream != null) response.xtream.password else "")
-                .putBoolean("is_vod_enabled", isVod)
-                .putBoolean("is_series_enabled", isSeries)
-                .putBoolean("is_adult_enabled", response.isAdultEnabled)
-                .putLong("test_expire_time", if (isTest) System.currentTimeMillis() + (remaining * 1000) else 0L)
-                .apply()
+            val edit = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE).edit()
+            edit.putString("expiry_date", expiry)
+            edit.putString("playlist_type", response.playlistType)
+            edit.putString("m3u_url", m3uUrl)
+            edit.putString("xtream_host", if (response.xtream != null) response.xtream.host else "")
+            edit.putString("xtream_user", if (response.xtream != null) response.xtream.username else "")
+            edit.putString("xtream_pass", if (response.xtream != null) response.xtream.password else "")
+            edit.putBoolean("is_vod_enabled", isVod)
+            edit.putBoolean("is_series_enabled", isSeries)
+            edit.putBoolean("is_adult_enabled", response.isAdultEnabled)
+            edit.putBoolean("is_sport_enabled", response.isSportEnabled)
+            
+            // Yalnız JSON-da məlumat varsa yenilə, yoxsa UpdateManager-in məlumatlarını qoru
+            if (response.announcement != null) {
+                edit.putBoolean("show_announcement_global", response.isShowAnnouncement)
+                edit.putString("announcement_text", response.announcement)
+                edit.putString("announcement_color", response.announcementColor)
+            }
+            
+            edit.putLong("test_expire_time", if (isTest) System.currentTimeMillis() + (remaining * 1000) else 0L)
+            edit.apply()
 
             if (!expiry.isNullOrBlank() && !expiry.equals("null", ignoreCase = true)) {
                 binding.tvExpiryInfo.text = "Abunəlik bitir: $expiry"
@@ -457,9 +519,10 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
         val autoStart = prefs.getBoolean("auto_start_last_channel", true)
         val lastChannelUrl = prefs.getString("last_channel_url", "")
+        val lastIsVod = prefs.getBoolean("last_is_vod", false)
 
-        // Yalnız auto-start aktivdirsə VƏ əvvəllər kanala baxılıbsa başlat
-        if (!autoStart || lastChannelUrl.isNullOrEmpty()) return
+        // Yalnız auto-start aktivdirsə VƏ əvvəllər kanala baxılıbsa VƏ sonuncu baxılan VOD deyilsə başlat
+        if (!autoStart || lastChannelUrl.isNullOrEmpty() || lastIsVod) return
 
         val handler = Handler(Looper.getMainLooper())
         val checkInterval = 200L
@@ -501,63 +564,24 @@ class MainActivity : AppCompatActivity() {
     private fun loadAndCheckPlaylist() {
         val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
         val type = prefs.getString("playlist_type", "m3u")
-        val m3uUrl = prefs.getString("m3u_url", "http://kanal65.xyz/by-kerimoff-player/playlist.m3u")
         val isVodEnabled = prefs.getBoolean("is_vod_enabled", true)
         val isSeriesEnabled = prefs.getBoolean("is_series_enabled", true)
 
-        if ("xtream".equals(type, ignoreCase = true)) {
+        // Əgər Xtream deyilsə (M3U-dursa), VOD bölmələrini QƏTİ şəkildə gizlət və çıx
+        if (!"xtream".equals(type, ignoreCase = true)) {
             runOnUiThread {
-                binding.cardMovies.visibility = if (isVodEnabled) View.VISIBLE else View.GONE
-                binding.cardSeries.visibility = if (isSeriesEnabled) View.VISIBLE else View.GONE
-
-                var weightSum = 2.0f
-                if (isVodEnabled) weightSum += 1.0f
-                if (isSeriesEnabled) weightSum += 1.0f
-                binding.cardsContainer.weightSum = weightSum
+                binding.cardMovies.visibility = View.GONE
+                binding.cardSeries.visibility = View.GONE
+                updateCardsWeightSum()
             }
             return
         }
 
-        val executor = Executors.newSingleThreadExecutor()
-        executor.execute {
-            var hasVod = false
-            try {
-                val url = URL(m3uUrl)
-                val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 10000
-                connection.readTimeout = 10000
-
-                val reader = BufferedReader(InputStreamReader(connection.inputStream))
-                var line: String?
-                var count = 0
-                while (reader.readLine().also { line = it } != null && count < 2000) {
-                    val trimmedLine = line!!.trim()
-                    if (!trimmedLine.startsWith("#") && trimmedLine.isNotEmpty()) {
-                        if (M3UParser.isVodChannel(trimmedLine)) {
-                            hasVod = true
-                            break
-                        }
-                        count++
-                    }
-                }
-                reader.close()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            val finalHasVod = hasVod
-            runOnUiThread {
-                val finalShowMovies = finalHasVod && isVodEnabled
-                val finalShowSeries = finalHasVod && isSeriesEnabled
-
-                binding.cardMovies.visibility = if (finalShowMovies) View.VISIBLE else View.GONE
-                binding.cardSeries.visibility = if (finalShowSeries) View.VISIBLE else View.GONE
-
-                var weightSum = 2.0f
-                if (finalShowMovies) weightSum += 1.0f
-                if (finalShowSeries) weightSum += 1.0f
-                binding.cardsContainer.weightSum = weightSum
-            }
+        // Xtream üçün panel icazələrini tətbiq et
+        runOnUiThread {
+            binding.cardMovies.visibility = if (isVodEnabled) View.VISIBLE else View.GONE
+            binding.cardSeries.visibility = if (isSeriesEnabled) View.VISIBLE else View.GONE
+            updateCardsWeightSum()
         }
     }
 
@@ -591,41 +615,13 @@ class MainActivity : AppCompatActivity() {
         binding.cardLiveTv.requestFocus()
 
         loadWeather()
-        loadResumeList()
+        // loadResumeList() - Removed as per user request
         loadCurrencies()
     }
 
     private fun loadResumeList() {
-        val list = ResumeManager.getResumeList(this)
-        runOnUiThread {
-            if (list.isNotEmpty()) {
-                binding.resumeSection.visibility = View.VISIBLE
-                val adapter = ResumeAdapter(list) { item ->
-                    val channel = Channel(item.id, item.name, item.logoUrl, item.streamUrl, item.categoryName)
-                    
-                    val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
-                    if (prefs.getBoolean("use_external_player", false)) {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW)
-                            intent.setDataAndType(android.net.Uri.parse(channel.getStreamUrl()), "video/*")
-                            intent.putExtra("title", channel.name)
-                            startActivity(Intent.createChooser(intent, "Pleyer seçin"))
-                        } catch (e: Exception) {
-                            Toast.makeText(this, "Xarici pleyer açılmadı", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        DataManager.setCurrentChannelList(listOf(channel))
-                        val intent = Intent(this, PlayerActivity::class.java)
-                        intent.putExtra("channel_index", 0)
-                        intent.putExtra("resume_position", item.position)
-                        startActivity(intent)
-                    }
-                }
-                binding.rvResume.adapter = adapter
-            } else {
-                binding.resumeSection.visibility = View.GONE
-            }
-        }
+        // Feature disabled from dashboard as per user request
+        binding.resumeSection.visibility = View.GONE
     }
 
     private fun loadCurrencies() {
@@ -645,35 +641,62 @@ class MainActivity : AppCompatActivity() {
     private fun applyPremiumBranding(textView: TextView) {
         textView.text = "AUREX PLAYER"
         
-        // Premium Metalik Qızılı Qradiyent
-        val goldGradient = LinearGradient(
+        val primaryColor = com.bykerimoff.player.utils.ThemeManager.getThemeColor(this)
+        
+        // Dinamik Metalik Qradiyent (Seçilən temaya uyğun)
+        val hsv = FloatArray(3)
+        Color.colorToHSV(primaryColor, hsv)
+        
+        // Açıq rəng (Light)
+        hsv[2] = 1.0f 
+        val lightColor = Color.HSVToColor(hsv)
+        
+        // Tünd rəng (Dark)
+        hsv[2] = 0.5f
+        val darkColor = Color.HSVToColor(hsv)
+
+        val gradient = LinearGradient(
             0f, 0f, 0f, textView.textSize,
             intArrayOf(
-                Color.parseColor("#FFE700"), // Light Gold
-                Color.parseColor("#FFD700"), // Golden
-                Color.parseColor("#B8860B"), // Dark Gold/Bronze
-                Color.parseColor("#8B6508")  // Deep Bronze
+                lightColor,
+                primaryColor,
+                darkColor,
+                darkColor
             ),
             floatArrayOf(0f, 0.4f, 0.7f, 1f),
             Shader.TileMode.CLAMP
         )
         
-        textView.paint.shader = goldGradient
+        textView.paint.shader = gradient
         
         // Kölgə və Parıltı
-        textView.setShadowLayer(15f, 0f, 0f, Color.parseColor("#80FFD700"))
+        textView.setShadowLayer(15f, 0f, 0f, primaryColor)
         
         textView.invalidate()
     }
 
     private fun updateDashboardCards(isVodEnabled: Boolean, isSeriesEnabled: Boolean) {
-        binding.cardMovies.visibility = if (isVodEnabled) View.VISIBLE else View.GONE
-        binding.cardSeries.visibility = if (isSeriesEnabled) View.VISIBLE else View.GONE
+        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val type = prefs.getString("playlist_type", "m3u")
 
-        var weightSum = 2.0f
-        if (isVodEnabled) weightSum += 1.0f
-        if (isSeriesEnabled) weightSum += 1.0f
-        binding.cardsContainer.weightSum = weightSum
+        // Yalnız Xtream Codes rejimində VOD bölmələri aktiv ola bilər
+        if ("xtream".equals(type, ignoreCase = true)) {
+            binding.cardMovies.visibility = if (isVodEnabled) View.VISIBLE else View.GONE
+            binding.cardSeries.visibility = if (isSeriesEnabled) View.VISIBLE else View.GONE
+        } else {
+            // M3U rejimində hər zaman gizlə
+            binding.cardMovies.visibility = View.GONE
+            binding.cardSeries.visibility = View.GONE
+        }
+
+        updateCardsWeightSum()
+    }
+
+    private fun updateCardsWeightSum() {
+        var visibleCount = 2.0f // Live TV + Favorites hər zaman var
+        if (binding.cardMovies.visibility == View.VISIBLE) visibleCount += 1.0f
+        if (binding.cardSeries.visibility == View.VISIBLE) visibleCount += 1.0f
+        binding.cardsContainer.weightSum = visibleCount
     }
 
     private fun loadWeather() {
