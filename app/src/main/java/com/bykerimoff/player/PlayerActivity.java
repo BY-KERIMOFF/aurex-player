@@ -798,12 +798,16 @@ public class PlayerActivity extends AppCompatActivity {
         binding.tvVolumePercent.setText(percent + "%");
         binding.volumeLayout.setVisibility(View.VISIBLE);
         
-        osdHandler.removeCallbacksAndMessages(null); // OSD-ni gizlətməmək üçün (isteğe bağlı)
-        osdHandler.removeCallbacks(volumeInputRunnable);
-        osdHandler.postDelayed(() -> {
-            if (!isVolumeInputMode) binding.volumeLayout.setVisibility(View.GONE);
-        }, 3000);
+        // Remove ANY pending hide tasks to reset the timer
+        osdHandler.removeCallbacks(volumeHideRunnable);
+        osdHandler.postDelayed(volumeHideRunnable, 3000);
     }
+
+    private final Runnable volumeHideRunnable = () -> {
+        binding.volumeLayout.setVisibility(View.GONE);
+        isVolumeInputMode = false;
+        volumeNumberInput = "";
+    };
 
     private void playNext() {
         if (currentIndex < playbackList.size() - 1) {
@@ -882,7 +886,17 @@ public class PlayerActivity extends AppCompatActivity {
             binding.playerArchiveSidebar.setVisibility(View.GONE);
             
             binding.playerChannelSidebar.setVisibility(View.VISIBLE);
-            binding.rvPlayerChannels.requestFocus();
+            
+            // Focus on the current playing channel
+            if (playbackList != null && currentIndex >= 0 && currentIndex < playbackList.size()) {
+                binding.rvPlayerChannels.scrollToPosition(currentIndex);
+                binding.rvPlayerChannels.postDelayed(() -> {
+                    RecyclerView.ViewHolder vh = binding.rvPlayerChannels.findViewHolderForAdapterPosition(currentIndex);
+                    if (vh != null) vh.itemView.requestFocus();
+                }, 100);
+            } else {
+                binding.rvPlayerChannels.requestFocus();
+            }
         }
     }
 
