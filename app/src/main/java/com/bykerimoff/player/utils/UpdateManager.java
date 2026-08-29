@@ -59,6 +59,7 @@ public class UpdateManager {
                 String notes = json.optString("releaseNotes", "");
                 String announcement = json.optString("announcement", "");
                 String announcementColor = json.optString("announcementColor", "");
+                int announcementSpeed = json.optInt("announcementSpeed", 25000); // Default 25s
                 
                 // Elanı göstər/gizlə (Susmaya görə true)
                 boolean showAnnouncement = json.optBoolean("showAnnouncement", true);
@@ -72,6 +73,7 @@ public class UpdateManager {
                         .edit()
                         .putString("announcement_text", announcement)
                         .putString("announcement_color", announcementColor)
+                        .putInt("announcement_speed", announcementSpeed)
                         .putBoolean("show_announcement_global", showAnnouncement)
                         .apply();
 

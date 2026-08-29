@@ -28,18 +28,14 @@
 
         <TextView
             android:id="@+id/tvAnnouncement"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:paddingHorizontal="10dp"
             android:textColor="@color/white"
             android:textSize="20sp"
             android:textStyle="bold"
             android:singleLine="true"
-            android:ellipsize="marquee"
-            android:marqueeRepeatLimit="marquee_forever"
             android:scrollHorizontally="true"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
             android:text="Aurex Player" />
     </FrameLayout>
 

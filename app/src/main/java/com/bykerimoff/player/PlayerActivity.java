@@ -351,11 +351,15 @@ public class PlayerActivity extends AppCompatActivity {
 
     private void updateAnnouncement(Channel channel) {
         SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-        boolean show = prefs.getBoolean("show_announcement_global", true); // Default to true if not set
-        String text = prefs.getString("announcement_text", "");
+        boolean show = prefs.getBoolean("show_announcement_global", true);
+        String rawText = prefs.getString("announcement_text", "");
         String colorStr = prefs.getString("announcement_color", "#FFD700");
+        int speedVal = prefs.getInt("announcement_speed", 100);
 
-        if (show && text != null && !text.isEmpty()) {
+        if (show && rawText != null && !rawText.isEmpty()) {
+            // Clean the text: replace newlines with a separator to ensure it stays on one line
+            final String text = rawText.replace("\n", "  •  ").replace("\r", " ").trim();
+            
             binding.announcementContainer.setVisibility(View.VISIBLE);
             binding.tvAnnouncement.setText(text);
             try {
@@ -364,11 +368,39 @@ public class PlayerActivity extends AppCompatActivity {
                 binding.tvAnnouncement.setTextColor(android.graphics.Color.WHITE);
             }
             
-            binding.tvAnnouncement.setSelected(true); 
-            
-            // Remove automatic hide after 10s to keep it as a ticker if enabled
+            binding.tvAnnouncement.post(() -> {
+                float screenWidth = (float) getResources().getDisplayMetrics().widthPixels;
+                
+                // Measure the actual width of the text content accurately
+                android.text.TextPaint paint = binding.tvAnnouncement.getPaint();
+                float textWidth = paint.measureText(text);
+                
+                // Force the TextView to be wide enough to hold the entire text without clipping
+                android.view.ViewGroup.LayoutParams params = binding.tvAnnouncement.getLayoutParams();
+                params.width = (int) (textWidth + 100); // Add a small safety margin
+                binding.tvAnnouncement.setLayoutParams(params);
+                
+                binding.tvAnnouncement.clearAnimation();
+                
+                // Start from the very right edge and go completely past the left edge
+                android.view.animation.TranslateAnimation anim = new android.view.animation.TranslateAnimation(
+                    screenWidth,
+                    -textWidth - 100f, 
+                    0f, 0f
+                );
+                
+                // Calculate duration based on a fixed pixels-per-second speed
+                // This ensures constant speed regardless of text length
+                long duration = (long) ((screenWidth + textWidth) / (speedVal > 0 ? speedVal : 100) * 1000);
+                
+                anim.setDuration(duration);
+                anim.setRepeatCount(android.view.animation.Animation.INFINITE);
+                anim.setInterpolator(new android.view.animation.LinearInterpolator());
+                binding.tvAnnouncement.startAnimation(anim);
+            });
         } else {
             binding.announcementContainer.setVisibility(View.GONE);
+            binding.tvAnnouncement.clearAnimation();
         }
     }
 

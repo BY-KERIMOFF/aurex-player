@@ -126,6 +126,9 @@ public class ApiResponse {
     @SerializedName("announcementColor")
     private String announcementColor;
 
+    @SerializedName("announcementSpeed")
+    private int announcementSpeed;
+
     @SerializedName("detail")
     private String detail;
 
@@ -292,5 +295,9 @@ public class ApiResponse {
 
     public String getAnnouncementColor() {
         return announcementColor;
+    }
+
+    public int getAnnouncementSpeed() {
+        return announcementSpeed;
     }
 }
