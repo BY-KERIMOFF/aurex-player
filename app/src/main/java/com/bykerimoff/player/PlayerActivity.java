@@ -97,6 +97,7 @@ public class PlayerActivity extends AppCompatActivity {
     private List<Channel> playbackList = new ArrayList<>(); // Pleyerin real çalğı siyahısı
     private int currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
     private boolean isVod = false;
+    private android.os.CountDownTimer testCountDownTimer;
 
     private final Runnable bufferingTimeoutRunnable = new Runnable() {
         @Override
@@ -156,6 +157,7 @@ public class PlayerActivity extends AppCompatActivity {
         }
         setupSidebars();
         setupNumericOverlay();
+        updateTestCountdown();
     }
 
     private void setupNumericOverlay() {
@@ -180,13 +182,23 @@ public class PlayerActivity extends AppCompatActivity {
 
         DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory);
 
+        SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
+        boolean smartBuffer = prefs.getBoolean("smart_buffer_enabled", true);
+        int userBufferSec = prefs.getInt("network_buffer_seconds", 5);
+        
+        int minBuffer = smartBuffer ? 15000 : userBufferSec * 1000;
+        int maxBuffer = smartBuffer ? 50000 : (userBufferSec * 1000 * 3);
+        int bufferPlayback = smartBuffer ? 2500 : 1000;
+        int bufferRebuffer = smartBuffer ? 5000 : 2000;
+
         androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                        5000,
-                        15000,
-                        1000,
-                        2000
+                        minBuffer,
+                        maxBuffer,
+                        bufferPlayback,
+                        bufferRebuffer
                 )
+                .setPrioritizeTimeOverSizeThresholds(true)
                 .build();
 
         exoPlayer = new ExoPlayer.Builder(this, renderersFactory)
@@ -932,9 +944,76 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
+    private void updateTestCountdown() {
+        SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
+        long expireTime = prefs.getLong("test_expire_time", 0L);
+        
+        if (expireTime > System.currentTimeMillis()) {
+            long remainingSeconds = (expireTime - System.currentTimeMillis()) / 1000;
+            startTestTimer((int) remainingSeconds);
+        } else {
+            if (testCountDownTimer != null) {
+                testCountDownTimer.cancel();
+            }
+            binding.testBannerPlayer.setVisibility(View.GONE);
+        }
+    }
+
+    private void startTestTimer(int seconds) {
+        if (testCountDownTimer != null) {
+            testCountDownTimer.cancel();
+        }
+
+        testCountDownTimer = new android.os.CountDownTimer(seconds * 1000L, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                int remaining = (int) (millisUntilFinished / 1000);
+                String timeLeft = formatTimeForTest(remaining);
+                
+                binding.testBannerPlayer.setVisibility(View.VISIBLE);
+                binding.testTimerPlayer.setText("Test: " + timeLeft);
+
+                int color;
+                if (remaining < 60) {
+                    color = android.graphics.Color.RED;
+                    binding.testWarningPlayer.setVisibility(View.VISIBLE);
+                    binding.testWarningPlayer.setText("⚠️ Test vaxtı bitir!");
+                } else if (remaining < 300) {
+                    color = android.graphics.Color.parseColor("#FFA500"); // Orange
+                    binding.testWarningPlayer.setVisibility(View.VISIBLE);
+                    binding.testWarningPlayer.setText("Test müddəti az qalıb");
+                } else {
+                    color = android.graphics.Color.parseColor("#D4AF37"); // Gold
+                    binding.testWarningPlayer.setVisibility(View.GONE);
+                }
+                
+                binding.testTimerPlayer.setTextColor(color);
+                binding.testTitlePlayer.setTextColor(color);
+            }
+
+            @Override
+            public void onFinish() {
+                binding.testTimerPlayer.setText("Test: 00:00");
+                binding.testBannerPlayer.setVisibility(View.GONE);
+                Toast.makeText(PlayerActivity.this, "Test müddəti bitdi!", Toast.LENGTH_LONG).show();
+                finish();
+            }
+        }.start();
+    }
+
+    private String formatTimeForTest(int totalSeconds) {
+        int hours = totalSeconds / 3600;
+        int minutes = (totalSeconds % 3600) / 60;
+        int seconds = totalSeconds % 60;
+        return String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (testCountDownTimer != null) {
+            testCountDownTimer.cancel();
+        }
         if (exoPlayer != null) {
             exoPlayer.release();
             exoPlayer = null;

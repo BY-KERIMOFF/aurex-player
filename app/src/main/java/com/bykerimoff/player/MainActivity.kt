@@ -128,6 +128,15 @@ class MainActivity : AppCompatActivity() {
             val isSeries = prefs.getBoolean("is_series_enabled", true)
             updateDashboardCards(isVod, isSeries)
             
+            // Abunəlik tarixini yenilə
+            val expiry = prefs.getString("expiry_date", null)
+            if (!expiry.isNullOrBlank() && !expiry.equals("null", ignoreCase = true)) {
+                binding.tvExpiryInfo.text = "Abunəlik bitir: $expiry"
+                binding.tvExpiryInfo.visibility = View.VISIBLE
+            } else {
+                binding.tvExpiryInfo.visibility = View.GONE
+            }
+
             com.bykerimoff.player.utils.WallpaperManager.applyWallpaper(this, binding.ivAppBackground)
             initBackgroundVideo()
 

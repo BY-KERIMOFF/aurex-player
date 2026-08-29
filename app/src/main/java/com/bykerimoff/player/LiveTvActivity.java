@@ -94,6 +94,7 @@ public class LiveTvActivity extends AppCompatActivity {
         xtPass = prefs.getString("xtream_pass", "");
         isAdultEnabled = prefs.getBoolean("is_adult_enabled", true);
         isSportEnabled = prefs.getBoolean("is_sport_enabled", true);
+        boolean hideSensitive = prefs.getBoolean("hide_sensitive_categories", false);
         isKidsModeActive = prefs.getBoolean("kids_mode_active", false);
 
         // Xtream və ya M3U rejimini dəqiq təyin et
@@ -768,6 +769,8 @@ public class LiveTvActivity extends AppCompatActivity {
         }
 
         List<Category> filtered = new ArrayList<>();
+        boolean hideSensitive = getSharedPreferences("neoplay_prefs", MODE_PRIVATE).getBoolean("hide_sensitive_categories", false);
+        
         for (Category cat : originalCategories) {
             if (cat.getChannelCount() > 0 || cat.getId().equals("all") || cat.getId().equals("0")) {
                 // Uşaq Rejimi Filtri
@@ -779,6 +782,7 @@ public class LiveTvActivity extends AppCompatActivity {
                 }
 
                 // Sensitive / Adult filter
+                if (hideSensitive && M3UParser.isSensitiveCategory(cat.getName())) continue;
                 if (!isAdultEnabled && M3UParser.isSensitiveCategory(cat.getName())) continue;
                 if (!isSportEnabled && M3UParser.isSportCategory(cat.getName())) continue;
                 

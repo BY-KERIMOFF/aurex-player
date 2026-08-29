@@ -340,6 +340,15 @@
                         <RadioButton android:id="@+id/rbBuffer30" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="30 saniyə (Maksimum - Zəif internet)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
                     </RadioGroup>
 
+                    <CheckBox
+                        android:id="@+id/cbSmartBuffer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="Smart Buffer (Avtomatik Gecikmə Tənzimləmə)"
+                        android:textColor="@color/white"
+                        android:buttonTint="@color/gold_primary" />
+
                     <Button
                         android:id="@+id/btnSpeedTest"
                         android:layout_width="match_parent"
@@ -463,6 +472,15 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Tətbiq Kilidini Aktiv Et"
+                        android:textColor="@color/white"
+                        android:buttonTint="@color/gold_primary" />
+
+                    <CheckBox
+                        android:id="@+id/cbHideSensitive"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Həssas (+18) kateqoriyaları tam gizlə"
                         android:textColor="@color/white"
                         android:buttonTint="@color/gold_primary" />
 
@@ -608,6 +626,48 @@
                         android:layout_height="wrap_content"
                         android:text="@string/privacy_policy_title"
                         android:backgroundTint="@color/glass_white_heavy"
+                        android:textColor="@color/white" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Version & Update Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Proqram Məlumatı"
+                android:textColor="@color/text_secondary"
+                android:textSize="18sp"
+                android:layout_marginBottom="8dp" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/bg_sidebar"
+                android:layout_marginBottom="60dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:background="@drawable/glass_card_bg">
+
+                    <TextView
+                        android:id="@+id/tvAppVersion"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Versiya: --"
+                        android:textColor="@color/white"
+                        android:textSize="16sp" />
+
+                    <Button
+                        android:id="@+id/btnCheckUpdate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="YENİLƏMƏNİ YOXLA"
+                        android:backgroundTint="@color/gold_dark"
                         android:textColor="@color/white" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>

@@ -210,10 +210,14 @@
                 android:id="@+id/tvExpiryInfo"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=""
-                android:textColor="@color/gold_dark"
-                android:textSize="16sp"
+                android:text="Abunəlik bitir: --"
+                android:textColor="@color/gold_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
                 android:layout_marginBottom="24dp"
+                android:background="@drawable/glass_card_bg"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp"
                 android:visibility="gone" />
 
             <LinearLayout

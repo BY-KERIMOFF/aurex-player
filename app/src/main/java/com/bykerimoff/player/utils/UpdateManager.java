@@ -38,6 +38,11 @@ public class UpdateManager {
 
     @androidx.media3.common.util.UnstableApi
     public void checkForUpdates() {
+        checkForUpdates(false);
+    }
+
+    @androidx.media3.common.util.UnstableApi
+    public void checkForUpdates(boolean manual) {
         isCheckFinished = false;
         isUpdateFound = false;
         new Thread(() -> {
@@ -49,7 +54,10 @@ public class UpdateManager {
                         .build();
 
                 okhttp3.Response response = NetworkUtils.getSafeOkHttpClient().newCall(request).execute();
-                if (!response.isSuccessful()) return;
+                if (!response.isSuccessful()) {
+                    if (manual) showToast("Serverə bağlanmaq mümkün olmadı");
+                    return;
+                }
 
                 String responseBody = response.body().string();
                 JSONObject json = new JSONObject(responseBody);
@@ -86,14 +94,24 @@ public class UpdateManager {
                 } else {
                     isUpdateFound = false;
                     Log.d(TAG, "App is up to date");
+                    if (manual) showToast("Tətbiq artıq ən son versiyadadır");
                 }
                 isCheckFinished = true;
 
             } catch (Exception e) {
                 Log.e(TAG, "Update check failed: " + e.getMessage());
                 isCheckFinished = true;
+                if (manual) showToast("Xəta baş verdi: " + e.getMessage());
             }
         }).start();
+    }
+
+    private void showToast(String msg) {
+        if (context instanceof android.app.Activity) {
+            ((android.app.Activity) context).runOnUiThread(() -> 
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            );
+        }
     }
 
     private long getAppVersionCode() {

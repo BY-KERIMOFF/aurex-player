@@ -134,6 +134,14 @@ public class SettingsActivity extends AppCompatActivity {
     private void loadInfo() {
         binding.tvMacAddress.setText("MAC: " + MacUtils.getMacAddress(this));
         
+        try {
+            android.content.pm.PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+            String version = pInfo.versionName + " (" + (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P ? pInfo.getLongVersionCode() : pInfo.versionCode) + ")";
+            binding.tvAppVersion.setText("Versiya: " + version);
+        } catch (Exception e) {
+            binding.tvAppVersion.setText("Versiya: Naməlum");
+        }
+
         String expiry = prefs.getString("expiry_date", null);
         if (expiry != null && !expiry.equalsIgnoreCase("null") && !expiry.isEmpty()) {
             binding.tvExpiryDate.setText("Bitiş Tarixi: " + expiry);
@@ -145,6 +153,8 @@ public class SettingsActivity extends AppCompatActivity {
         binding.cbAutoStartLast.setChecked(prefs.getBoolean("auto_start_last_channel", true));
         binding.cbUseExternalPlayer.setChecked(prefs.getBoolean("use_external_player", false));
         binding.cbDataSaver.setChecked(prefs.getBoolean("data_saver_enabled", false));
+        binding.cbSmartBuffer.setChecked(prefs.getBoolean("smart_buffer_enabled", true));
+        binding.cbHideSensitive.setChecked(prefs.getBoolean("hide_sensitive_categories", false));
         
         int bufferSec = prefs.getInt("network_buffer_seconds", 5);
         if (bufferSec == 0) binding.rbBuffer0.setChecked(true);
@@ -209,6 +219,9 @@ public class SettingsActivity extends AppCompatActivity {
         setupFocusEffect(binding.themeGreen);
         setupFocusEffect(binding.themeSilver);
         
+        setupFocusEffect(binding.tvAppVersion);
+        setupFocusEffect(binding.btnCheckUpdate);
+        
         setupFocusEffect(binding.cbAppLock);
         setupFocusEffect(binding.btnChangePin);
         setupFocusEffect(binding.btnPrivacyPolicy);
@@ -222,6 +235,8 @@ public class SettingsActivity extends AppCompatActivity {
         setupFocusEffect(binding.rbViewList);
         setupFocusEffect(binding.rbViewCompact);
         setupFocusEffect(binding.cbDataSaver);
+        setupFocusEffect(binding.cbSmartBuffer);
+        setupFocusEffect(binding.cbHideSensitive);
         setupFocusEffect(binding.btnSpeedTest);
         
         setupFocusEffect(binding.rbBuffer0);
@@ -251,6 +266,16 @@ public class SettingsActivity extends AppCompatActivity {
         binding.cbDataSaver.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("data_saver_enabled", isChecked).apply();
             Toast.makeText(this, "Data Saver: " + (isChecked ? "Aktiv" : "Deaktiv"), Toast.LENGTH_SHORT).show();
+        });
+
+        binding.cbSmartBuffer.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("smart_buffer_enabled", isChecked).apply();
+            Toast.makeText(this, "Smart Buffer: " + (isChecked ? "Aktiv" : "Deaktiv"), Toast.LENGTH_SHORT).show();
+        });
+
+        binding.cbHideSensitive.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("hide_sensitive_categories", isChecked).apply();
+            Toast.makeText(this, "Həssas kateqoriyalar " + (isChecked ? "Gizlədildi" : "Görünür"), Toast.LENGTH_SHORT).show();
         });
 
         binding.cbAppLock.setChecked(prefs.getBoolean("app_lock_enabled", false));
@@ -349,6 +374,11 @@ public class SettingsActivity extends AppCompatActivity {
             Intent i = new Intent(Intent.ACTION_VIEW);
             i.setData(android.net.Uri.parse(url));
             startActivity(i);
+        });
+
+        binding.btnCheckUpdate.setOnClickListener(v -> {
+            Toast.makeText(this, "Yeniləmə yoxlanılır...", Toast.LENGTH_SHORT).show();
+            new com.bykerimoff.player.utils.UpdateManager(this).checkForUpdates(true);
         });
 
         binding.btnTimerOff.setOnClickListener(v -> setSleepTimer(0));
