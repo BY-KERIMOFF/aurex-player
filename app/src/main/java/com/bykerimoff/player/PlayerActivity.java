@@ -257,15 +257,12 @@ public class PlayerActivity extends AppCompatActivity {
         Format videoFormat = exoPlayer.getVideoFormat();
         if (videoFormat != null) {
             String quality = videoFormat.width + "x" + videoFormat.height;
-            
             binding.tvQuality.setText(quality);
             binding.tvQualityCorner.setText(quality);
             
-            if (videoFormat.frameRate > 0) {
-                String fps = Math.round(videoFormat.frameRate) + " FPS";
-                binding.tvFps.setText(fps);
-                binding.tvFpsCorner.setText(fps);
-            }
+            String fps = (videoFormat.frameRate > 0) ? Math.round(videoFormat.frameRate) + " FPS" : "";
+            binding.tvFps.setText(fps);
+            binding.tvFpsCorner.setText(fps);
         }
     }
 
