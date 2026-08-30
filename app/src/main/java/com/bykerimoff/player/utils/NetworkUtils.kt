@@ -129,7 +129,9 @@ object NetworkUtils {
                              url.contains("api.php") || 
                              url.contains("get.php") ||
                              url.contains(".php") ||
-                             url.contains(".json")
+                             url.contains(".json") ||
+                             url.contains("githubusercontent") ||
+                             url.contains("catcast.tv")
 
                 val userAgent = if (isApiCall) {
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
