@@ -118,34 +118,26 @@ object NetworkUtils {
             builder.followRedirects(true)
             builder.followSslRedirects(true)
 
-            // Dinamik Header Interceptor (Ağıllı User-Agent seçimi)
+            // Dinamik Header Interceptor (Global Optimizasiya - Bütün dünya üçün)
             builder.addInterceptor { chain ->
                 val original = chain.request()
                 val url = original.url.toString().lowercase()
                 val requestBuilder = original.newBuilder()
 
-                // API, məlumat sorğuları və GitHub/Raw linkləri üçün Brauzer, digər yayımlar üçün VLC
-                val isBrowserNeeded = url.contains("player_api.php") || 
-                             url.contains("api.php") || 
-                             url.contains("get.php") ||
-                             url.contains(".php") ||
-                             url.contains(".json") ||
-                             url.contains("github") ||
-                             url.contains("raw.githubusercontent")
+                // Müasir və universal brauzer agenti (Bütün yayımlar və API üçün)
+                val globalUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
 
-                val userAgent = if (isBrowserNeeded) {
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
-                } else {
-                    "VLC/3.0.18 LibVLC/3.0.18"
-                }
-
-                requestBuilder.header("User-Agent", userAgent)
+                requestBuilder.header("User-Agent", globalUserAgent)
                     .header("Accept", "*/*")
+                    .header("Accept-Language", "en-US,en;q=0.9,az;q=0.8,ru;q=0.7")
                     .header("Connection", "keep-alive")
+                    .header("Cache-Control", "max-age=0")
                 
-                // GitHub Raw linkləri üçün Referer mütləqdir
-                if (url.contains("github")) {
-                    requestBuilder.header("Referer", "https://github.com/")
+                // GitHub, CatCast və digər yayım serverləri üçün mütləq olan Referer başlığı
+                if (url.contains("github") || url.contains("catcast") || url.contains("stream") || url.contains(".m3u8")) {
+                    val referer = if (url.contains("github")) "https://github.com/" else original.url.scheme + "://" + original.url.host + "/"
+                    requestBuilder.header("Referer", referer)
+                    requestBuilder.header("Origin", original.url.scheme + "://" + original.url.host)
                 }
 
                 chain.proceed(requestBuilder.build())
