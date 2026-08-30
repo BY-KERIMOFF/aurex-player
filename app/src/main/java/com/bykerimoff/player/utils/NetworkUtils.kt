@@ -124,24 +124,29 @@ object NetworkUtils {
                 val url = original.url.toString().lowercase()
                 val requestBuilder = original.newBuilder()
 
-                // API və məlumat sorğuları üçün Brauzer, yayım üçün VLC
-                val isApiCall = url.contains("player_api.php") || 
+                // API, məlumat sorğuları və GitHub/Raw linkləri üçün Brauzer, digər yayımlar üçün VLC
+                val isBrowserNeeded = url.contains("player_api.php") || 
                              url.contains("api.php") || 
                              url.contains("get.php") ||
                              url.contains(".php") ||
                              url.contains(".json") ||
-                             url.contains("githubusercontent") ||
-                             url.contains("catcast.tv")
+                             url.contains("github") ||
+                             url.contains("raw.githubusercontent")
 
-                val userAgent = if (isApiCall) {
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+                val userAgent = if (isBrowserNeeded) {
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
                 } else {
-                    "VLC/3.0.11 LibVLC/3.0.11"
+                    "VLC/3.0.18 LibVLC/3.0.18"
                 }
 
                 requestBuilder.header("User-Agent", userAgent)
                     .header("Accept", "*/*")
                     .header("Connection", "keep-alive")
+                
+                // GitHub Raw linkləri üçün Referer mütləqdir
+                if (url.contains("github")) {
+                    requestBuilder.header("Referer", "https://github.com/")
+                }
 
                 chain.proceed(requestBuilder.build())
             }
