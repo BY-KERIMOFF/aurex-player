@@ -4,13 +4,22 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextPaint;
+import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.TranslateAnimation;
 import android.widget.Toast;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -19,6 +28,9 @@ import android.widget.EditText;
 import androidx.annotation.NonNull;
 import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
@@ -56,10 +68,13 @@ import com.bykerimoff.player.models.XtreamEpg;
 import com.bykerimoff.player.models.ResumeItem;
 import com.bykerimoff.player.utils.DataManager;
 import com.bykerimoff.player.utils.FavoriteManager;
+import com.bykerimoff.player.utils.M3UParser;
 import com.bykerimoff.player.utils.NetworkUtils;
 import com.bykerimoff.player.utils.RecentChannelsManager;
 import com.bykerimoff.player.utils.ResumeManager;
 import com.bykerimoff.player.utils.SleepTimerManager;
+import com.bykerimoff.player.utils.ThemeManager;
+import com.bykerimoff.player.utils.XMLTVParser;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -97,7 +112,9 @@ public class PlayerActivity extends AppCompatActivity {
     private List<Channel> playbackList = new ArrayList<>(); // Pleyerin real çalğı siyahısı
     private int currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
     private boolean isVod = false;
-    private android.os.CountDownTimer testCountDownTimer;
+    private CountDownTimer testCountDownTimer;
+    private long lastKeyTime = 0;
+    private static final int KEY_DELAY = 30; // ms for snappy feel
 
     private final Runnable bufferingTimeoutRunnable = new Runnable() {
         @Override
@@ -148,13 +165,14 @@ public class PlayerActivity extends AppCompatActivity {
         
         // Determine if it's VOD based on URL extension or activity flag
         Channel initialChannel = playbackList.get(currentIndex);
-        isVod = com.bykerimoff.player.utils.M3UParser.isVodChannel(initialChannel.getStreamUrl());
+        isVod = M3UParser.isVodChannel(initialChannel.getStreamUrl());
         
         if (resumePos > 0 && isVod) {
             playChannel(currentIndex, resumePos);
         } else {
             playChannel(currentIndex);
         }
+        applyThemeColors();
         setupSidebars();
         setupNumericOverlay();
         updateTestCountdown();
@@ -191,7 +209,7 @@ public class PlayerActivity extends AppCompatActivity {
         int bufferPlayback = smartBuffer ? 2500 : 1000;
         int bufferRebuffer = smartBuffer ? 5000 : 2000;
 
-        androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
                         minBuffer,
                         maxBuffer,
@@ -228,7 +246,7 @@ public class PlayerActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onPlayerError(@NonNull androidx.media3.common.PlaybackException error) {
+            public void onPlayerError(@NonNull PlaybackException error) {
                 if (retryCount < MAX_RETRIES) {
                     retryCount++;
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -249,33 +267,56 @@ public class PlayerActivity extends AppCompatActivity {
         });
 
         CaptionStyleCompat style = new CaptionStyleCompat(
-                android.graphics.Color.WHITE,
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT,
+                Color.WHITE,
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
                 CaptionStyleCompat.EDGE_TYPE_OUTLINE,
-                android.graphics.Color.BLACK,
+                Color.BLACK,
                 null
         );
         if (binding.playerView.getSubtitleView() != null) {
             binding.playerView.getSubtitleView().setApplyEmbeddedStyles(false);
             binding.playerView.getSubtitleView().setApplyEmbeddedFontSizes(false);
             binding.playerView.getSubtitleView().setStyle(style);
-            binding.playerView.getSubtitleView().setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 24f);
+            binding.playerView.getSubtitleView().setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, 24f);
         }
     }
 
     private void updateQualityAndFps() {
         if (exoPlayer == null) return;
+        int color = ThemeManager.INSTANCE.getThemeColor(this);
         Format videoFormat = exoPlayer.getVideoFormat();
         if (videoFormat != null) {
             String quality = videoFormat.width + "x" + videoFormat.height;
             binding.tvQuality.setText(quality);
             binding.tvQualityCorner.setText(quality);
+            binding.tvQuality.setBackgroundColor(color);
+            binding.tvQualityCorner.setBackgroundColor(color);
             
             String fps = (videoFormat.frameRate > 0) ? Math.round(videoFormat.frameRate) + " FPS" : "";
             binding.tvFps.setText(fps);
             binding.tvFpsCorner.setText(fps);
+            binding.tvFps.setTextColor(color);
+            binding.tvFpsCorner.setTextColor(color);
         }
+    }
+
+    private void applyThemeColors() {
+        int color = ThemeManager.INSTANCE.getThemeColor(this);
+        ColorStateList colorStateList = ColorStateList.valueOf(color);
+        
+        binding.tvPlayerSidebarTitle.setTextColor(color);
+        binding.tvArchiveTitle.setTextColor(color);
+        binding.tvTracksTitle.setTextColor(color);
+        binding.tvBufferingText.setTextColor(color);
+        binding.tvAspectRatioStatus.setTextColor(color);
+        binding.tvPlayerTestCountdown.setTextColor(color);
+        
+        binding.testTitlePlayer.setTextColor(color);
+        binding.testTimerPlayer.setTextColor(color);
+        
+        binding.vodSeekBar.setProgressTintList(colorStateList);
+        binding.vodSeekBar.setThumbTintList(colorStateList);
     }
 
     private void playChannel(int index) {
@@ -292,7 +333,7 @@ public class PlayerActivity extends AppCompatActivity {
         binding.bufferingLayout.setVisibility(View.VISIBLE);
         binding.miniInfoLayout.setVisibility(View.GONE); // Hide mini info on channel change
         
-        isVod = com.bykerimoff.player.utils.M3UParser.isVodChannel(channel.getStreamUrl());
+        isVod = M3UParser.isVodChannel(channel.getStreamUrl());
 
         // Stop current playback before switching to prevent audio overlap
         if (exoPlayer != null) {
@@ -307,12 +348,20 @@ public class PlayerActivity extends AppCompatActivity {
         MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(url));
         
         String lower = url.toLowerCase(Locale.ROOT);
-        if (lower.contains("m3u8") || lower.contains("stream.php") || lower.contains(".php") || lower.contains("/hls/")) {
+        
+        // MimeType detection optimization
+        if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
             builder.setMimeType(MimeTypes.APPLICATION_M3U8);
-        } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts")) {
-            builder.setMimeType(MimeTypes.VIDEO_MP2T);
-        } else if (lower.contains(".mpd")) {
+        } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
             builder.setMimeType(MimeTypes.APPLICATION_MPD);
+        } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
+            builder.setMimeType(MimeTypes.APPLICATION_SS);
+        } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
+            builder.setMimeType(MimeTypes.VIDEO_MP2T);
+        } else if (lower.contains("stream.php") || lower.contains("live.php") || lower.contains("get.php")) {
+            // PHP faylları çox vaxt HLS və ya TS qaytarır.
+            // Əgər konkret indikator yoxdursa, M3U8 kimi cəhd edirik.
+            builder.setMimeType(MimeTypes.APPLICATION_M3U8);
         }
 
         exoPlayer.setMediaItem(builder.build());
@@ -375,27 +424,27 @@ public class PlayerActivity extends AppCompatActivity {
             binding.announcementContainer.setVisibility(View.VISIBLE);
             binding.tvAnnouncement.setText(text);
             try {
-                binding.tvAnnouncement.setTextColor(android.graphics.Color.parseColor(colorStr));
+                binding.tvAnnouncement.setTextColor(Color.parseColor(colorStr));
             } catch (Exception e) {
-                binding.tvAnnouncement.setTextColor(android.graphics.Color.WHITE);
+                binding.tvAnnouncement.setTextColor(Color.WHITE);
             }
             
             binding.tvAnnouncement.post(() -> {
                 float screenWidth = (float) getResources().getDisplayMetrics().widthPixels;
                 
                 // Measure the actual width of the text content accurately
-                android.text.TextPaint paint = binding.tvAnnouncement.getPaint();
+                TextPaint paint = binding.tvAnnouncement.getPaint();
                 float textWidth = paint.measureText(text);
                 
                 // Force the TextView to be wide enough to hold the entire text without clipping
-                android.view.ViewGroup.LayoutParams params = binding.tvAnnouncement.getLayoutParams();
+                ViewGroup.LayoutParams params = binding.tvAnnouncement.getLayoutParams();
                 params.width = (int) (textWidth + 100); // Add a small safety margin
                 binding.tvAnnouncement.setLayoutParams(params);
                 
                 binding.tvAnnouncement.clearAnimation();
                 
                 // Start from the very right edge and go completely past the left edge
-                android.view.animation.TranslateAnimation anim = new android.view.animation.TranslateAnimation(
+                TranslateAnimation anim = new TranslateAnimation(
                     screenWidth,
                     -textWidth - 100f, 
                     0f, 0f
@@ -406,8 +455,8 @@ public class PlayerActivity extends AppCompatActivity {
                 long duration = (long) ((screenWidth + textWidth) / (speedVal > 0 ? speedVal : 100) * 1000);
                 
                 anim.setDuration(duration);
-                anim.setRepeatCount(android.view.animation.Animation.INFINITE);
-                anim.setInterpolator(new android.view.animation.LinearInterpolator());
+                anim.setRepeatCount(Animation.INFINITE);
+                anim.setInterpolator(new LinearInterpolator());
                 binding.tvAnnouncement.startAnimation(anim);
             });
         } else {
@@ -418,9 +467,9 @@ public class PlayerActivity extends AppCompatActivity {
 
     private void updateEpg(Channel channel) {
         binding.tvEpgInfo.setText("Proqram məlumatı yüklənir...");
-        com.bykerimoff.player.utils.XMLTVParser.getProgramForChannel(channel.getName(), new com.bykerimoff.player.utils.XMLTVParser.EpgCallback() {
+        XMLTVParser.getProgramForChannel(channel.getName(), new XMLTVParser.EpgCallback() {
             @Override
-            public void onResult(com.bykerimoff.player.models.EpgProgram program) {
+            public void onResult(EpgProgram program) {
                 runOnUiThread(() -> {
                     if (program != null) {
                         binding.tvEpgInfo.setText(program.getTitle());
@@ -449,9 +498,9 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void setupSidebars() {
-        binding.rvPlayerChannels.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
-        binding.rvPlayerCategories.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
-        binding.rvTracks.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+        binding.rvPlayerChannels.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvPlayerCategories.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvTracks.setLayoutManager(new LinearLayoutManager(this));
 
         ChannelAdapter channelAdapter = new ChannelAdapter(playbackList, new ChannelAdapter.OnChannelClickListener() {
             @Override
@@ -509,6 +558,9 @@ public class PlayerActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (System.currentTimeMillis() - lastKeyTime < KEY_DELAY) return true;
+        lastKeyTime = System.currentTimeMillis();
+
         if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
             int digit = keyCode - KeyEvent.KEYCODE_0;
             if (isVolumeInputMode || binding.volumeLayout.getVisibility() == View.VISIBLE) {
@@ -547,22 +599,36 @@ public class PlayerActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_CHANNEL_UP:
             case KeyEvent.KEYCODE_PAGE_UP:
                 if (!isSidebarVisible) {
-                    playNext();
+                    if (event.getRepeatCount() % 3 == 0) playNext();
                     return true;
-                } else if (handleCircularFocus(true)) {
-                    return true;
+                } else {
+                    boolean handled = handleCircularFocus(true);
+                    if (!handled) {
+                        handled = super.onKeyDown(keyCode, event);
+                        View newFocus = getCurrentFocus();
+                        if (newFocus != null && !isViewInSidebars(newFocus)) {
+                            restoreSidebarFocus();
+                        }
+                    }
+                    return handled;
                 }
-                break;
             case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_CHANNEL_DOWN:
             case KeyEvent.KEYCODE_PAGE_DOWN:
                 if (!isSidebarVisible) {
-                    playPrevious();
+                    if (event.getRepeatCount() % 3 == 0) playPrevious();
                     return true;
-                } else if (handleCircularFocus(false)) {
-                    return true;
+                } else {
+                    boolean handled = handleCircularFocus(false);
+                    if (!handled) {
+                        handled = super.onKeyDown(keyCode, event);
+                        View newFocus = getCurrentFocus();
+                        if (newFocus != null && !isViewInSidebars(newFocus)) {
+                            restoreSidebarFocus();
+                        }
+                    }
+                    return handled;
                 }
-                break;
             case KeyEvent.KEYCODE_DPAD_LEFT:
                 if (!isSidebarVisible) {
                     if (isVod) {
@@ -619,9 +685,39 @@ public class PlayerActivity extends AppCompatActivity {
                     binding.playerTracksSidebar.setVisibility(View.GONE);
                     return true;
                 }
+                if (binding.playerArchiveSidebar.getVisibility() == View.VISIBLE) {
+                    binding.playerArchiveSidebar.setVisibility(View.GONE);
+                    return true;
+                }
                 break;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    private boolean isViewInSidebars(View v) {
+        return isViewInRecyclerView(v, binding.rvPlayerChannels) ||
+               isViewInRecyclerView(v, binding.rvPlayerCategories) ||
+               isViewInRecyclerView(v, binding.rvTracks) ||
+               isViewInRecyclerView(v, binding.rvArchive) ||
+               v.getId() == binding.etPlayerSearch.getId();
+    }
+
+    private void restoreSidebarFocus() {
+        if (binding.playerChannelSidebar.getVisibility() == View.VISIBLE) {
+            binding.rvPlayerChannels.requestFocus();
+        } else if (binding.rvPlayerCategories.getVisibility() == View.VISIBLE) {
+            binding.rvPlayerCategories.requestFocus();
+        } else if (binding.playerTracksSidebar.getVisibility() == View.VISIBLE) {
+            binding.rvTracks.requestFocus();
+        } else if (binding.playerArchiveSidebar.getVisibility() == View.VISIBLE) {
+            binding.rvArchive.requestFocus();
+        }
+    }
+
+    private boolean isViewInRecyclerView(View focused, RecyclerView rv) {
+        if (focused == null || rv == null) return false;
+        View view = rv.findContainingItemView(focused);
+        return view != null;
     }
 
     private void cycleAspectRatio() {
@@ -662,27 +758,27 @@ public class PlayerActivity extends AppCompatActivity {
 
         if (binding.playerChannelSidebar.getVisibility() == View.VISIBLE) {
             // Channel Sidebar (Search + List)
+            int count = binding.rvPlayerChannels.getAdapter() != null ? binding.rvPlayerChannels.getAdapter().getItemCount() : 0;
+            
             if (focused.getId() == binding.etPlayerSearch.getId()) {
                 if (isUp) {
                     // Search-də yuxarı basanda ən sonuncu kanala get
-                    int count = binding.rvPlayerChannels.getAdapter() != null ? binding.rvPlayerChannels.getAdapter().getItemCount() : 0;
                     if (count > 0) {
-                        binding.rvPlayerChannels.scrollToPosition(count - 1);
-                        binding.rvPlayerChannels.postDelayed(() -> {
-                            RecyclerView.ViewHolder vh = binding.rvPlayerChannels.findViewHolderForAdapterPosition(count - 1);
-                            if (vh != null) vh.itemView.requestFocus();
-                            else if (binding.rvPlayerChannels.getLayoutManager() != null) {
-                                View v = binding.rvPlayerChannels.getLayoutManager().findViewByPosition(count - 1);
-                                if (v != null) v.requestFocus();
-                            }
-                        }, 100);
+                        binding.rvPlayerChannels.stopScroll();
+                        scrollToAndFocus(binding.rvPlayerChannels, count - 1);
+                        return true;
+                    }
+                } else {
+                    // Search-də aşağı basanda 1-ci kanala get
+                    if (count > 0) {
+                        binding.rvPlayerChannels.stopScroll();
+                        scrollToAndFocus(binding.rvPlayerChannels, 0);
                         return true;
                     }
                 }
             } else {
                 int pos = getRvPosition(binding.rvPlayerChannels, focused);
                 if (pos != RecyclerView.NO_POSITION) {
-                    int count = binding.rvPlayerChannels.getAdapter() != null ? binding.rvPlayerChannels.getAdapter().getItemCount() : 0;
                     if (isUp && pos == 0) {
                         binding.etPlayerSearch.requestFocus();
                         return true;
@@ -698,26 +794,12 @@ public class PlayerActivity extends AppCompatActivity {
             if (pos != RecyclerView.NO_POSITION) {
                 int count = binding.rvPlayerCategories.getAdapter() != null ? binding.rvPlayerCategories.getAdapter().getItemCount() : 0;
                 if (isUp && pos == 0) {
-                    binding.rvPlayerCategories.scrollToPosition(count - 1);
-                    binding.rvPlayerCategories.postDelayed(() -> {
-                        RecyclerView.ViewHolder vh = binding.rvPlayerCategories.findViewHolderForAdapterPosition(count - 1);
-                        if (vh != null) vh.itemView.requestFocus();
-                        else if (binding.rvPlayerCategories.getLayoutManager() != null) {
-                            View v = binding.rvPlayerCategories.getLayoutManager().findViewByPosition(count - 1);
-                            if (v != null) v.requestFocus();
-                        }
-                    }, 100);
+                    binding.rvPlayerCategories.stopScroll();
+                    scrollToAndFocus(binding.rvPlayerCategories, count - 1);
                     return true;
                 } else if (!isUp && pos == count - 1) {
-                    binding.rvPlayerCategories.scrollToPosition(0);
-                    binding.rvPlayerCategories.postDelayed(() -> {
-                        RecyclerView.ViewHolder vh = binding.rvPlayerCategories.findViewHolderForAdapterPosition(0);
-                        if (vh != null) vh.itemView.requestFocus();
-                        else if (binding.rvPlayerCategories.getLayoutManager() != null) {
-                            View v = binding.rvPlayerCategories.getLayoutManager().findViewByPosition(0);
-                            if (v != null) v.requestFocus();
-                        }
-                    }, 100);
+                    binding.rvPlayerCategories.stopScroll();
+                    scrollToAndFocus(binding.rvPlayerCategories, 0);
                     return true;
                 }
             }
@@ -869,6 +951,18 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
+    private void scrollToAndFocus(RecyclerView rv, int position) {
+        rv.scrollToPosition(position);
+        rv.postDelayed(() -> {
+            RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(position);
+            if (vh != null) vh.itemView.requestFocus();
+            else if (rv.getLayoutManager() != null) {
+                View v = rv.getLayoutManager().findViewByPosition(position);
+                if (v != null) v.requestFocus();
+            }
+        }, 100);
+    }
+
     private void showCategorySidebar() {
         if (binding.rvPlayerCategories.getVisibility() == View.VISIBLE) {
             binding.rvPlayerCategories.setVisibility(View.GONE);
@@ -901,16 +995,42 @@ public class PlayerActivity extends AppCompatActivity {
 
     private void updatePlaybackListByCategory(Category category) {
         List<Channel> newList = new ArrayList<>();
+        SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
+        boolean isAdultEnabled = prefs.getBoolean("is_adult_enabled", true);
+        boolean isSportEnabled = prefs.getBoolean("is_sport_enabled", true);
+        boolean hideSensitive = prefs.getBoolean("hide_sensitive_categories", false);
+        boolean isKidsMode = prefs.getBoolean("kids_mode_active", false);
+
         if ("all".equals(category.getId())) {
-            newList.addAll(DataManager.getAllChannels());
+            for (Channel c : DataManager.getAllChannels()) {
+                if (isKidsMode && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+                if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                if (!isSportEnabled && M3UParser.isSportCategory(c.getCategoryName())) continue;
+                newList.add(c);
+            }
         } else if ("0".equals(category.getId())) {
             FavoriteManager favManager = new FavoriteManager(this);
             for (Channel c : DataManager.getAllChannels()) {
-                if (favManager.isFavorite(c.getId())) newList.add(c);
+                if (favManager.isFavorite(c.getId())) {
+                    if (isKidsMode && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+                    if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                    if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                    if (!isSportEnabled && M3UParser.isSportCategory(c.getCategoryName())) continue;
+                    newList.add(c);
+                }
             }
         } else {
             List<Channel> list = DataManager.getCurrentChannelMap().get(category.getId());
-            if (list != null) newList.addAll(list);
+            if (list != null) {
+                for (Channel c : list) {
+                    if (isKidsMode && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+                    if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                    if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                    if (!isSportEnabled && M3UParser.isSportCategory(c.getCategoryName())) continue;
+                    newList.add(c);
+                }
+            }
         }
         
         if (!newList.isEmpty()) {
@@ -964,7 +1084,7 @@ public class PlayerActivity extends AppCompatActivity {
             testCountDownTimer.cancel();
         }
 
-        testCountDownTimer = new android.os.CountDownTimer(seconds * 1000L, 1000) {
+        testCountDownTimer = new CountDownTimer(seconds * 1000L, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
                 int remaining = (int) (millisUntilFinished / 1000);
@@ -975,15 +1095,15 @@ public class PlayerActivity extends AppCompatActivity {
 
                 int color;
                 if (remaining < 60) {
-                    color = android.graphics.Color.RED;
+                    color = Color.RED;
                     binding.testWarningPlayer.setVisibility(View.VISIBLE);
                     binding.testWarningPlayer.setText("⚠️ Test vaxtı bitir!");
                 } else if (remaining < 300) {
-                    color = android.graphics.Color.parseColor("#FFA500"); // Orange
+                    color = Color.parseColor("#FFA500"); // Orange
                     binding.testWarningPlayer.setVisibility(View.VISIBLE);
                     binding.testWarningPlayer.setText("Test müddəti az qalıb");
                 } else {
-                    color = android.graphics.Color.parseColor("#D4AF37"); // Gold
+                    color = Color.parseColor("#D4AF37"); // Gold
                     binding.testWarningPlayer.setVisibility(View.GONE);
                 }
                 

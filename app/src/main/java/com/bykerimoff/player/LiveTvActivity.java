@@ -1,26 +1,45 @@
 package com.bykerimoff.player;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
+import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.View;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.MimeTypes;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.datasource.okhttp.OkHttpDataSource;
+import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
 import androidx.media3.extractor.DefaultExtractorsFactory;
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
 import androidx.media3.ui.CaptionStyleCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.bykerimoff.player.adapters.CategoryAdapter;
 import com.bykerimoff.player.adapters.ChannelAdapter;
 import com.bykerimoff.player.api.ApiClient;
@@ -30,17 +49,23 @@ import com.bykerimoff.player.models.Channel;
 import com.bykerimoff.player.models.XtreamCategory;
 import com.bykerimoff.player.models.XtreamChannel;
 import com.bykerimoff.player.utils.DataManager;
+import com.bykerimoff.player.utils.DiskCacheManager;
 import com.bykerimoff.player.utils.FavoriteManager;
 import com.bykerimoff.player.utils.M3UParser;
 import com.bykerimoff.player.utils.NetworkUtils;
 import com.bykerimoff.player.utils.PinDialog;
+import com.bykerimoff.player.utils.SecurityUtils;
+import com.bykerimoff.player.utils.ThemeManager;
+import com.bykerimoff.player.utils.WallpaperManager;
 import com.bykerimoff.player.utils.XMLTVParser;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -73,9 +98,13 @@ public class LiveTvActivity extends AppCompatActivity {
     private String xtHost, xtUser, xtPass;
     private boolean isAdultEnabled = true;
     private boolean isSportEnabled = true;
+    private boolean hideSensitive = false;
     private boolean isKidsModeActive = false;
 
-    private android.os.CountDownTimer testCountDownTimer;
+    private final Handler playbackHandler = new Handler(Looper.getMainLooper());
+    private Runnable playbackRunnable;
+
+    private CountDownTimer testCountDownTimer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,7 +112,7 @@ public class LiveTvActivity extends AppCompatActivity {
         binding = ActivityLiveTvBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        com.bykerimoff.player.utils.WallpaperManager.INSTANCE.applyWallpaper(this, binding.ivAppBackground);
+        WallpaperManager.INSTANCE.applyWallpaper(this, binding.ivAppBackground);
 
         SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
         playlistType = prefs.getString("playlist_type", "m3u");
@@ -94,7 +123,7 @@ public class LiveTvActivity extends AppCompatActivity {
         xtPass = prefs.getString("xtream_pass", "");
         isAdultEnabled = prefs.getBoolean("is_adult_enabled", true);
         isSportEnabled = prefs.getBoolean("is_sport_enabled", true);
-        boolean hideSensitive = prefs.getBoolean("hide_sensitive_categories", false);
+        hideSensitive = prefs.getBoolean("hide_sensitive_categories", false);
         isKidsModeActive = prefs.getBoolean("kids_mode_active", false);
 
         // Xtream və ya M3U rejimini dəqiq təyin et
@@ -116,8 +145,8 @@ public class LiveTvActivity extends AppCompatActivity {
         } 
         // 2. Check Disk Cache
         else {
-            List<Channel> cachedChannels = com.bykerimoff.player.utils.DiskCacheManager.loadChannels(this, currentPlaylistId);
-            List<Category> cachedCategories = com.bykerimoff.player.utils.DiskCacheManager.loadCategories(this, currentPlaylistId);
+            List<Channel> cachedChannels = DiskCacheManager.loadChannels(this, currentPlaylistId);
+            List<Category> cachedCategories = DiskCacheManager.loadCategories(this, currentPlaylistId);
             
             if (!cachedChannels.isEmpty()) {
                 allChannels.clear();
@@ -160,7 +189,20 @@ public class LiveTvActivity extends AppCompatActivity {
             XMLTVParser.downloadAndParse(manualEpg);
         }
         
+        applyThemeColors();
         updateTestCountdown();
+    }
+
+    private void applyThemeColors() {
+        int color = ThemeManager.INSTANCE.getThemeColor(this);
+        ColorStateList colorStateList = ColorStateList.valueOf(color);
+        
+        binding.tvPanelTitle.setTextColor(color);
+        binding.testTitleLive.setTextColor(color);
+        binding.testTimerLive.setTextColor(color);
+        binding.mainLoadingProgress.setIndeterminateTintList(colorStateList);
+        binding.tvMainLoadingText.setTextColor(color);
+        binding.tvCurrentChannel.setTextColor(color);
     }
 
     private void loadFromMemory() {
@@ -195,6 +237,7 @@ public class LiveTvActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        applyThemeColors();
         // Ayarlardan qayıtdıqda sıralama dəyişə bilər
         if (!categories.isEmpty()) {
             updateCategoryCounts();
@@ -212,7 +255,7 @@ public class LiveTvActivity extends AppCompatActivity {
             if (testCountDownTimer != null) {
                 testCountDownTimer.cancel();
             }
-            binding.testBannerLive.setVisibility(android.view.View.GONE);
+            binding.testBannerLive.setVisibility(View.GONE);
         }
     }
 
@@ -221,33 +264,33 @@ public class LiveTvActivity extends AppCompatActivity {
             testCountDownTimer.cancel();
         }
 
-        testCountDownTimer = new android.os.CountDownTimer(seconds * 1000L, 1000) {
+        testCountDownTimer = new CountDownTimer(seconds * 1000L, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
                 int remaining = (int) (millisUntilFinished / 1000);
                 String timeLeft = formatTimeForTest(remaining);
                 
-                binding.testBannerLive.setVisibility(android.view.View.VISIBLE);
+                binding.testBannerLive.setVisibility(View.VISIBLE);
                 binding.testTitleLive.setText("TEST REJİMİ");
                 binding.testTimerLive.setText("Test: " + timeLeft);
 
                 int color;
                 if (remaining < 60) {
-                    color = android.graphics.Color.RED;
+                    color = Color.RED;
                 } else if (remaining < 300) {
-                    color = android.graphics.Color.parseColor("#FFA500"); // Orange
+                    color = Color.parseColor("#FFA500"); // Orange
                 } else {
-                    color = android.graphics.Color.parseColor("#D4AF37"); // Gold
+                    color = Color.parseColor("#D4AF37"); // Gold
                 }
                 
                 binding.testTitleLive.setTextColor(color);
                 binding.testTimerLive.setTextColor(color);
-                binding.testTimerLive.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+                binding.testTimerLive.setBackgroundColor(Color.TRANSPARENT);
 
                 // 5 dəqiqədən az qaldıqda marqatla
                 if (remaining < 300) {
                     if (binding.testBannerLive.getAnimation() == null) {
-                        binding.testBannerLive.startAnimation(android.view.animation.AnimationUtils.loadAnimation(LiveTvActivity.this, R.anim.blink));
+                        binding.testBannerLive.startAnimation(AnimationUtils.loadAnimation(LiveTvActivity.this, R.anim.blink));
                     }
                 } else {
                     binding.testBannerLive.clearAnimation();
@@ -257,9 +300,9 @@ public class LiveTvActivity extends AppCompatActivity {
             @Override
             public void onFinish() {
                 binding.testTimerLive.setText("⏱ Test bitdi!");
-                binding.testTimerLive.setTextColor(android.graphics.Color.parseColor("#ef4444"));
+                binding.testTimerLive.setTextColor(Color.parseColor("#ef4444"));
                 
-                new android.app.AlertDialog.Builder(LiveTvActivity.this)
+                new AlertDialog.Builder(LiveTvActivity.this)
                     .setTitle("🧪 Test Bitdi")
                     .setMessage("Test müddəti bitdi! Zəhmət olmasa dilerinizlə əlaqə saxlayın.")
                     .setCancelable(false)
@@ -273,8 +316,8 @@ public class LiveTvActivity extends AppCompatActivity {
         int hours = seconds / 3600;
         int minutes = (seconds % 3600) / 60;
         int secs = seconds % 60;
-        return java.util.Locale.getDefault() != null ? 
-            String.format(java.util.Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, secs) : 
+        return Locale.getDefault() != null ?
+            String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, secs) :
             String.format("%02d:%02d:%02d", hours, minutes, secs);
     }
 
@@ -304,7 +347,9 @@ public class LiveTvActivity extends AppCompatActivity {
             if (channel.getName().toLowerCase().contains(lowerQuery)) {
                 // Filtrləri yoxla
                 if (!isAdultEnabled && M3UParser.isSensitiveCategory(channel.getCategoryName())) continue;
+                if (hideSensitive && M3UParser.isSensitiveCategory(channel.getCategoryName())) continue;
                 if (!isSportEnabled && M3UParser.isSportCategory(channel.getCategoryName())) continue;
+                if (isKidsModeActive && !M3UParser.isKidsCategory(channel.getCategoryName())) continue;
                 
                 channels.add(channel);
             }
@@ -312,19 +357,19 @@ public class LiveTvActivity extends AppCompatActivity {
         channelAdapter.notifyDataSetChanged();
     }
 
-    @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
+    @OptIn(markerClass = UnstableApi.class)
     private void initMiniPlayer() {
-        androidx.media3.datasource.okhttp.OkHttpDataSource.Factory dataSourceFactory = NetworkUtils.getDataSourceFactory(this);
+        OkHttpDataSource.Factory dataSourceFactory = NetworkUtils.getDataSourceFactory(this);
         
-        androidx.media3.extractor.DefaultExtractorsFactory extractorsFactory = new androidx.media3.extractor.DefaultExtractorsFactory()
-                .setTsExtractorFlags(androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES 
-                                   | androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
-                                   | androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM
-                                   | androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS);
+        DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory()
+                .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES
+                                   | DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
+                                   | DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM
+                                   | DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS);
 
-        androidx.media3.exoplayer.source.DefaultMediaSourceFactory mediaSourceFactory = new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory);
+        DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory);
 
-        androidx.media3.exoplayer.trackselection.DefaultTrackSelector trackSelector = new androidx.media3.exoplayer.trackselection.DefaultTrackSelector(this);
+        DefaultTrackSelector trackSelector = new DefaultTrackSelector(this);
         trackSelector.setParameters(trackSelector.buildUponParameters()
                 .setExceedAudioConstraintsIfNecessary(true)
                 .setExceedRendererCapabilitiesIfNecessary(true)
@@ -333,12 +378,12 @@ public class LiveTvActivity extends AppCompatActivity {
         );
 
         // Geniş audio/video kodek dəstəyi (AC3, DTS və s. üçün)
-        androidx.media3.exoplayer.DefaultRenderersFactory renderersFactory = new androidx.media3.exoplayer.DefaultRenderersFactory(this)
-                .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
+                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
                 .setEnableDecoderFallback(true);
 
         // Daha mükəmməl buferləmə ayarları (50-60 FPS üçün)
-        androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
                         5000,  // minBufferMs (20000 -> 5000)
                         15000, // maxBufferMs (60000 -> 15000)
@@ -355,9 +400,9 @@ public class LiveTvActivity extends AppCompatActivity {
                 .build();
         binding.miniPlayerView.setPlayer(miniPlayer);
         
-        miniPlayer.addListener(new androidx.media3.common.Player.Listener() {
+        miniPlayer.addListener(new Player.Listener() {
             @Override
-            public void onPlayerError(@androidx.annotation.NonNull androidx.media3.common.PlaybackException error) {
+            public void onPlayerError(@NonNull PlaybackException error) {
                 // Mini pleyer xətası zamanı avtomatik yenidən qoşulma cəhdi
                 miniPlayer.prepare();
                 miniPlayer.play();
@@ -366,18 +411,18 @@ public class LiveTvActivity extends AppCompatActivity {
 
         // Mini-player üçün altyazı stili
         CaptionStyleCompat style = new CaptionStyleCompat(
-                android.graphics.Color.WHITE,
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT,
+                Color.WHITE,
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
                 CaptionStyleCompat.EDGE_TYPE_OUTLINE,
-                android.graphics.Color.BLACK,
+                Color.BLACK,
                 null
         );
         if (binding.miniPlayerView.getSubtitleView() != null) {
             binding.miniPlayerView.getSubtitleView().setApplyEmbeddedStyles(false);
             binding.miniPlayerView.getSubtitleView().setApplyEmbeddedFontSizes(false);
             binding.miniPlayerView.getSubtitleView().setStyle(style);
-            binding.miniPlayerView.getSubtitleView().setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 18f);
+            binding.miniPlayerView.getSubtitleView().setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, 18f);
         }
     }
 
@@ -424,7 +469,9 @@ public class LiveTvActivity extends AppCompatActivity {
             @Override
             public void onChannelFocus(Channel channel) {
                 if (!isVodMode) {
-                    playMiniStream(channel);
+                    if (playbackRunnable != null) playbackHandler.removeCallbacks(playbackRunnable);
+                    playbackRunnable = () -> playMiniStream(channel);
+                    playbackHandler.postDelayed(playbackRunnable, 500);
                 }
             }
 
@@ -457,7 +504,7 @@ public class LiveTvActivity extends AppCompatActivity {
         binding.tvCurrentChannel.setText(channel.getName());
         binding.tvEpgTitle.setText("Yüklənir...");
         
-        com.bumptech.glide.Glide.with(this)
+        Glide.with(this)
                 .load(channel.getLogoUrl())
                 .placeholder(R.drawable.default_logo)
                 .error(R.drawable.default_logo)
@@ -466,14 +513,14 @@ public class LiveTvActivity extends AppCompatActivity {
         String url = channel.getStreamUrl();
         MediaItem.Builder builder = new MediaItem.Builder();
         if (url != null) {
-            builder.setUri(android.net.Uri.parse(url));
-            String lower = url.toLowerCase(java.util.Locale.ROOT);
+            builder.setUri(Uri.parse(url));
+            String lower = url.toLowerCase(Locale.ROOT);
             if (lower.contains("m3u8") || lower.contains("stream.php") || lower.contains(".php") || lower.contains("/hls/")) {
-                builder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8);
+                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
             } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts")) {
-                builder.setMimeType(androidx.media3.common.MimeTypes.VIDEO_MP2T);
+                builder.setMimeType(MimeTypes.VIDEO_MP2T);
             } else if (lower.contains(".mpd")) {
-                builder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MPD);
+                builder.setMimeType(MimeTypes.APPLICATION_MPD);
             }
         }
         miniPlayer.setMediaItem(builder.build());
@@ -484,7 +531,7 @@ public class LiveTvActivity extends AppCompatActivity {
     private void openExternalPlayer(Channel channel) {
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(android.net.Uri.parse(channel.getStreamUrl()), "video/*");
+            intent.setDataAndType(Uri.parse(channel.getStreamUrl()), "video/*");
             intent.putExtra("title", channel.getName());
             startActivity(Intent.createChooser(intent, "Pleyer seçin"));
         } catch (Exception e) {
@@ -505,7 +552,7 @@ public class LiveTvActivity extends AppCompatActivity {
     }
 
     private void loadM3UData() {
-        binding.mainLoadingLayout.setVisibility(android.view.View.VISIBLE);
+        binding.mainLoadingLayout.setVisibility(View.VISIBLE);
         loadM3UFromUrl(m3uUrl);
     }
 
@@ -534,8 +581,8 @@ public class LiveTvActivity extends AppCompatActivity {
         String encodedUser = "";
         String encodedPass = "";
         try {
-            encodedUser = java.net.URLEncoder.encode(xtUser, "UTF-8");
-            encodedPass = java.net.URLEncoder.encode(xtPass, "UTF-8");
+            encodedUser = URLEncoder.encode(xtUser, "UTF-8");
+            encodedPass = URLEncoder.encode(xtPass, "UTF-8");
         } catch (Exception e) {
             encodedUser = xtUser;
             encodedPass = xtPass;
@@ -613,7 +660,7 @@ public class LiveTvActivity extends AppCompatActivity {
     private void handleXtreamError(String msg) {
         runOnUiThread(() -> {
             binding.mainLoadingLayout.setVisibility(View.GONE);
-            android.util.Log.e("XTREAM_ERROR", msg);
+            Log.e("XTREAM_ERROR", msg);
             // Fallback to M3U if necessary
             if (pendingXtCats == null && pendingXtStreams == null) {
                 loadM3UData();
@@ -653,7 +700,7 @@ public class LiveTvActivity extends AppCompatActivity {
             }
 
             Channel channel = new Channel(sid, xc.getName(), xc.getLogo(), 
-                com.bykerimoff.player.utils.SecurityUtils.encryptUrl(streamLink), xc.getCategoryId());
+                SecurityUtils.encryptUrl(streamLink), xc.getCategoryId());
             
             tempAll.add(channel);
             
@@ -686,8 +733,8 @@ public class LiveTvActivity extends AppCompatActivity {
             String filterCategory = getIntent().getStringExtra("filter_category");
             String isXtreamStr = ("xtream".equalsIgnoreCase(playlistType) || (xtHost != null && !xtHost.trim().isEmpty())) ? "xt" : "m3u";
             String currentPlaylistId = (isXtreamStr.equals("xt") ? (xtHost + xtUser) : m3uUrl) + "_" + (filterCategory != null ? filterCategory : "live");
-            com.bykerimoff.player.utils.DiskCacheManager.saveChannels(LiveTvActivity.this, currentPlaylistId, allChannels);
-            com.bykerimoff.player.utils.DiskCacheManager.saveCategories(LiveTvActivity.this, currentPlaylistId, categories);
+            DiskCacheManager.saveChannels(LiveTvActivity.this, currentPlaylistId, allChannels);
+            DiskCacheManager.saveCategories(LiveTvActivity.this, currentPlaylistId, categories);
 
             binding.mainLoadingLayout.setVisibility(View.GONE);
             handleStartCategory();
@@ -725,19 +772,27 @@ public class LiveTvActivity extends AppCompatActivity {
         FavoriteManager favoriteManager = new FavoriteManager(this);
         Set<String> favs = favoriteManager.getFavorites();
         
-        int totalKidsChannels = 0;
-        int favKidsChannels = 0;
+        int totalFilteredChannels = 0;
+        int favFilteredChannels = 0;
         
-        if (isKidsModeActive) {
-            for (Channel c : allChannels) {
-                if (M3UParser.isKidsCategory(c.getCategoryName())) totalKidsChannels++;
-            }
-            for (String favId : favs) {
-                for (Channel c : allChannels) {
-                    if (c.getId().equals(favId) && M3UParser.isKidsCategory(c.getCategoryName())) {
-                        favKidsChannels++;
-                        break;
-                    }
+        // Bütün kanalları öncə filtrləyək ki, say düzgün olsun
+        List<Channel> filteredAll = new ArrayList<>();
+        for (Channel c : allChannels) {
+            if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+            if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+            if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+            if (!isSportEnabled && M3UParser.isSportCategory(c.getCategoryName())) continue;
+            
+            filteredAll.add(c);
+        }
+        totalFilteredChannels = filteredAll.size();
+
+        // Sevimlilər üçün say hesablama
+        for (String favId : favs) {
+            for (Channel c : filteredAll) {
+                if (c.getId().equals(favId)) {
+                    favFilteredChannels++;
+                    break;
                 }
             }
         }
@@ -749,19 +804,19 @@ public class LiveTvActivity extends AppCompatActivity {
             Category cat = originalCategories.get(i);
             String cid = cat.getId();
             if (cid.equals("0")) {
-                int count = isKidsModeActive ? favKidsChannels : favs.size();
-                originalCategories.set(i, new Category("0", "Sevimlilər", count));
+                originalCategories.set(i, new Category("0", "Sevimlilər", favFilteredChannels));
             } else if (cid.equals("all")) {
-                int count = isKidsModeActive ? totalKidsChannels : (allChannels != null ? allChannels.size() : 0);
-                originalCategories.set(i, new Category("all", "Bütün Kanallar", count));
+                originalCategories.set(i, new Category("all", "Bütün Kanallar", totalFilteredChannels));
             } else {
                 List<Channel> list = channelMap.get(cid);
                 int count = 0;
                 if (list != null) {
-                    if (isKidsModeActive) {
-                        for (Channel c : list) if (M3UParser.isKidsCategory(c.getCategoryName())) count++;
-                    } else {
-                        count = list.size();
+                    for (Channel c : list) {
+                        if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+                        if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                        if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                        if (!isSportEnabled && M3UParser.isSportCategory(c.getCategoryName())) continue;
+                        count++;
                     }
                 }
                 originalCategories.set(i, new Category(cid, cat.getName(), count));
@@ -792,13 +847,13 @@ public class LiveTvActivity extends AppCompatActivity {
 
         // Sıralama
         if ("name".equals(sortMode)) {
-            java.util.Collections.sort(filtered, (c1, c2) -> {
+            Collections.sort(filtered, (c1, c2) -> {
                 if (c1.getId().equals("0") || c1.getId().equals("all")) return -1;
                 if (c2.getId().equals("0") || c2.getId().equals("all")) return 1;
                 return c1.getName().compareToIgnoreCase(c2.getName());
             });
         } else if ("count".equals(sortMode)) {
-            java.util.Collections.sort(filtered, (c1, c2) -> {
+            Collections.sort(filtered, (c1, c2) -> {
                 if (c1.getId().equals("0") || c1.getId().equals("all")) return -1;
                 if (c2.getId().equals("0") || c2.getId().equals("all")) return 1;
                 return Integer.compare(c2.getChannelCount(), c1.getChannelCount());
@@ -859,14 +914,20 @@ public class LiveTvActivity extends AppCompatActivity {
         if ("all".equals(category.getId())) {
             for (Channel c : allChannels) {
                 if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+                if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                if (!isSportEnabled && M3UParser.isSportCategory(c.getCategoryName())) continue;
                 channels.add(c);
             }
         } else if ("0".equals(category.getId())) {
             FavoriteManager favoriteManager = new FavoriteManager(this);
-            for (Channel channel : allChannels) {
-                if (favoriteManager.isFavorite(channel.getId())) {
-                    if (isKidsModeActive && !M3UParser.isKidsCategory(channel.getCategoryName())) continue;
-                    channels.add(channel);
+            for (Channel c : allChannels) {
+                if (favoriteManager.isFavorite(c.getId())) {
+                    if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+                    if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                    if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                    if (!isSportEnabled && M3UParser.isSportCategory(c.getCategoryName())) continue;
+                    channels.add(c);
                 }
             }
         } else {
@@ -874,6 +935,11 @@ public class LiveTvActivity extends AppCompatActivity {
             if (list != null) {
                 for (Channel c : list) {
                     if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+                    // Note: Here we don't necessarily need to check adult/sensitive because 
+                    // the category itself would have been hidden if it was sensitive.
+                    // But for safety, let's keep it consistent.
+                    if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+                    if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
                     channels.add(c);
                 }
             }
@@ -906,12 +972,12 @@ public class LiveTvActivity extends AppCompatActivity {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(() -> {
             try {
-                java.net.URL m3uUrlObj = new java.net.URL(url);
-                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) m3uUrlObj.openConnection();
+                URL m3uUrlObj = new URL(url);
+                HttpURLConnection conn = (HttpURLConnection) m3uUrlObj.openConnection();
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(30000);
                 
-                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 List<Channel> parsedChannels = M3UParser.parse(reader);
                 reader.close();
 
@@ -947,7 +1013,7 @@ public class LiveTvActivity extends AppCompatActivity {
                     channelMap.clear();
                     channelMap.putAll(tempMap);
                     
-                    binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                    binding.mainLoadingLayout.setVisibility(View.GONE);
                     updateCategoryCounts();
                     handleStartCategory();
                     
@@ -959,7 +1025,7 @@ public class LiveTvActivity extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> {
-                    binding.mainLoadingLayout.setVisibility(android.view.View.GONE);
+                    binding.mainLoadingLayout.setVisibility(View.GONE);
                     Toast.makeText(LiveTvActivity.this, "Playlist yüklənmədi: " + e.getMessage(), Toast.LENGTH_LONG).show();
                     updateCategoryCounts();
                 });
@@ -967,42 +1033,94 @@ public class LiveTvActivity extends AppCompatActivity {
         });
     }
 
+    private long lastKeyTime = 0;
+    private static final int KEY_DELAY = 30; // ms for snappy feel
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-            View focused = getCurrentFocus();
-            if (focused != null && isViewInRecyclerView(focused, binding.rvCategories)) {
-                int pos = binding.rvCategories.getChildLayoutPosition(focused);
-                if (pos == RecyclerView.NO_POSITION) {
-                    View parent = (View) focused.getParent();
-                    while (parent != null && parent != binding.rvCategories) {
-                        pos = binding.rvCategories.getChildLayoutPosition(parent);
-                        if (pos != RecyclerView.NO_POSITION) break;
-                        parent = (View) parent.getParent();
-                    }
-                }
-                
-                if (pos != RecyclerView.NO_POSITION) {
-                    int count = categoryAdapter.getItemCount();
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP && pos == 0) {
-                        binding.rvCategories.scrollToPosition(count - 1);
-                        binding.rvCategories.postDelayed(() -> {
-                            RecyclerView.ViewHolder vh = binding.rvCategories.findViewHolderForAdapterPosition(count - 1);
-                            if (vh != null) vh.itemView.requestFocus();
-                        }, 50);
-                        return true;
-                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && pos == count - 1) {
-                        binding.rvCategories.scrollToPosition(0);
-                        binding.rvCategories.postDelayed(() -> {
-                            RecyclerView.ViewHolder vh = binding.rvCategories.findViewHolderForAdapterPosition(0);
-                            if (vh != null) vh.itemView.requestFocus();
-                        }, 50);
-                        return true;
-                    }
-                }
+        if (System.currentTimeMillis() - lastKeyTime < KEY_DELAY) return true;
+        lastKeyTime = System.currentTimeMillis();
+
+        View focused = getCurrentFocus();
+        if (focused == null) return super.onKeyDown(keyCode, event);
+
+        // --- Categories List ---
+        if (isViewInRecyclerView(focused, binding.rvCategories)) {
+            int pos = getRvPosition(binding.rvCategories, focused);
+            int count = categoryAdapter.getItemCount();
+
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP && pos == 0) {
+                scrollToAndFocus(binding.rvCategories, count - 1);
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && pos == count - 1) {
+                scrollToAndFocus(binding.rvCategories, 0);
+                return true;
             }
         }
+
+        // --- Channels List ---
+        else if (isViewInRecyclerView(focused, binding.rvChannels)) {
+            int pos = getRvPosition(binding.rvChannels, focused);
+            int count = channelAdapter.getItemCount();
+
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP && pos == 0) {
+                    binding.etSearch.requestFocus();
+                    return true;
+                } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && pos == count - 1) {
+                    binding.etSearch.requestFocus();
+                    return true;
+                }
+
+                // Native movement with correction
+                boolean handled = super.onKeyDown(keyCode, event);
+                View newFocus = getCurrentFocus();
+                if (newFocus != null && isViewInRecyclerView(newFocus, binding.rvCategories)) {
+                    // Oops, jumped to sidebar during vertical scroll. Force back to channels.
+                    binding.rvChannels.requestFocus();
+                    // Optional: find the closest view in channels, but requestFocus on RV usually works
+                }
+                return handled;
+            }
+        }
+
+        // --- Search Box ---
+        else if (focused.getId() == binding.etSearch.getId()) {
+            int count = channelAdapter.getItemCount();
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP && count > 0) {
+                scrollToAndFocus(binding.rvChannels, count - 1);
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && count > 0) {
+                scrollToAndFocus(binding.rvChannels, 0);
+                return true;
+            }
+        }
+
         return super.onKeyDown(keyCode, event);
+    }
+
+    private int getRvPosition(RecyclerView rv, View focused) {
+        View view = rv.findContainingItemView(focused);
+        if (view != null) {
+            return rv.getChildAdapterPosition(view);
+        }
+        return RecyclerView.NO_POSITION;
+    }
+
+    private void scrollToAndFocus(RecyclerView rv, int position) {
+        if (rv.getLayoutManager() instanceof LinearLayoutManager) {
+            ((LinearLayoutManager) rv.getLayoutManager()).scrollToPositionWithOffset(position, 0);
+        } else {
+            rv.scrollToPosition(position);
+        }
+        rv.postDelayed(() -> {
+            RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(position);
+            if (vh != null) vh.itemView.requestFocus();
+            else {
+                View v = rv.getLayoutManager() != null ? rv.getLayoutManager().findViewByPosition(position) : null;
+                if (v != null) v.requestFocus();
+            }
+        }, 50);
     }
 
     private boolean isViewInRecyclerView(View view, RecyclerView rv) {

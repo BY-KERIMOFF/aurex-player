@@ -49,11 +49,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:focusable="true"
-                android:nextFocusRight="@+id/rvCategories"
-                android:nextFocusUp="@+id/rvCategories"
-                android:nextFocusDown="@+id/rvCategories"
-                android:nextFocusLeft="@+id/rvCategories"
-                android:descendantFocusability="afterDescendants" />
+                android:descendantFocusability="afterDescendants"
+                android:nextFocusRight="@+id/etSearch" />
         </LinearLayout>
 
         <!-- Panel 2: Channels -->
@@ -107,11 +104,9 @@
                 android:focusable="true"
                 android:clipToPadding="false"
                 android:padding="8dp"
-                android:nextFocusLeft="@+id/rvChannels"
-                android:nextFocusUp="@+id/etSearch"
-                android:nextFocusDown="@+id/rvChannels"
-                android:nextFocusRight="@+id/rvChannels"
-                android:descendantFocusability="afterDescendants" />
+                android:descendantFocusability="afterDescendants"
+                android:nextFocusLeft="@+id/rvCategories"
+                android:nextFocusRight="@+id/btnBack" />
         </LinearLayout>
 
         <!-- Panel 3: Mini Player & EPG -->

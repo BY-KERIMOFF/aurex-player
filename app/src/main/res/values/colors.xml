@@ -4,9 +4,9 @@
     <color name="bg_main">#0A0A0A</color>
     <color name="bg_sidebar">#121212</color>
 
-    <!-- Gold Accent Palette -->
-    <color name="gold_primary">#FFD700</color>
-    <color name="gold_dark">#B8860B</color>
+    <!-- Cyan Accent Palette (Yeni Müasir Rəng) -->
+    <color name="gold_primary">#00E5FF</color>
+    <color name="gold_dark">#00B8D4</color>
 
     <!-- Glass & Text Colors -->
     <color name="glass_white">#1AFFFFFF</color>
@@ -18,5 +18,5 @@
     <color name="white">#FFFFFFFF</color>
 
     <!-- Item State Colors -->
-    <color name="item_focus_color">#FFD700</color>
+    <color name="item_focus_color">#00E5FF</color>
 </resources>

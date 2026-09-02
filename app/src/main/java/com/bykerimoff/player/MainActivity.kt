@@ -1,53 +1,48 @@
 package com.bykerimoff.player
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Shader
+import android.os.Build
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
-import android.text.SpannableString
-import android.text.style.ForegroundColorSpan
 import android.view.View
+import android.view.ViewAnimationUtils
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
+import android.view.animation.LinearInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import com.bumptech.glide.Glide
+import com.bykerimoff.player.adapters.CurrencyAdapter
 import com.bykerimoff.player.api.ApiClient
 import com.bykerimoff.player.api.ApiResponse
 import com.bykerimoff.player.databinding.ActivityMainBinding
-import com.bykerimoff.player.utils.M3UParser
-import com.bykerimoff.player.utils.MacUtils
-import com.bykerimoff.player.adapters.CurrencyAdapter
-import com.bykerimoff.player.adapters.ResumeAdapter
-import com.bykerimoff.player.models.Channel
-import com.bykerimoff.player.utils.CurrencyManager
-import com.bykerimoff.player.utils.DataManager
-import com.bykerimoff.player.utils.ResumeManager
-import com.bykerimoff.player.utils.SecurityUtils
-import com.bykerimoff.player.utils.UpdateManager
-import com.bykerimoff.player.utils.XMLTVParser
+import com.bykerimoff.player.utils.*
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.Executors
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -58,7 +53,7 @@ class MainActivity : AppCompatActivity() {
     private var isSplashFinished = false
     private var pendingAuthResponse: ApiResponse? = null
     
-    private var testCountDownTimer: android.os.CountDownTimer? = null
+    private var testCountDownTimer: CountDownTimer? = null
     private var backgroundPlayer: ExoPlayer? = null
     
     @OptIn(UnstableApi::class)
@@ -68,14 +63,14 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Təhlükəsizlik yoxlanışı (Ekran yükləndikdən sonra çağırılmalıdır)
+        // Təhlükəsizlik yoxlanışı
         if (checkSecurity()) return
 
-        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
         
         // Daimi bloklama yoxlanışı
         if (prefs.getBoolean("is_permanently_blocked", false)) {
-            showSecurityError("Cihaz təhlükəsizlik səbəbi ilə daxili sistem tərəfindən daimi olaraq bloklanıb.")
+            showSecurityError("Cihaz təhlükəsizlik səbəbi ilə daimi olaraq bloklanıb.")
             return
         }
 
@@ -88,31 +83,50 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        com.bykerimoff.player.utils.WallpaperManager.applyWallpaper(this, binding.ivAppBackground)
+        WallpaperManager.applyWallpaper(this, binding.ivAppBackground)
         initBackgroundVideo()
 
-        // Elan ayarını yaddaşdan yüklə
         DataManager.setShowAnnouncementGlobal(prefs.getBoolean("show_announcement_global", true))
 
         deviceMac = MacUtils.getMacAddress(this)
 
-        // DNS Ayarı
         val dns = prefs.getString("dns_type", "system") ?: "system"
         val manualUrl = prefs.getString("dns_manual_url", "")
-        com.bykerimoff.player.utils.NetworkUtils.setDnsType(dns, manualUrl)
+        NetworkUtils.setDnsType(dns, manualUrl)
 
-        // Yeniləməni yoxla
         UpdateManager(this).checkForUpdates()
-
-        // Qlobal loqo bazasını yüklə
-        com.bykerimoff.player.utils.LogoManager.loadLogoDatabase(this)
-
-        // EPG Sinxronizasiyasını başlat
+        LogoManager.loadLogoDatabase(this)
         XMLTVParser.syncDefaultSources(this)
 
         startSplashAnimation()
         setupListeners()
+        applyThemeColors()
         startAuthProcess()
+    }
+
+    private fun applyThemeColors() {
+        val color = ThemeManager.getThemeColor(this)
+        val colorStateList = ColorStateList.valueOf(color)
+        
+        binding.pbDashboardLoading.indeterminateTintList = colorStateList
+        binding.btnRetry.backgroundTintList = colorStateList
+        binding.btnSearch.backgroundTintList = colorStateList
+        
+        binding.ivLiveTvIcon.imageTintList = colorStateList
+        binding.ivMoviesIcon.imageTintList = colorStateList
+        binding.ivSeriesIcon.imageTintList = colorStateList
+        binding.ivFavoritesIcon.imageTintList = colorStateList
+        binding.ivRadioIcon.imageTintList = colorStateList
+        binding.ivSpeedTestIcon.imageTintList = colorStateList
+        binding.ivKidsModeIcon.imageTintList = colorStateList
+        
+        binding.tvExpiryInfo.setTextColor(color)
+        binding.testTitle.setTextColor(color)
+        binding.testCountdown.setTextColor(color)
+        binding.macDisplay.setTextColor(color)
+        binding.tvKidsModeAction.setTextColor(color)
+        
+        applyPremiumBranding(binding.tvAppTitle)
     }
 
     override fun onResume() {
@@ -122,13 +136,11 @@ class MainActivity : AppCompatActivity() {
         loadResumeList()
 
         if (isSplashFinished) {
-            // Dashboard kartlarını onResume-da yenilə ki, kənar fəaliyyətlərdən qayıdanda vəziyyət düzgün olsun
-            val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+            val prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
             val isVod = prefs.getBoolean("is_vod_enabled", true)
             val isSeries = prefs.getBoolean("is_series_enabled", true)
             updateDashboardCards(isVod, isSeries)
             
-            // Abunəlik tarixini yenilə
             val expiry = prefs.getString("expiry_date", null)
             if (!expiry.isNullOrBlank() && !expiry.equals("null", ignoreCase = true)) {
                 binding.tvExpiryInfo.text = "Abunəlik bitir: $expiry"
@@ -137,11 +149,12 @@ class MainActivity : AppCompatActivity() {
                 binding.tvExpiryInfo.visibility = View.GONE
             }
 
-            com.bykerimoff.player.utils.WallpaperManager.applyWallpaper(this, binding.ivAppBackground)
+            WallpaperManager.applyWallpaper(this, binding.ivAppBackground)
             initBackgroundVideo()
 
             binding.loadingLayout.visibility = View.GONE
             binding.dashboardLayout.visibility = View.VISIBLE
+            applyThemeColors()
         }
     }
 
@@ -152,10 +165,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initBackgroundVideo() {
-        val type = com.bykerimoff.player.utils.WallpaperManager.getWallpaperType(this)
-        val videoUri = com.bykerimoff.player.utils.WallpaperManager.getCustomVideoUri(this)
+        val type = WallpaperManager.getWallpaperType(this)
+        val videoUri = WallpaperManager.getCustomVideoUri(this)
 
-        if (type == com.bykerimoff.player.utils.WallpaperManager.WallpaperType.CUSTOM_VIDEO && videoUri != null) {
+        if (type == WallpaperManager.WallpaperType.CUSTOM_VIDEO && videoUri != null) {
             binding.ivAppBackground.visibility = View.GONE
             binding.playerViewBackground.visibility = View.VISIBLE
             
@@ -186,9 +199,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkSecurity(): Boolean {
-        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
-        
-        // 1. Sniffer və ya Debugger aşkar edilərsə ciddiyə al
+        val prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
         val isTampered = SecurityUtils.isSnifferAppInstalled(this) || SecurityUtils.isDebuggerActive()
         
         if (isTampered) {
@@ -204,7 +215,6 @@ class MainActivity : AppCompatActivity() {
             return true
         }
 
-        // 2. VPN və Proxy yoxla
         if (SecurityUtils.isVpnActive(this)) {
             showSecurityError("VPN istifadəsi qadağandır! Zəhmət olmasa VPN-i söndürüb yenidən cəhd edin.")
             return true
@@ -214,30 +224,22 @@ class MainActivity : AppCompatActivity() {
             return true
         }
 
-        // 3. Emulator və Root yoxla
         if (SecurityUtils.isEmulator()) {
             showSecurityError("Tətbiqin emulator (PC) üzərində işlədilməsi qadağandır!")
             return true
         }
         
-        if (SecurityUtils.isRooted()) {
-            // Root üçün yalnız xəbərdarlıq verək və ya bloklayaq (sizin seçiminiz)
-            // showSecurityError("Root olunmuş cihazlarda tətbiqin işləməsi tövsiyə olunmur.")
-            // return true
-        }
-
         return false
     }
 
     private fun triggerPermanentBlock(reason: String) {
-        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
         prefs.edit().putBoolean("is_permanently_blocked", true).apply()
         
-        // Serverə bildiriş göndər
-        val blockUrl = "api.php?mac=$deviceMac&action=block_device&reason=" + java.net.URLEncoder.encode(reason, "UTF-8")
-        ApiClient.getService().blockDevice(blockUrl).enqueue(object : Callback<okhttp3.ResponseBody> {
-            override fun onResponse(call: Call<okhttp3.ResponseBody>, response: Response<okhttp3.ResponseBody>) {}
-            override fun onFailure(call: Call<okhttp3.ResponseBody>, t: Throwable) {}
+        val blockUrl = "api.php?mac=$deviceMac&action=block_device&reason=" + URLEncoder.encode(reason, "UTF-8")
+        ApiClient.getService().blockDevice(blockUrl).enqueue(object : Callback<ResponseBody> {
+            override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {}
+            override fun onFailure(call: Call<ResponseBody>, t: Throwable) {}
         })
 
         showSecurityError("CİHAZ BLOKLANDI!\n$reason")
@@ -254,66 +256,67 @@ class MainActivity : AppCompatActivity() {
         binding.btnRetry.text = "ÇIXIŞ"
         binding.btnRetry.setOnClickListener { finishAffinity() }
         
-        // 5 saniyə sonra proqramı avtomatik bağla
         Handler(Looper.getMainLooper()).postDelayed({ finishAffinity() }, 5000)
     }
 
     private fun startSplashAnimation() {
-        // Arxa fon şəkli üçün premium qızılı abstrakt fon yükləyək
         val premiumSplashUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1920"
-        com.bumptech.glide.Glide.with(this)
+        Glide.with(this)
             .load(premiumSplashUrl)
             .placeholder(R.drawable.app_background)
             .centerCrop()
             .into(binding.ivSplashBg)
 
-        // Ken Burns Effect: Arxa fonu yavaşca böyüdək
         binding.ivSplashBg.scaleX = 1.0f
         binding.ivSplashBg.scaleY = 1.0f
         binding.ivSplashBg.animate()
             .scaleX(1.15f)
             .scaleY(1.15f)
-            .setDuration(4000)
-            .setInterpolator(android.view.animation.LinearInterpolator())
+            .setDuration(5000)
+            .setInterpolator(LinearInterpolator())
             .start()
 
-        val slideUpText = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade)
-        slideUpText.duration = 2000
+        val handler = Handler(Looper.getMainLooper())
 
-        binding.tvEnjoyWatching.visibility = View.VISIBLE
-        binding.tvEnjoyWatching.startAnimation(slideUpText)
-        
-        // Shimmer effektini başlat
-        applyShimmerEffect(binding.tvEnjoyWatching)
+        // 1. Logo Animasiyası
+        binding.ivSplashLogo.visibility = View.VISIBLE
+        binding.ivSplashLogo.alpha = 0f
+        binding.ivSplashLogo.scaleX = 0.5f
+        binding.ivSplashLogo.scaleY = 0.5f
+        binding.ivSplashLogo.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(1200)
+            .setInterpolator(OvershootInterpolator())
+            .start()
 
-        // Failsafe: Əgər animasiya ilişib qalsa, 3.5 saniyə sonra dashboard-u aç
-        Handler(Looper.getMainLooper()).postDelayed({
+        // 2. Title Animasiyası
+        handler.postDelayed({
+            val slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade)
+            binding.tvEnjoyWatching.visibility = View.VISIBLE
+            binding.tvEnjoyWatching.startAnimation(slideUp)
+            applyShimmerEffect(binding.tvEnjoyWatching)
+        }, 800)
+
+        // 3. Slogan Animasiyası
+        handler.postDelayed({
+            binding.tvSlogan.visibility = View.VISIBLE
+            binding.tvSlogan.alpha = 0f
+            binding.tvSlogan.animate()
+                .alpha(1f)
+                .setDuration(1000)
+                .start()
+        }, 1800)
+
+        handler.postDelayed({
             if (!isSplashFinished) {
                 isSplashFinished = true
-                val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+                val prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
                 showDashboard(prefs.getBoolean("is_vod_enabled", true), prefs.getBoolean("is_series_enabled", true))
                 checkPendingResponse()
             }
-        }, 3500)
-
-        slideUpText.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationStart(animation: Animation) {}
-
-            override fun onAnimationEnd(animation: Animation) {
-                // Animasiyalar tam bitdi
-                isSplashFinished = true
-                
-                // Dashboard-u dərhal göstər (auth bitməsə belə)
-                val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
-                val isVod = prefs.getBoolean("is_vod_enabled", true)
-                val isSeries = prefs.getBoolean("is_series_enabled", true)
-                showDashboard(isVod, isSeries)
-                
-                checkPendingResponse()
-            }
-
-            override fun onAnimationRepeat(animation: Animation) {}
-        })
+        }, 4000)
     }
 
     private fun checkPendingResponse() {
@@ -377,7 +380,6 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
         }
 
-        // Search düyməsi üçün Live TV-yə yönləndirmə
         binding.btnSearch.setOnClickListener {
             startActivity(Intent(this@MainActivity, LiveTvActivity::class.java))
         }
@@ -421,14 +423,13 @@ class MainActivity : AppCompatActivity() {
                     retryCount++
                     Handler(Looper.getMainLooper()).postDelayed({ checkAuthentication() }, 5000)
                 } else {
-                    handleFailure("İnternet bağlantısı yoxdur və ya serverə qoşulmaq mümkün olmadı.\n\nXəta: ${t.localizedMessage ?: t.message ?: "Naməlum"}")
+                    handleFailure("İnternet bağlantısı yoxdur və ya serverə qoşulmaq mümkün olmadı.")
                 }
             }
         })
     }
 
     private fun handleAuthResponse(response: ApiResponse) {
-        // Auth cavabı gəldi, yükləmə ikonunu gizlət
         binding.pbDashboardLoading.visibility = View.GONE
 
         if (!isSplashFinished) {
@@ -437,12 +438,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         val status = response.status ?: "error"
-        val message = response.message ?: "M3U faylı tapılmadı! Zəhmət olmasa dilerinizlə əlaqə saxlayın."
+        val message = response.message ?: "M3U faylı tapılmadı!"
 
         if ("success".equals(status, ignoreCase = true)) {
             val isTest = response.isTestMode
             val remaining = response.getTestRemainingSeconds()
-            android.util.Log.d("MainActivity", "Auth Success. TestMode: $isTest, Remaining: $remaining")
             
             val m3uUrl = response.m3uUrl
             if (m3uUrl.isNullOrEmpty()) {
@@ -451,12 +451,10 @@ class MainActivity : AppCompatActivity() {
             }
 
             val expiry = response.expiryDate
-
             val isVod = response.isVodEnabled
             val isSeries = response.isSeriesEnabled
 
-            // Bütün məlumatları yadda saxla
-            val edit = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE).edit()
+            val edit = getSharedPreferences("neoplay_prefs", MODE_PRIVATE).edit()
             edit.putString("expiry_date", expiry)
             edit.putString("playlist_type", response.playlistType)
             edit.putString("m3u_url", m3uUrl)
@@ -468,7 +466,6 @@ class MainActivity : AppCompatActivity() {
             edit.putBoolean("is_adult_enabled", response.isAdultEnabled)
             edit.putBoolean("is_sport_enabled", response.isSportEnabled)
             
-            // Yalnız JSON-da məlumat varsa yenilə, yoxsa UpdateManager-in məlumatlarını qoru
             if (response.announcement != null) {
                 edit.putBoolean("show_announcement_global", response.isShowAnnouncement)
                 edit.putString("announcement_text", response.announcement)
@@ -481,56 +478,36 @@ class MainActivity : AppCompatActivity() {
             if (!expiry.isNullOrBlank() && !expiry.equals("null", ignoreCase = true)) {
                 binding.tvExpiryInfo.text = "Abunəlik bitir: $expiry"
                 binding.tvExpiryInfo.visibility = View.VISIBLE
-
-                getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
-                    .edit()
-                    .putString("expiry_date", expiry)
-                    .apply()
             } else {
                 binding.tvExpiryInfo.visibility = View.GONE
             }
 
-            // Test Rejimi Yoxlaması
             if (isTest) {
                 val remainingInt = remaining.toInt()
                 val countdown = response.countdown ?: formatTime(remainingInt)
                 showTestCountdown(remainingInt, countdown, response.warning, response.warningLevel)
-                android.widget.Toast.makeText(this, "Test Rejimi Aktivdir ($remainingInt san.)", android.widget.Toast.LENGTH_LONG).show()
             } else {
                 hideTestCountdown()
             }
 
             showDashboard(isVod, isSeries)
             loadAndCheckPlaylist()
-
-            // Yenilənmə yoxlanışını və avtomatik başlatmanı idarə et
             handleAutoStart() 
         } else if ("expired".equals(status, ignoreCase = true)) {
-            val expireDate = response.expiryDate ?: ""
-            showError("Abunəlik Bitib", "⏳ Abunəlik bitib!\nTarix: $expireDate")
+            showError("Abunəlik Bitib", "⏳ Abunəlik bitib!\nTarix: ${response.expiryDate}")
         } else if ("blocked".equals(status, ignoreCase = true)) {
-            val blockMsg = response.message ?: "🚫 Cihaz bloklanıb!"
-            showBlockedDialog(blockMsg)
-        } else if ("not_found".equals(status, ignoreCase = true)) {
-            showError("Aktiv Edilməyib", "❌ Bu MAC ünvanı aktiv edilməyib.")
-        } else if ("app_global_closed".equals(status, ignoreCase = true)) {
-            showError("Tətbiq Bağlanıb", message + "\n\n" + (response.detail ?: ""))
-        } else if ("app_closed".equals(status, ignoreCase = true)) {
-            showError("Giriş Bağlanıb", message + "\n\n" + (response.detail ?: ""))
-        } else if ("app_expired".equals(status, ignoreCase = true)) {
-            showError("Müddət Bitib", message + "\n\n" + (response.detail ?: ""))
+            showBlockedDialog(response.message ?: "🚫 Cihaz bloklanıb!")
         } else {
             showError("Xəta", message)
         }
     }
 
     private fun handleAutoStart() {
-        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
         val autoStart = prefs.getBoolean("auto_start_last_channel", true)
         val lastChannelUrl = prefs.getString("last_channel_url", "")
         val lastIsVod = prefs.getBoolean("last_is_vod", false)
 
-        // Yalnız auto-start aktivdirsə VƏ əvvəllər kanala baxılıbsa VƏ sonuncu baxılan VOD deyilsə başlat
         if (!autoStart || lastChannelUrl.isNullOrEmpty() || lastIsVod) return
 
         val handler = Handler(Looper.getMainLooper())
@@ -541,26 +518,21 @@ class MainActivity : AppCompatActivity() {
         val checkRunnable = object : Runnable {
             override fun run() {
                 if (UpdateManager.isCheckFinished) {
-                    // Yoxlanış bitdi, indi qərar verək
                     if (!UpdateManager.isUpdateFound) {
                         val intent = Intent(this@MainActivity, LiveTvActivity::class.java)
                         intent.putExtra("auto_start", true)
                         startActivity(intent)
-                    } else {
-                        // Yenilənmə var, avtomatik başlatmanı skip edirik ki, dialog görünsün
                     }
                 } else if (waitedTime < maxWaitTime) {
                     waitedTime += checkInterval
                     handler.postDelayed(this, checkInterval)
                 } else {
-                    // Gözləmə müddəti bitdi (timeout), ehtiyat olaraq kanalı açırıq
                     val intent = Intent(this@MainActivity, LiveTvActivity::class.java)
                     intent.putExtra("auto_start", true)
                     startActivity(intent)
                 }
             }
         }
-
         handler.post(checkRunnable)
     }
 
@@ -571,12 +543,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadAndCheckPlaylist() {
-        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
         val type = prefs.getString("playlist_type", "m3u")
         val isVodEnabled = prefs.getBoolean("is_vod_enabled", true)
         val isSeriesEnabled = prefs.getBoolean("is_series_enabled", true)
 
-        // Əgər Xtream deyilsə (M3U-dursa), VOD bölmələrini QƏTİ şəkildə gizlət və çıx
         if (!"xtream".equals(type, ignoreCase = true)) {
             runOnUiThread {
                 binding.cardMovies.visibility = View.GONE
@@ -586,7 +557,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // Xtream üçün panel icazələrini tətbiq et
         runOnUiThread {
             binding.cardMovies.visibility = if (isVodEnabled) View.VISIBLE else View.GONE
             binding.cardSeries.visibility = if (isSeriesEnabled) View.VISIBLE else View.GONE
@@ -595,41 +565,53 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDashboard(isVodEnabled: Boolean, isSeriesEnabled: Boolean) {
-        // Bütün maneələri dərhal təmizlə
         binding.loadingLayout.clearAnimation()
-        binding.loadingLayout.visibility = View.GONE
-        binding.loadingLayout.elevation = 0f
         
         if (binding.dashboardLayout.visibility == View.VISIBLE) {
             updateDashboardCards(isVodEnabled, isSeriesEnabled)
             return
         }
 
-        // Premium Brendinq tətbiq et
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val cx = binding.root.width / 2
+            val cy = binding.root.height / 2
+            val finalRadius = Math.hypot(cx.toDouble(), cy.toDouble()).toFloat()
+
+            binding.dashboardLayout.visibility = View.VISIBLE
+            val anim = ViewAnimationUtils.createCircularReveal(
+                binding.dashboardLayout, cx, cy, 0f, finalRadius
+            )
+            anim.duration = 800
+            anim.addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    binding.loadingLayout.visibility = View.GONE
+                }
+            })
+            anim.start()
+        } else {
+            binding.loadingLayout.visibility = View.GONE
+            binding.dashboardLayout.visibility = View.VISIBLE
+        }
+
         applyPremiumBranding(binding.tvAppTitle)
 
         val sdf = SimpleDateFormat("EEEE, d MMMM", Locale("az"))
         binding.tvDate.text = sdf.format(Date())
 
         updateDashboardCards(isVodEnabled, isSeriesEnabled)
-
-        binding.dashboardLayout.visibility = View.VISIBLE
         binding.errorOverlay.visibility = View.GONE
 
-        val isKidsMode = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val isKidsMode = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
             .getBoolean("kids_mode_active", false)
-        updateDashboardForKidsMode(isKidsMode)
+        updateDashboardForKidsMode(isActive = isKidsMode)
 
-        // Fokusun Canlı TV-yə verilməsi
         binding.cardLiveTv.requestFocus()
 
         loadWeather()
-        // loadResumeList() - Removed as per user request
         loadCurrencies()
     }
 
     private fun loadResumeList() {
-        // Feature disabled from dashboard as per user request
         binding.resumeSection.visibility = View.GONE
     }
 
@@ -649,51 +631,35 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyPremiumBranding(textView: TextView) {
         textView.text = "AUREX PLAYER"
-        
-        val primaryColor = com.bykerimoff.player.utils.ThemeManager.getThemeColor(this)
-        
-        // Dinamik Metalik Qradiyent (Seçilən temaya uyğun)
+        val primaryColor = ThemeManager.getThemeColor(this)
         val hsv = FloatArray(3)
         Color.colorToHSV(primaryColor, hsv)
         
-        // Açıq rəng (Light)
         hsv[2] = 1.0f 
         val lightColor = Color.HSVToColor(hsv)
-        
-        // Tünd rəng (Dark)
         hsv[2] = 0.5f
         val darkColor = Color.HSVToColor(hsv)
 
         val gradient = LinearGradient(
             0f, 0f, 0f, textView.textSize,
-            intArrayOf(
-                lightColor,
-                primaryColor,
-                darkColor,
-                darkColor
-            ),
+            intArrayOf(lightColor, primaryColor, darkColor, darkColor),
             floatArrayOf(0f, 0.4f, 0.7f, 1f),
             Shader.TileMode.CLAMP
         )
         
         textView.paint.shader = gradient
-        
-        // Kölgə və Parıltı
         textView.setShadowLayer(15f, 0f, 0f, primaryColor)
-        
         textView.invalidate()
     }
 
     private fun updateDashboardCards(isVodEnabled: Boolean, isSeriesEnabled: Boolean) {
-        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
         val type = prefs.getString("playlist_type", "m3u")
 
-        // Yalnız Xtream Codes rejimində VOD bölmələri aktiv ola bilər
         if ("xtream".equals(type, ignoreCase = true)) {
             binding.cardMovies.visibility = if (isVodEnabled) View.VISIBLE else View.GONE
             binding.cardSeries.visibility = if (isSeriesEnabled) View.VISIBLE else View.GONE
         } else {
-            // M3U rejimində hər zaman gizlə
             binding.cardMovies.visibility = View.GONE
             binding.cardSeries.visibility = View.GONE
         }
@@ -702,18 +668,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateCardsWeightSum() {
-        var visibleCount = 2.0f // Live TV + Favorites hər zaman var
+        var visibleCount = 2.0f
         if (binding.cardMovies.visibility == View.VISIBLE) visibleCount += 1.0f
         if (binding.cardSeries.visibility == View.VISIBLE) visibleCount += 1.0f
         binding.cardsContainer.weightSum = visibleCount
     }
 
     private fun loadWeather() {
-        com.bykerimoff.player.utils.WeatherManager.fetchWeather(object : com.bykerimoff.player.utils.WeatherManager.WeatherCallback {
+        WeatherManager.fetchWeather(object : WeatherManager.WeatherCallback {
             override fun onSuccess(temp: String, weatherCode: Int) {
                 binding.weatherLayout.visibility = View.VISIBLE
                 binding.tvTemperature.text = temp
-                binding.tvWeatherEmoji.text = com.bykerimoff.player.utils.WeatherManager.getWeatherEmoji(weatherCode)
+                binding.tvWeatherEmoji.text = WeatherManager.getWeatherEmoji(weatherCode)
             }
 
             override fun onFailure(error: String) {
@@ -756,28 +722,23 @@ class MainActivity : AppCompatActivity() {
             } else {
                 binding.testWarning.visibility = View.GONE
             }
-            
             startCountDown(seconds)
         }
     }
 
     private fun showBlockedDialog(message: String) {
         runOnUiThread {
-            val builder = android.app.AlertDialog.Builder(this)
+            val builder = AlertDialog.Builder(this)
             builder.setTitle("⛔ Cihaz Bloklanıb")
             builder.setMessage("$message\n\nZəhmət olmasa dilerinizlə əlaqə saxlayın.")
             builder.setCancelable(false)
-            builder.setPositiveButton("Bağla") { _, _ ->
-                finish() // Proqramı bağla
-            }
-
+            builder.setPositiveButton("Bağla") { _, _ -> finish() }
             builder.setIcon(android.R.drawable.ic_dialog_alert)
 
             val dialog = builder.create()
             dialog.show()
 
-            // Mesaj rəngini qırmızı et
-            val msgView = dialog.findViewById<android.widget.TextView>(android.R.id.message)
+            val msgView = dialog.findViewById<TextView>(android.R.id.message)
             msgView?.setTextColor(Color.parseColor("#ef4444"))
         }
     }
@@ -792,26 +753,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun startCountDown(seconds: Int) {
         testCountDownTimer?.cancel()
-        
-        testCountDownTimer = object : android.os.CountDownTimer(seconds.toLong() * 1000, 1000) {
+        testCountDownTimer = object : CountDownTimer(seconds.toLong() * 1000, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val remaining = (millisUntilFinished / 1000).toInt()
                 val timeText = formatTime(remaining)
                 binding.testCountdown.text = "Test: $timeText"
                 
-                val color: Int
-                if (remaining < 60) {
-                    color = Color.RED
-                } else if (remaining < 300) {
-                    color = Color.parseColor("#FFA500") // Orange
-                } else {
-                    color = Color.parseColor("#D4AF37") // Gold
-                }
+                val color = if (remaining < 60) Color.RED 
+                            else if (remaining < 300) Color.parseColor("#FFA500") 
+                            else Color.parseColor("#D4AF37")
                 
                 binding.testCountdown.setTextColor(color)
                 binding.testTitle.setTextColor(color)
 
-                // 5 dəqiqədən az qaldıqda marqatla
                 if (remaining < 300) {
                     if (binding.testBanner.animation == null) {
                         binding.testBanner.startAnimation(AnimationUtils.loadAnimation(this@MainActivity, R.anim.blink))
@@ -820,13 +774,12 @@ class MainActivity : AppCompatActivity() {
                     binding.testBanner.clearAnimation()
                 }
             }
-            
             override fun onFinish() {
                 binding.testCountdown.text = "⏰ Test bitdi!"
                 binding.testCountdown.setTextColor(Color.parseColor("#ef4444"))
                 binding.testCountdown.setBackgroundColor(Color.parseColor("#450a0a"))
                 
-                android.app.AlertDialog.Builder(this@MainActivity)
+                AlertDialog.Builder(this@MainActivity)
                     .setTitle("🧪 Test Bitdi")
                     .setMessage("Test müddəti bitdi! Zəhmət olmasa dilerinizlə əlaqə saxlayın.")
                     .setCancelable(false)
@@ -846,16 +799,13 @@ class MainActivity : AppCompatActivity() {
     private fun applyShimmerEffect(textView: TextView) {
         val paint = textView.paint
         val width = paint.measureText(textView.text.toString())
-        
         val shimmerGradient = LinearGradient(
             0f, 0f, width / 2, 0f,
             intArrayOf(textView.currentTextColor, Color.WHITE, textView.currentTextColor),
             floatArrayOf(0f, 0.5f, 1f),
             Shader.TileMode.CLAMP
         )
-        
         paint.shader = shimmerGradient
-        
         val matrix = Matrix()
         val animator = ValueAnimator.ofFloat(0f, width * 2)
         animator.duration = 1500
@@ -870,12 +820,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleKidsMode() {
-        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
         val isKidsMode = prefs.getBoolean("kids_mode_active", false)
 
         if (isKidsMode) {
-            // Rejimdən çıxmaq üçün PİN tələb et
-            com.bykerimoff.player.utils.PinDialog.show(this, object : com.bykerimoff.player.utils.PinDialog.PinListener {
+            PinDialog.show(this, object : PinDialog.PinListener {
                 override fun onSuccess() {
                     prefs.edit().putBoolean("kids_mode_active", false).apply()
                     Toast.makeText(this@MainActivity, "Uşaq rejimindən çıxıldı", Toast.LENGTH_SHORT).show()
@@ -884,7 +833,6 @@ class MainActivity : AppCompatActivity() {
                 override fun onCancel() {}
             })
         } else {
-            // Aktiv et
             prefs.edit().putBoolean("kids_mode_active", true).apply()
             Toast.makeText(this, "Uşaq rejimi aktiv edildi", Toast.LENGTH_SHORT).show()
             updateDashboardForKidsMode(true)
@@ -892,7 +840,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateDashboardForKidsMode(isActive: Boolean) {
-        val prefs = getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE)
         val isVod = prefs.getBoolean("is_vod_enabled", true)
         val isSeries = prefs.getBoolean("is_series_enabled", true)
 

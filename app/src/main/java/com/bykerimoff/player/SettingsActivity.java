@@ -2,6 +2,7 @@ package com.bykerimoff.player;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.view.animation.AnimationUtils;
@@ -18,11 +19,14 @@ import androidx.media3.exoplayer.ExoPlayer;
 
 import com.bykerimoff.player.databinding.ActivitySettingsBinding;
 import com.bykerimoff.player.utils.MacUtils;
+import com.bykerimoff.player.utils.NetworkUtils;
 import com.bykerimoff.player.utils.PinDialog;
 import com.bykerimoff.player.utils.SleepTimerManager;
+import com.bykerimoff.player.utils.UpdateManager;
 import com.bykerimoff.player.utils.WallpaperManager;
 import com.bykerimoff.player.utils.ThemeManager;
 import com.bykerimoff.player.adapters.WallpaperAdapter;
+import com.bykerimoff.player.utils.XMLTVParser;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -213,11 +217,18 @@ public class SettingsActivity extends AppCompatActivity {
         setupFocusEffect(binding.btnUploadVideo);
         setupFocusEffect(binding.btnResetWallpaper);
         
+        setupFocusEffect(binding.themeNeonBlue);
         setupFocusEffect(binding.themeGold);
-        setupFocusEffect(binding.themeBlue);
         setupFocusEffect(binding.themeRed);
         setupFocusEffect(binding.themeGreen);
+        setupFocusEffect(binding.themePurple);
+        setupFocusEffect(binding.themeOrange);
+        setupFocusEffect(binding.themePink);
+        setupFocusEffect(binding.themeLime);
         setupFocusEffect(binding.themeSilver);
+        setupFocusEffect(binding.themeDeepBlue);
+        setupFocusEffect(binding.themeYellow);
+        setupFocusEffect(binding.themeWhite);
         
         setupFocusEffect(binding.tvAppVersion);
         setupFocusEffect(binding.btnCheckUpdate);
@@ -311,7 +322,7 @@ public class SettingsActivity extends AppCompatActivity {
             
             prefs.edit().putString("dns_type", dns).apply();
             String manualUrl = binding.etDnsManualUrl.getText().toString().trim();
-            com.bykerimoff.player.utils.NetworkUtils.setDnsType(dns, manualUrl);
+            NetworkUtils.setDnsType(dns, manualUrl);
             Toast.makeText(this, "DNS dəyişdirildi. Tətbiqi yenidən başlatmağınız tövsiyə olunur.", Toast.LENGTH_LONG).show();
         });
 
@@ -319,7 +330,7 @@ public class SettingsActivity extends AppCompatActivity {
             String url = v.getText().toString().trim();
             prefs.edit().putString("dns_manual_url", url).apply();
             if (binding.rbDnsManual.isChecked()) {
-                com.bykerimoff.player.utils.NetworkUtils.setDnsType("manual", url);
+                NetworkUtils.setDnsType("manual", url);
             }
             Toast.makeText(this, "Manual DNS URL yadda saxlanıldı", Toast.LENGTH_SHORT).show();
             return false;
@@ -362,9 +373,9 @@ public class SettingsActivity extends AppCompatActivity {
             prefs.edit().putString("manual_epg_url", manualEpg).apply();
             
             // Həm daxili mənbələri, həm də manual linki yenilə
-            com.bykerimoff.player.utils.XMLTVParser.syncDefaultSources(this);
+            XMLTVParser.syncDefaultSources(this);
             if (!manualEpg.isEmpty()) {
-                com.bykerimoff.player.utils.XMLTVParser.downloadAndParse(manualEpg);
+                XMLTVParser.downloadAndParse(manualEpg);
             }
             Toast.makeText(this, "Bütün EPG mənbələri yenilənir...", Toast.LENGTH_SHORT).show();
         });
@@ -372,13 +383,13 @@ public class SettingsActivity extends AppCompatActivity {
         binding.btnPrivacyPolicy.setOnClickListener(v -> {
             String url = "https://github.com/BY-KERIMOFF/NeoPlay-TV/blob/main/PRIVACY_POLICY.md"; // Default placeholder
             Intent i = new Intent(Intent.ACTION_VIEW);
-            i.setData(android.net.Uri.parse(url));
+            i.setData(Uri.parse(url));
             startActivity(i);
         });
 
         binding.btnCheckUpdate.setOnClickListener(v -> {
             Toast.makeText(this, "Yeniləmə yoxlanılır...", Toast.LENGTH_SHORT).show();
-            new com.bykerimoff.player.utils.UpdateManager(this).checkForUpdates(true);
+            new UpdateManager(this).checkForUpdates(true);
         });
 
         binding.btnTimerOff.setOnClickListener(v -> setSleepTimer(0));
@@ -397,11 +408,18 @@ public class SettingsActivity extends AppCompatActivity {
             Toast.makeText(this, "Standart fon bərpa edildi", Toast.LENGTH_SHORT).show();
         });
 
+        binding.themeNeonBlue.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.NEON_BLUE));
         binding.themeGold.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.GOLD));
-        binding.themeBlue.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.NEON_BLUE));
         binding.themeRed.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.RUBY_RED));
         binding.themeGreen.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.EMERALD_GREEN));
+        binding.themePurple.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.PURPLE));
+        binding.themeOrange.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.ORANGE));
+        binding.themePink.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.PINK));
+        binding.themeLime.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.LIME));
         binding.themeSilver.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.SILVER));
+        binding.themeDeepBlue.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.DEEP_BLUE));
+        binding.themeYellow.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.YELLOW));
+        binding.themeWhite.setOnClickListener(v -> updateTheme(ThemeManager.AppTheme.WHITE));
 
         binding.btnBack.setOnClickListener(v -> finish());
     }

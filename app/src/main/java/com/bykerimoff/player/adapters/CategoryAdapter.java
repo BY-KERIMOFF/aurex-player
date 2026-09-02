@@ -1,5 +1,6 @@
 package com.bykerimoff.player.adapters;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,6 +10,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bykerimoff.player.R;
 import com.bykerimoff.player.models.Category;
+import com.bykerimoff.player.utils.ThemeManager;
+
 import java.util.List;
 
 public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.ViewHolder> {
@@ -46,15 +49,24 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.ViewHo
         Category category = categories.get(position);
         holder.tvName.setText(category.getName());
         holder.tvCount.setText(String.valueOf(category.getChannelCount()));
+        
+        int themeColor = ThemeManager.INSTANCE.getThemeColor(holder.itemView.getContext());
+        
         holder.itemView.setOnClickListener(v -> listener.onCategoryClick(category));
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
                 v.startAnimation(AnimationUtils.loadAnimation(v.getContext(), R.anim.scale_up));
+                v.setBackgroundColor(themeColor);
+                holder.tvName.setTextColor(Color.BLACK);
+                holder.tvCount.setTextColor(Color.BLACK);
                 if (focusListener != null) {
                     focusListener.onCategoryFocus(category);
                 }
             } else {
                 v.startAnimation(AnimationUtils.loadAnimation(v.getContext(), R.anim.scale_down));
+                v.setBackgroundColor(Color.TRANSPARENT);
+                holder.tvName.setTextColor(Color.WHITE);
+                holder.tvCount.setTextColor(Color.parseColor("#B0B0B0"));
             }
         });
     }

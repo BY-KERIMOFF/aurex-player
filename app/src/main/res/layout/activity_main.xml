@@ -246,6 +246,7 @@
                         android:gravity="center"
                         android:background="@drawable/glass_card_bg">
                         <ImageView
+                            android:id="@+id/ivLiveTvIcon"
                             android:layout_width="72dp"
                             android:layout_height="72dp"
                             android:src="@android:drawable/ic_menu_slideshow"
@@ -280,6 +281,7 @@
                         android:gravity="center"
                         android:background="@drawable/glass_card_bg">
                         <ImageView
+                            android:id="@+id/ivMoviesIcon"
                             android:layout_width="72dp"
                             android:layout_height="72dp"
                             android:src="@android:drawable/ic_menu_gallery"
@@ -314,6 +316,7 @@
                         android:gravity="center"
                         android:background="@drawable/glass_card_bg">
                         <ImageView
+                            android:id="@+id/ivSeriesIcon"
                             android:layout_width="72dp"
                             android:layout_height="72dp"
                             android:src="@android:drawable/ic_menu_sort_by_size"
@@ -348,6 +351,7 @@
                         android:gravity="center"
                         android:background="@drawable/glass_card_bg">
                         <ImageView
+                            android:id="@+id/ivFavoritesIcon"
                             android:layout_width="72dp"
                             android:layout_height="72dp"
                             android:src="@android:drawable/btn_star_big_on"
@@ -394,6 +398,7 @@
                     android:paddingEnd="32dp"
                     android:background="@drawable/glass_card_bg">
                     <ImageView
+                        android:id="@+id/ivRadioIcon"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
                         android:src="@android:drawable/ic_lock_silent_mode_off"
@@ -459,6 +464,7 @@
                     android:paddingEnd="32dp"
                     android:background="@drawable/glass_card_bg">
                     <ImageView
+                        android:id="@+id/ivSpeedTestIcon"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
                         android:src="@android:drawable/ic_menu_compass"
@@ -729,18 +735,46 @@
             android:layout_height="match_parent"
             android:background="@drawable/vignette_overlay" />
 
-        <TextView
-            android:id="@+id/tvEnjoyWatching"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="AUREX PLAYER"
-            android:textColor="@color/white"
-            android:textSize="54sp"
-            android:textStyle="bold"
-            android:visibility="invisible"
-            android:letterSpacing="0.2"
-            android:fontFamily="sans-serif-condensed" />
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:id="@+id/ivSplashLogo"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:src="@drawable/aurex_player"
+                android:visibility="invisible"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:id="@+id/tvEnjoyWatching"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AUREX PLAYER"
+                android:textColor="@color/white"
+                android:textSize="54sp"
+                android:textStyle="bold"
+                android:visibility="invisible"
+                android:layout_marginTop="16dp"
+                android:letterSpacing="0.2"
+                android:fontFamily="sans-serif-condensed" />
+
+            <TextView
+                android:id="@+id/tvSlogan"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sizin Premium Media Dünyanız"
+                android:textColor="@color/gold_primary"
+                android:textSize="18sp"
+                android:visibility="invisible"
+                android:layout_marginTop="8dp"
+                android:letterSpacing="0.1"
+                android:fontFamily="sans-serif-light" />
+        </LinearLayout>
     </FrameLayout>
 
 </FrameLayout>

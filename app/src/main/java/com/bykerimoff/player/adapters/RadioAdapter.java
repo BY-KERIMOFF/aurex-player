@@ -1,5 +1,6 @@
 package com.bykerimoff.player.adapters;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +12,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bykerimoff.player.R;
 import com.bykerimoff.player.models.RadioStation;
+import com.bykerimoff.player.utils.ThemeManager;
+
 import java.util.List;
 
 public class RadioAdapter extends RecyclerView.Adapter<RadioAdapter.ViewHolder> {
@@ -47,6 +50,8 @@ public class RadioAdapter extends RecyclerView.Adapter<RadioAdapter.ViewHolder> 
         holder.tvName.setText(radio.getName());
         holder.tvTags.setText(radio.getTags() != null ? radio.getTags() : "");
         
+        int themeColor = ThemeManager.INSTANCE.getThemeColor(holder.itemView.getContext());
+
         Glide.with(holder.itemView.getContext())
                 .load(radio.getLogoUrl())
                 .placeholder(android.R.drawable.ic_lock_silent_mode_off)
@@ -64,8 +69,14 @@ public class RadioAdapter extends RecyclerView.Adapter<RadioAdapter.ViewHolder> 
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
                 v.startAnimation(AnimationUtils.loadAnimation(v.getContext(), R.anim.scale_up));
+                v.setBackgroundColor(themeColor);
+                holder.tvName.setTextColor(Color.BLACK);
+                holder.tvTags.setTextColor(Color.BLACK);
             } else {
                 v.startAnimation(AnimationUtils.loadAnimation(v.getContext(), R.anim.scale_down));
+                v.setBackgroundColor(Color.TRANSPARENT);
+                holder.tvName.setTextColor(Color.WHITE);
+                holder.tvTags.setTextColor(Color.parseColor("#B0B0B0"));
             }
         });
     }

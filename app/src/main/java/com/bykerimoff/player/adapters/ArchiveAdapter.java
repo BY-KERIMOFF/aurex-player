@@ -1,5 +1,6 @@
 package com.bykerimoff.player.adapters;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,6 +9,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bykerimoff.player.R;
 import com.bykerimoff.player.models.EpgProgram;
+import com.bykerimoff.player.utils.ThemeManager;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -47,6 +50,8 @@ public class ArchiveAdapter extends RecyclerView.Adapter<ArchiveAdapter.ViewHold
                         timeFormat.format(new Date(program.getEndTime()));
         holder.tvTime.setText(timeStr);
 
+        int themeColor = ThemeManager.INSTANCE.getThemeColor(holder.itemView.getContext());
+
         holder.itemView.setOnClickListener(v -> listener.onProgramClick(program));
         
         holder.itemView.setOnLongClickListener(v -> {
@@ -59,11 +64,15 @@ public class ArchiveAdapter extends RecyclerView.Adapter<ArchiveAdapter.ViewHold
             if (hasFocus) {
                 v.setScaleX(1.05f);
                 v.setScaleY(1.05f);
-                holder.tvTitle.setTextColor(v.getContext().getResources().getColor(R.color.gold_primary));
+                v.setBackgroundColor(themeColor);
+                holder.tvTitle.setTextColor(Color.BLACK);
+                holder.tvTime.setTextColor(Color.BLACK);
             } else {
                 v.setScaleX(1.0f);
                 v.setScaleY(1.0f);
-                holder.tvTitle.setTextColor(v.getContext().getResources().getColor(R.color.white));
+                v.setBackgroundColor(Color.TRANSPARENT);
+                holder.tvTitle.setTextColor(Color.WHITE);
+                holder.tvTime.setTextColor(Color.parseColor("#B0B0B0"));
             }
         });
     }

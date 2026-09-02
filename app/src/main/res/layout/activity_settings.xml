@@ -515,16 +515,37 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
+                    android:orientation="vertical"
                     android:padding="16dp"
                     android:gravity="center"
                     android:background="@drawable/glass_card_bg">
 
-                    <View android:id="@+id/themeGold" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#FFD700" android:focusable="true" android:clickable="true" />
-                    <View android:id="@+id/themeBlue" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#00F2FF" android:focusable="true" android:clickable="true" />
-                    <View android:id="@+id/themeRed" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#FF0040" android:focusable="true" android:clickable="true" />
-                    <View android:id="@+id/themeGreen" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#00FF85" android:focusable="true" android:clickable="true" />
-                    <View android:id="@+id/themeSilver" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#E0E0E0" android:focusable="true" android:clickable="true" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center">
+                        <View android:id="@+id/themeNeonBlue" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#00E5FF" android:focusable="true" android:clickable="true" />
+                        <View android:id="@+id/themeGold" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#FFD700" android:focusable="true" android:clickable="true" />
+                        <View android:id="@+id/themeRed" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#FF0040" android:focusable="true" android:clickable="true" />
+                        <View android:id="@+id/themeGreen" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#00FF85" android:focusable="true" android:clickable="true" />
+                        <View android:id="@+id/themePurple" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#A020F0" android:focusable="true" android:clickable="true" />
+                        <View android:id="@+id/themeOrange" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#FF8C00" android:focusable="true" android:clickable="true" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="8dp">
+                        <View android:id="@+id/themePink" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#FF69B4" android:focusable="true" android:clickable="true" />
+                        <View android:id="@+id/themeLime" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#32CD32" android:focusable="true" android:clickable="true" />
+                        <View android:id="@+id/themeSilver" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#C0C0C0" android:focusable="true" android:clickable="true" />
+                        <View android:id="@+id/themeDeepBlue" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#0000FF" android:focusable="true" android:clickable="true" />
+                        <View android:id="@+id/themeYellow" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#FFFF00" android:focusable="true" android:clickable="true" />
+                        <View android:id="@+id/themeWhite" android:layout_width="45dp" android:layout_height="45dp" android:layout_margin="8dp" android:background="#FFFFFF" android:focusable="true" android:clickable="true" />
+                    </LinearLayout>
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>

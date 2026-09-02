@@ -1,5 +1,6 @@
 package com.bykerimoff.player.adapters;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,9 +10,13 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bykerimoff.player.R;
 import com.bykerimoff.player.models.Channel;
 import com.bykerimoff.player.utils.FavoriteManager;
+import com.bykerimoff.player.utils.LogoManager;
+import com.bykerimoff.player.utils.ThemeManager;
 
 import java.util.List;
 
@@ -79,8 +84,11 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         Channel channel = channels.get(position);
         holder.tvName.setText(channel.getName());
         
+        int themeColor = ThemeManager.INSTANCE.getThemeColor(holder.itemView.getContext());
+
         if (holder.tvNumber != null) {
             holder.tvNumber.setText(String.valueOf(position + 1));
+            holder.tvNumber.setTextColor(themeColor);
         }
         
         if (favoriteManager == null) {
@@ -89,7 +97,7 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
 
         String logoUrl = channel.getLogoUrl();
         if (logoUrl == null || logoUrl.isEmpty()) {
-            logoUrl = com.bykerimoff.player.utils.LogoManager.INSTANCE.getLogoForChannel(channel.getName());
+            logoUrl = LogoManager.INSTANCE.getLogoForChannel(channel.getName());
             if (logoUrl != null) {
                 channel.setLogoUrl(logoUrl);
             }
@@ -98,8 +106,8 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         Glide.with(holder.itemView.getContext())
                 .asBitmap()
                 .load(logoUrl)
-                .format(com.bumptech.glide.load.DecodeFormat.PREFER_RGB_565) // RAM-a 50% qənaət
-                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL) // Tam keş
+                .format(DecodeFormat.PREFER_RGB_565) // RAM-a 50% qənaət
+                .diskCacheStrategy(DiskCacheStrategy.ALL) // Tam keş
                 .placeholder(R.drawable.default_logo)
                 .error(R.drawable.default_logo)
                 .into(holder.ivLogo);
@@ -121,10 +129,20 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
             if (hasFocus) {
                 v.startAnimation(AnimationUtils.loadAnimation(v.getContext(), R.anim.scale_up));
                 v.setElevation(12f);
+                v.setBackgroundColor(themeColor);
+                holder.tvName.setTextColor(Color.BLACK);
+                if (holder.tvNumber != null) {
+                    holder.tvNumber.setTextColor(Color.BLACK);
+                }
                 listener.onChannelFocus(channel);
             } else {
                 v.startAnimation(AnimationUtils.loadAnimation(v.getContext(), R.anim.scale_down));
                 v.setElevation(0f);
+                v.setBackgroundColor(Color.TRANSPARENT);
+                holder.tvName.setTextColor(Color.WHITE);
+                if (holder.tvNumber != null) {
+                    holder.tvNumber.setTextColor(themeColor);
+                }
             }
         });
     }

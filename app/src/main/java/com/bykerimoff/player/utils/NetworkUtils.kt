@@ -121,23 +121,27 @@ object NetworkUtils {
             // Dinamik Header Interceptor (Global Optimizasiya - Bütün dünya üçün)
             builder.addInterceptor { chain ->
                 val original = chain.request()
-                val url = original.url.toString().lowercase()
                 val requestBuilder = original.newBuilder()
 
-                // Müasir və universal brauzer agenti (Bütün yayımlar və API üçün)
-                val globalUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
+                // Müasir və universal brauzer agenti (VLC IPTV standartı)
+                val globalUserAgent = "VLC/3.0.11 LibVLC/3.0.11"
 
-                requestBuilder.header("User-Agent", globalUserAgent)
-                    .header("Accept", "*/*")
+                if (original.header("User-Agent") == null) {
+                    requestBuilder.header("User-Agent", globalUserAgent)
+                }
+
+                requestBuilder.header("Accept", "*/*")
                     .header("Accept-Language", "en-US,en;q=0.9,az;q=0.8,ru;q=0.7")
                     .header("Connection", "keep-alive")
-                    .header("Cache-Control", "max-age=0")
+                    .header("X-Requested-With", "com.android.vlc")
                 
-                // GitHub, CatCast və digər yayım serverləri üçün mütləq olan Referer başlığı
-                if (url.contains("github") || url.contains("catcast") || url.contains("stream") || url.contains(".m3u8")) {
-                    val referer = if (url.contains("github")) "https://github.com/" else original.url.scheme + "://" + original.url.host + "/"
-                    requestBuilder.header("Referer", referer)
-                    requestBuilder.header("Origin", original.url.scheme + "://" + original.url.host)
+                // Referer və Origin ayarı (Bot detection-dan yayınmaq üçün)
+                val host = original.url.host
+                if (original.header("Referer") == null) {
+                    requestBuilder.header("Referer", original.url.scheme + "://" + host + "/")
+                }
+                if (original.header("Origin") == null) {
+                    requestBuilder.header("Origin", original.url.scheme + "://" + host)
                 }
 
                 chain.proceed(requestBuilder.build())
