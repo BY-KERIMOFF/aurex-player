@@ -551,14 +551,16 @@ public class LiveTvActivity extends AppCompatActivity {
     }
 
     private void moveSelectedChannelsTo(int targetIndex) {
-        if (currentCategory == null) return;
+        if (currentCategory == null || channels.isEmpty()) return;
         
+        Channel targetChannel = channels.get(Math.min(targetIndex, channels.size() - 1));
         Set<String> selectedIds = channelAdapter.getMarkedChannelIds();
         List<Channel> selectedList = new ArrayList<>();
         
-        // Seçilmişləri tap və əsas siyahıdan müvəqqəti çıxar
-        List<Channel> newList = new ArrayList<>(channels);
-        Iterator<Channel> it = newList.iterator();
+        // --- Qlobal Siyahıda Dəyişiklik (v8.4.3) ---
+        // 1. Seçilmişləri tap və qlobal siyahıdan çıxar
+        List<Channel> newGlobalList = new ArrayList<>(allChannels);
+        Iterator<Channel> it = newGlobalList.iterator();
         while (it.hasNext()) {
             Channel c = it.next();
             if (selectedIds.contains(c.getId())) {
@@ -567,24 +569,23 @@ public class LiveTvActivity extends AppCompatActivity {
             }
         }
         
-        // Yeni mövqeyə yerləşdir
-        int actualTarget = Math.min(targetIndex, newList.size());
-        newList.addAll(actualTarget, selectedList);
+        // 2. Hədəf kanalın qlobal siyahıdakı yeni yerini tap
+        int globalTargetIndex = newGlobalList.indexOf(targetChannel);
+        if (globalTargetIndex == -1) globalTargetIndex = newGlobalList.size();
         
-        // Dəyişiklikləri yadda saxla
-        List<String> newOrderIds = new ArrayList<>();
-        for (Channel c : newList) {
-            newOrderIds.add(c.getId());
-        }
-        orderManager.saveOrder(currentCategory.getId(), newOrderIds);
+        // 3. Seçilmişləri qlobal siyahıya hədəf nöqtəyə yerləşdir
+        newGlobalList.addAll(globalTargetIndex, selectedList);
         
-        // Adapteri yenilə
-        channels.clear();
-        channels.addAll(newList);
-        channelAdapter.setMultiSelectMode(false); // Rejimdən çıx və seçimləri təmizlə
-        channelAdapter.notifyDataSetChanged();
+        // 4. Yenilənmiş qlobal siyahını tətbiq et və yadda saxla
+        allChannels.clear();
+        allChannels.addAll(newGlobalList);
+        orderManager.saveGlobalOrder(allChannels);
         
-        Toast.makeText(this, "Sıralama yeniləndi", Toast.LENGTH_SHORT).show();
+        // 5. Cari görüntünü yenilə
+        filterChannelsByCategory(currentCategory);
+        channelAdapter.setMultiSelectMode(false);
+        
+        Toast.makeText(this, "Qlobal sıralama yeniləndi", Toast.LENGTH_SHORT).show();
     }
 
     private void playMiniStream(Channel channel) {
@@ -1032,13 +1033,14 @@ public class LiveTvActivity extends AppCompatActivity {
             }
         }
         
+        // Qlobal sıralamanı tətbiq et (v8.4.3)
+        List<Channel> globalOrdered = orderManager.applyOrder("global", allChannels);
+        allChannels.clear();
+        allChannels.addAll(globalOrdered);
+
         binding.tvPanelTitle.setText(category.getName().toUpperCase());
         
-        // Sıralamanı tətbiq et
-        List<Channel> orderedChannels = orderManager.applyOrder(category.getId(), channels);
-        channels.clear();
-        channels.addAll(orderedChannels);
-        
+        // Cari kateqoriya üçün qlobal sıradan filtirlə
         channelAdapter.notifyDataSetChanged();
         
         if (!channels.isEmpty() && !isVodMode) {

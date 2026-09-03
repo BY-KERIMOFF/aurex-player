@@ -2,7 +2,6 @@ package com.bykerimoff.player.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-
 import com.bykerimoff.player.models.Channel;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -34,11 +33,9 @@ public class ChannelOrderManager {
         return gson.fromJson(json, type);
     }
 
-    /**
-     * Siyahını yadda saxlanılmış sıraya görə nizamlayır.
-     */
     public <T extends Channel> List<T> applyOrder(String categoryId, List<T> originalList) {
-        List<String> savedOrder = getOrder(categoryId);
+        // Use "global" key to ensure the same order applies to all lists (Filtered or All)
+        List<String> savedOrder = getOrder("global");
         if (savedOrder.isEmpty()) return new ArrayList<>(originalList);
 
         Map<String, T> channelMap = new HashMap<>();
@@ -47,15 +44,23 @@ public class ChannelOrderManager {
         }
 
         List<T> orderedList = new ArrayList<>();
-        // Əvvəlcə yadda saxlanılmış sıradakıları düz
+        // First, add channels in the saved global sequence
         for (String id : savedOrder) {
             if (channelMap.containsKey(id)) {
                 orderedList.add(channelMap.remove(id));
             }
         }
-        // Qalanlarını sona əlavə et (məsələn, yeni əlavə olunan kanallar)
+        // Then append any new channels not yet in the saved order
         orderedList.addAll(channelMap.values());
         
         return orderedList;
+    }
+
+    public void saveGlobalOrder(List<Channel> allChannels) {
+        List<String> ids = new ArrayList<>();
+        for (Channel c : allChannels) {
+            ids.add(c.getId());
+        }
+        saveOrder("global", ids);
     }
 }
