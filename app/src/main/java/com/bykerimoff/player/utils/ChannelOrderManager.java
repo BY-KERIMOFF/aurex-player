@@ -39,7 +39,7 @@ public class ChannelOrderManager {
      */
     public <T extends Channel> List<T> applyOrder(String categoryId, List<T> originalList) {
         List<String> savedOrder = getOrder(categoryId);
-        if (savedOrder.isEmpty()) return originalList;
+        if (savedOrder.isEmpty()) return new ArrayList<>(originalList);
 
         Map<String, T> channelMap = new HashMap<>();
         for (T channel : originalList) {
