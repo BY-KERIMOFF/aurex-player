@@ -112,6 +112,7 @@ public class PlayerActivity extends AppCompatActivity {
     private List<Channel> playbackList = new ArrayList<>(); // Pleyerin real çalğı siyahısı
     private int currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
     private boolean isVod = false;
+    private boolean isRecoveryAttempt = false;
     private CountDownTimer testCountDownTimer;
     private long lastKeyTime = 0;
     private static final int KEY_DELAY = 30; // ms for snappy feel
@@ -250,6 +251,12 @@ public class PlayerActivity extends AppCompatActivity {
 
             @Override
             public void onPlayerError(@NonNull PlaybackException error) {
+                if (!isRecoveryAttempt) {
+                    // Try smart recovery immediately
+                    playChannel(currentIndex, 0, true);
+                    return;
+                }
+
                 if (retryCount < MAX_RETRIES) {
                     retryCount++;
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -323,12 +330,17 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void playChannel(int index) {
-        playChannel(index, 0);
+        playChannel(index, 0, false);
     }
 
     private void playChannel(int index, long startPosition) {
+        playChannel(index, startPosition, false);
+    }
+
+    private void playChannel(int index, long startPosition, boolean isRecovery) {
         if (index < 0 || index >= playbackList.size()) return;
         currentIndex = index;
+        isRecoveryAttempt = isRecovery;
         Channel channel = playbackList.get(currentIndex);
         currentPlayingChannelId = channel.getId();
 
@@ -344,28 +356,28 @@ public class PlayerActivity extends AppCompatActivity {
             exoPlayer.clearMediaItems();
         }
 
-        binding.tvChannelName.setText((currentIndex + 1) + ". " + channel.getName());
+        binding.tvChannelName.setText((currentIndex + 1) + ". " + channel.getName() + (isRecovery ? " (Bərpa olunur...)" : ""));
         Glide.with(this).load(channel.getLogoUrl()).placeholder(R.drawable.default_logo).into(binding.ivChannelLogo);
 
         String url = channel.getStreamUrl();
         MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(url));
         
-        String lower = url.toLowerCase(Locale.ROOT);
-        
-        // MimeType detection optimization (Restored to v8.3.1 stable state)
-        if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
-            builder.setMimeType(MimeTypes.APPLICATION_M3U8);
-        } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
-            builder.setMimeType(MimeTypes.APPLICATION_MPD);
-        } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
-            builder.setMimeType(MimeTypes.APPLICATION_SS);
-        } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
-            builder.setMimeType(MimeTypes.VIDEO_MP2T);
-        } else if (lower.contains("stream.php") || lower.contains("live.php") || lower.contains("get.php")) {
-            builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+        if (!isRecovery) {
+            String lower = url.toLowerCase(Locale.ROOT);
+            // MimeType detection optimization (v8.3.1 stable logic)
+            if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
+                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+            } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
+                builder.setMimeType(MimeTypes.APPLICATION_MPD);
+            } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
+                builder.setMimeType(MimeTypes.APPLICATION_SS);
+            } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
+                builder.setMimeType(MimeTypes.VIDEO_MP2T);
+            } else if (lower.contains("stream.php") || lower.contains("live.php") || lower.contains("get.php")) {
+                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+            }
         }
-
-
+        // If it's a recovery attempt, NO MimeType is set, triggering ExoPlayer auto-sniffing.
 
         exoPlayer.setMediaItem(builder.build());
         if (startPosition > 0) {
