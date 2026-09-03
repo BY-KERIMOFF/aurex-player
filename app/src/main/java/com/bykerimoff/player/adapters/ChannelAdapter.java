@@ -18,7 +18,9 @@ import com.bykerimoff.player.utils.FavoriteManager;
 import com.bykerimoff.player.utils.LogoManager;
 import com.bykerimoff.player.utils.ThemeManager;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHolder> {
     public static final int VIEW_TYPE_LIST = 0;
@@ -30,11 +32,30 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
     private FavoriteManager favoriteManager;
     private int currentViewType = VIEW_TYPE_LIST;
     private int selectedPosition = -1;
+    private final Set<String> markedChannelIds = new HashSet<>();
 
     public interface OnChannelClickListener {
         void onChannelClick(Channel channel);
         void onChannelFocus(Channel channel);
         void onChannelLongClick(Channel channel);
+    }
+
+    public void toggleMark(String channelId) {
+        if (markedChannelIds.contains(channelId)) {
+            markedChannelIds.remove(channelId);
+        } else {
+            markedChannelIds.add(channelId);
+        }
+        notifyDataSetChanged();
+    }
+
+    public Set<String> getMarkedChannelIds() {
+        return markedChannelIds;
+    }
+
+    public void clearMarks() {
+        markedChannelIds.clear();
+        notifyDataSetChanged();
     }
 
     public ChannelAdapter(List<Channel> channels, OnChannelClickListener listener) {
@@ -138,13 +159,26 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
             } else {
                 v.startAnimation(AnimationUtils.loadAnimation(v.getContext(), R.anim.scale_down));
                 v.setElevation(0f);
-                v.setBackgroundColor(Color.TRANSPARENT);
+                if (markedChannelIds.contains(channel.getId())) {
+                    v.setBackgroundColor(Color.parseColor("#80FFD700")); // Semi-transparent Gold for marked
+                } else {
+                    v.setBackgroundColor(Color.TRANSPARENT);
+                }
                 holder.tvName.setTextColor(Color.WHITE);
                 if (holder.tvNumber != null) {
                     holder.tvNumber.setTextColor(themeColor);
                 }
             }
         });
+
+        // Həmçinin bind zamanı rəngi yoxla (əgər focus deyilsə)
+        if (!holder.itemView.hasFocus()) {
+            if (markedChannelIds.contains(channel.getId())) {
+                holder.itemView.setBackgroundColor(Color.parseColor("#80FFD700"));
+            } else {
+                holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+            }
+        }
     }
 
     @Override

@@ -48,6 +48,7 @@ import com.bykerimoff.player.models.Category;
 import com.bykerimoff.player.models.Channel;
 import com.bykerimoff.player.models.XtreamCategory;
 import com.bykerimoff.player.models.XtreamChannel;
+import com.bykerimoff.player.utils.ChannelOrderManager;
 import com.bykerimoff.player.utils.DataManager;
 import com.bykerimoff.player.utils.DiskCacheManager;
 import com.bykerimoff.player.utils.FavoriteManager;
@@ -67,6 +68,7 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -90,6 +92,8 @@ public class LiveTvActivity extends AppCompatActivity {
     private final List<Channel> channels = new ArrayList<>();
     private final List<Channel> allChannels = new ArrayList<>();
     private final Map<String, List<Channel>> channelMap = new HashMap<>();
+    private ChannelOrderManager orderManager;
+    private Category currentCategory;
     
     private boolean isVodMode = false;
     private String playlistType;
@@ -111,6 +115,8 @@ public class LiveTvActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityLiveTvBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        orderManager = new ChannelOrderManager(this);
 
         // Show loading immediately to avoid blank screen
         binding.mainLoadingLayout.setVisibility(View.VISIBLE);
@@ -456,6 +462,7 @@ public class LiveTvActivity extends AppCompatActivity {
                 .putString("last_category_id", category.getId())
                 .apply();
                 
+            currentCategory = category;
             binding.rvChannels.requestFocus();
         });
         binding.rvCategories.setLayoutManager(new LinearLayoutManager(this));
@@ -481,10 +488,7 @@ public class LiveTvActivity extends AppCompatActivity {
 
             @Override
             public void onChannelLongClick(Channel channel) {
-                boolean isAdded = favoriteManager.toggleFavorite(channel.getId());
-                channelAdapter.notifyDataSetChanged();
-                String message = isAdded ? "Sevimli siyahısına əlavə edildi" : "Sevimli siyahısından çıxarıldı";
-                Toast.makeText(LiveTvActivity.this, message, Toast.LENGTH_SHORT).show();
+                showChannelMenu(channel);
             }
         });
         binding.rvChannels.setLayoutManager(new LinearLayoutManager(this));
@@ -502,6 +506,72 @@ public class LiveTvActivity extends AppCompatActivity {
             }
         }
         channelAdapter.notifyDataSetChanged();
+    }
+
+    private void showChannelMenu(Channel channel) {
+        FavoriteManager favoriteManager = new FavoriteManager(this);
+        boolean isFav = favoriteManager.isFavorite(channel.getId());
+        boolean isMarked = channelAdapter.getMarkedChannelIds().contains(channel.getId());
+        boolean hasSelection = !channelAdapter.getMarkedChannelIds().isEmpty();
+
+        List<String> options = new ArrayList<>();
+        options.add(isFav ? "Sevimli siyahısından çıxar" : "Sevimli siyahısına əlavə et");
+        options.add(isMarked ? "Seçimi ləğv et" : "Kanalı seç");
+        if (hasSelection) {
+            options.add("Seçilmişləri buraya köçür");
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(channel.getName())
+                .setItems(options.toArray(new String[0]), (dialog, which) -> {
+                    String selected = options.get(which);
+                    if (selected.contains("Sevimli")) {
+                        favoriteManager.toggleFavorite(channel.getId());
+                        channelAdapter.notifyDataSetChanged();
+                    } else if (selected.equals("Kanalı seç") || selected.equals("Seçimi ləğv et")) {
+                        channelAdapter.toggleMark(channel.getId());
+                    } else if (selected.equals("Seçilmişləri buraya köçür")) {
+                        moveSelectedChannelsTo(channels.indexOf(channel));
+                    }
+                })
+                .show();
+    }
+
+    private void moveSelectedChannelsTo(int targetIndex) {
+        if (currentCategory == null) return;
+        
+        Set<String> selectedIds = channelAdapter.getMarkedChannelIds();
+        List<Channel> selectedList = new ArrayList<>();
+        
+        // Seçilmişləri tap və əsas siyahıdan müvəqqəti çıxar
+        List<Channel> newList = new ArrayList<>(channels);
+        Iterator<Channel> it = newList.iterator();
+        while (it.hasNext()) {
+            Channel c = it.next();
+            if (selectedIds.contains(c.getId())) {
+                selectedList.add(c);
+                it.remove();
+            }
+        }
+        
+        // Yeni mövqeyə yerləşdir
+        int actualTarget = Math.min(targetIndex, newList.size());
+        newList.addAll(actualTarget, selectedList);
+        
+        // Dəyişiklikləri yadda saxla
+        List<String> newOrderIds = new ArrayList<>();
+        for (Channel c : newList) {
+            newOrderIds.add(c.getId());
+        }
+        orderManager.saveOrder(currentCategory.getId(), newOrderIds);
+        
+        // Adapteri yenilə
+        channels.clear();
+        channels.addAll(newList);
+        channelAdapter.clearMarks();
+        channelAdapter.notifyDataSetChanged();
+        
+        Toast.makeText(this, "Sıralama yeniləndi", Toast.LENGTH_SHORT).show();
     }
 
     private void playMiniStream(Channel channel) {
@@ -950,6 +1020,12 @@ public class LiveTvActivity extends AppCompatActivity {
         }
         
         binding.tvPanelTitle.setText(category.getName().toUpperCase());
+        
+        // Sıralamanı tətbiq et
+        List<Channel> orderedChannels = orderManager.applyOrder(category.getId(), channels);
+        channels.clear();
+        channels.addAll(orderedChannels);
+        
         channelAdapter.notifyDataSetChanged();
         
         if (!channels.isEmpty() && !isVodMode) {
