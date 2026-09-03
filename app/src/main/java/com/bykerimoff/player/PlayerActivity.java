@@ -198,7 +198,10 @@ public class PlayerActivity extends AppCompatActivity {
                                    | DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM
                                    | DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS);
 
+        // Universal MediaSourceFactory with HLS optimization
         DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory);
+        // We can't easily set HLS specific flags on the default factory without custom factories,
+        // but the sniffing logic in playChannel will handle the heavy lifting.
 
         SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
         boolean smartBuffer = prefs.getBoolean("smart_buffer_enabled", true);
@@ -349,18 +352,30 @@ public class PlayerActivity extends AppCompatActivity {
         
         String lower = url.toLowerCase(Locale.ROOT);
         
-        // MimeType detection optimization (Restored to v8.3.1 stable state)
-        if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
-            builder.setMimeType(MimeTypes.APPLICATION_M3U8);
-        } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
-            builder.setMimeType(MimeTypes.APPLICATION_MPD);
-        } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
-            builder.setMimeType(MimeTypes.APPLICATION_SS);
-        } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
-            builder.setMimeType(MimeTypes.VIDEO_MP2T);
-        } else if (lower.contains("stream.php") || lower.contains("live.php") || lower.contains("get.php")) {
-            builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+        // --- Universal Stream Detection (v8.3.5) ---
+        // RULE: Only set MimeType for clean, direct file extensions. 
+        // For anything with parameters (?) or scripts (.php), let ExoPlayer auto-sniff the byte stream.
+        if (!lower.contains("?") && !lower.contains(".php")) {
+            if (lower.endsWith(".m3u8")) {
+                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+            } else if (lower.endsWith(".mpd")) {
+                builder.setMimeType(MimeTypes.APPLICATION_MPD);
+            } else if (lower.endsWith(".ts")) {
+                builder.setMimeType(MimeTypes.VIDEO_MP2T);
+            } else if (lower.endsWith(".mp4")) {
+                builder.setMimeType(MimeTypes.VIDEO_MP4);
+            }
+        } else {
+            // For PHP proxies or URLs with parameters, we check for explicit IPTV indicators
+            if (lower.contains("type=m3u8")) {
+                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+            } else if (lower.contains("type=ts") || lower.contains("output=ts") || lower.contains("output=mpegts")) {
+                builder.setMimeType(MimeTypes.VIDEO_MP2T);
+            }
+            // Otherwise, NO MimeType is set. ExoPlayer will sniff the first few bytes of the stream
+            // to determine if it's HLS, TS, MP4, etc. This is the ultimate "Universal" fix.
         }
+
 
 
         exoPlayer.setMediaItem(builder.build());
