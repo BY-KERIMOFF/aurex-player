@@ -474,7 +474,11 @@ public class LiveTvActivity extends AppCompatActivity {
         channelAdapter = new ChannelAdapter(channels, new ChannelAdapter.OnChannelClickListener() {
             @Override
             public void onChannelClick(Channel channel) {
-                playChannel(channel, channels.indexOf(channel), channels);
+                if (channelAdapter.isMultiSelectMode()) {
+                    channelAdapter.toggleMark(channel.getId());
+                } else {
+                    playChannel(channel, channels.indexOf(channel), channels);
+                }
             }
 
             @Override
@@ -516,7 +520,13 @@ public class LiveTvActivity extends AppCompatActivity {
 
         List<String> options = new ArrayList<>();
         options.add(isFav ? "Sevimli siyahısından çıxar" : "Sevimli siyahısına əlavə et");
-        options.add(isMarked ? "Seçimi ləğv et" : "Kanalı seç");
+        
+        if (channelAdapter.isMultiSelectMode()) {
+            options.add("Çoxlu seçim rejimini bağla");
+        } else {
+            options.add("Çoxlu seçim rejimini aç");
+        }
+        
         if (hasSelection) {
             options.add("Seçilmişləri buraya köçür");
         }
@@ -528,8 +538,11 @@ public class LiveTvActivity extends AppCompatActivity {
                     if (selected.contains("Sevimli")) {
                         favoriteManager.toggleFavorite(channel.getId());
                         channelAdapter.notifyDataSetChanged();
-                    } else if (selected.equals("Kanalı seç") || selected.equals("Seçimi ləğv et")) {
-                        channelAdapter.toggleMark(channel.getId());
+                    } else if (selected.equals("Çoxlu seçim rejimini aç")) {
+                        channelAdapter.setMultiSelectMode(true);
+                        Toast.makeText(this, "Çoxlu seçim rejimi aktivdir. Kanalları seçin.", Toast.LENGTH_SHORT).show();
+                    } else if (selected.equals("Çoxlu seçim rejimini bağla")) {
+                        channelAdapter.setMultiSelectMode(false);
                     } else if (selected.equals("Seçilmişləri buraya köçür")) {
                         moveSelectedChannelsTo(channels.indexOf(channel));
                     }
@@ -568,7 +581,7 @@ public class LiveTvActivity extends AppCompatActivity {
         // Adapteri yenilə
         channels.clear();
         channels.addAll(newList);
-        channelAdapter.clearMarks();
+        channelAdapter.setMultiSelectMode(false); // Rejimdən çıx və seçimləri təmizlə
         channelAdapter.notifyDataSetChanged();
         
         Toast.makeText(this, "Sıralama yeniləndi", Toast.LENGTH_SHORT).show();

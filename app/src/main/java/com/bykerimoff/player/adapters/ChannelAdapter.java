@@ -32,7 +32,18 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
     private FavoriteManager favoriteManager;
     private int currentViewType = VIEW_TYPE_LIST;
     private int selectedPosition = -1;
+    private boolean isMultiSelectMode = false;
     private final Set<String> markedChannelIds = new HashSet<>();
+
+    public boolean isMultiSelectMode() {
+        return isMultiSelectMode;
+    }
+
+    public void setMultiSelectMode(boolean multiSelectMode) {
+        this.isMultiSelectMode = multiSelectMode;
+        if (!multiSelectMode) markedChannelIds.clear();
+        notifyDataSetChanged();
+    }
 
     public interface OnChannelClickListener {
         void onChannelClick(Channel channel);
