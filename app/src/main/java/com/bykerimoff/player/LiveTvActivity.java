@@ -553,12 +553,16 @@ public class LiveTvActivity extends AppCompatActivity {
     private void moveSelectedChannelsTo(int targetIndex) {
         if (currentCategory == null || channels.isEmpty()) return;
         
+        // Find the actual channel at the target index in the CURRENT filtered view
         Channel targetChannel = channels.get(Math.min(targetIndex, channels.size() - 1));
         Set<String> selectedIds = channelAdapter.getMarkedChannelIds();
+        
+        if (selectedIds.isEmpty()) return;
+
         List<Channel> selectedList = new ArrayList<>();
         
-        // --- Qlobal Siyahıda Dəyişiklik (v8.4.3) ---
-        // 1. Seçilmişləri tap və qlobal siyahıdan çıxar
+        // --- Qlobal Siyahıda Dəyişiklik (v8.4.4) ---
+        // 1. Bütün kanallardan seçilmişləri çıxar və onları 'selectedList'-ə yığ
         List<Channel> newGlobalList = new ArrayList<>(allChannels);
         Iterator<Channel> it = newGlobalList.iterator();
         while (it.hasNext()) {
@@ -571,9 +575,9 @@ public class LiveTvActivity extends AppCompatActivity {
         
         // 2. Hədəf kanalın qlobal siyahıdakı yeni yerini tap
         int globalTargetIndex = newGlobalList.indexOf(targetChannel);
-        if (globalTargetIndex == -1) globalTargetIndex = newGlobalList.size();
+        if (globalTargetIndex == -1) globalTargetIndex = 0;
         
-        // 3. Seçilmişləri qlobal siyahıya hədəf nöqtəyə yerləşdir
+        // 3. Seçilmişləri hədəf kanalın DƏRHAL ÖNÜNƏ yerləşdir
         newGlobalList.addAll(globalTargetIndex, selectedList);
         
         // 4. Yenilənmiş qlobal siyahını tətbiq et və yadda saxla
@@ -581,11 +585,11 @@ public class LiveTvActivity extends AppCompatActivity {
         allChannels.addAll(newGlobalList);
         orderManager.saveGlobalOrder(allChannels);
         
-        // 5. Cari görüntünü yenilə
+        // 5. Cari kateqoriya görüntüsünü tamamilə yenilə
+        channelAdapter.setMultiSelectMode(false); // Bu həm də seçimləri təmizləyir
         filterChannelsByCategory(currentCategory);
-        channelAdapter.setMultiSelectMode(false);
         
-        Toast.makeText(this, "Qlobal sıralama yeniləndi", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Sıralama uğurla yeniləndi", Toast.LENGTH_SHORT).show();
     }
 
     private void playMiniStream(Channel channel) {
@@ -998,49 +1002,45 @@ public class LiveTvActivity extends AppCompatActivity {
     }
 
     private void filterChannelsByCategory(Category category) {
+        if (category == null) return;
+        currentCategory = category;
+
+        // 1. Əvvəlcə qlobal sıralamanı bütün kanallara tətbiq et (v8.4.4)
+        List<Channel> globalOrdered = orderManager.applyOrder("global", allChannels);
+        allChannels.clear();
+        allChannels.addAll(globalOrdered);
+
+        // 2. İndi isə 'channels' siyahısını bu sıralanmış ana siyahıdan doldur
         channels.clear();
-        if ("all".equals(category.getId())) {
-            for (Channel c : allChannels) {
-                if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
-                if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
-                if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
-                if (!isSportEnabled && M3UParser.isSportCategory(c.getCategoryName())) continue;
+        String catId = category.getId();
+        String catName = category.getName();
+
+        for (Channel c : allChannels) {
+            // Uşaq rejimi yoxlaması
+            if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
+            
+            // Böyüklər/İdman filtri
+            if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+            if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+            if (!isSportEnabled && M3UParser.isSportCategory(c.getCategoryName())) continue;
+
+            if ("all".equals(catId)) {
                 channels.add(c);
-            }
-        } else if ("0".equals(category.getId())) {
-            FavoriteManager favoriteManager = new FavoriteManager(this);
-            for (Channel c : allChannels) {
-                if (favoriteManager.isFavorite(c.getId())) {
-                    if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
-                    if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
-                    if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
-                    if (!isSportEnabled && M3UParser.isSportCategory(c.getCategoryName())) continue;
+            } else if ("0".equals(catId)) {
+                // Sevimlilər
+                FavoriteManager fav = new FavoriteManager(this);
+                if (fav.isFavorite(c.getId())) {
                     channels.add(c);
                 }
-            }
-        } else {
-            List<Channel> list = channelMap.get(category.getId());
-            if (list != null) {
-                for (Channel c : list) {
-                    if (isKidsModeActive && !M3UParser.isKidsCategory(c.getCategoryName())) continue;
-                    // Note: Here we don't necessarily need to check adult/sensitive because 
-                    // the category itself would have been hidden if it was sensitive.
-                    // But for safety, let's keep it consistent.
-                    if (!isAdultEnabled && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
-                    if (hideSensitive && M3UParser.isSensitiveCategory(c.getCategoryName())) continue;
+            } else {
+                // Konkret kateqoriya - ID və ya Ad ilə yoxla
+                if (catId.equals(c.getCategoryName()) || catName.equalsIgnoreCase(c.getCategoryName())) {
                     channels.add(c);
                 }
             }
         }
         
-        // Qlobal sıralamanı tətbiq et (v8.4.3)
-        List<Channel> globalOrdered = orderManager.applyOrder("global", allChannels);
-        allChannels.clear();
-        allChannels.addAll(globalOrdered);
-
-        binding.tvPanelTitle.setText(category.getName().toUpperCase());
-        
-        // Cari kateqoriya üçün qlobal sıradan filtirlə
+        binding.tvPanelTitle.setText(catName.toUpperCase());
         channelAdapter.notifyDataSetChanged();
         
         if (!channels.isEmpty() && !isVodMode) {

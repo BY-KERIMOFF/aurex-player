@@ -57,7 +57,14 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         } else {
             markedChannelIds.add(channelId);
         }
-        notifyDataSetChanged();
+        
+        // Find the index of this channel to notify specifically (prevents focus jump)
+        for (int i = 0; i < channels.size(); i++) {
+            if (channels.get(i).getId().equals(channelId)) {
+                notifyItemChanged(i);
+                break;
+            }
+        }
     }
 
     public Set<String> getMarkedChannelIds() {
