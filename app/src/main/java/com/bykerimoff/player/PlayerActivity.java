@@ -349,20 +349,23 @@ public class PlayerActivity extends AppCompatActivity {
         
         String lower = url.toLowerCase(Locale.ROOT);
         
-        // MimeType detection optimization
-        if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
-            builder.setMimeType(MimeTypes.APPLICATION_M3U8);
-        } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
-            builder.setMimeType(MimeTypes.APPLICATION_MPD);
-        } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
-            builder.setMimeType(MimeTypes.APPLICATION_SS);
-        } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
-            builder.setMimeType(MimeTypes.VIDEO_MP2T);
-        } else if (lower.contains("stream.php") || lower.contains("live.php") || lower.contains("get.php")) {
-            // PHP faylları çox vaxt HLS və ya TS qaytarır.
-            // Əgər konkret indikator yoxdursa, M3U8 kimi cəhd edirik.
-            builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+        // --- Smart MimeType Detection (v8.3.2) ---
+        // For PHP scripts, we don't force a MimeType to let ExoPlayer sniff the actual content (HLS vs TS)
+        boolean isPhpProxy = lower.contains("stream.php") || lower.contains("get.php") || lower.contains("live.php") || lower.contains("link.php");
+
+        if (!isPhpProxy) {
+            if (lower.contains(".m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
+                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+            } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
+                builder.setMimeType(MimeTypes.APPLICATION_MPD);
+            } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
+                builder.setMimeType(MimeTypes.APPLICATION_SS);
+            } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
+                builder.setMimeType(MimeTypes.VIDEO_MP2T);
+            }
         }
+        // If it IS a PHP proxy, we skip setMimeType entirely, which triggers auto-detection.
+
 
         exoPlayer.setMediaItem(builder.build());
         if (startPosition > 0) {

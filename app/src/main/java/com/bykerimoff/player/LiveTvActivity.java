@@ -112,6 +112,10 @@ public class LiveTvActivity extends AppCompatActivity {
         binding = ActivityLiveTvBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        // Show loading immediately to avoid blank screen
+        binding.mainLoadingLayout.setVisibility(View.VISIBLE);
+        binding.mainLoadingProgress.setIndeterminateTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getThemeColor(this)));
+
         WallpaperManager.INSTANCE.applyWallpaper(this, binding.ivAppBackground);
 
         SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);

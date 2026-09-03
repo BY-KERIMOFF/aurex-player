@@ -27,7 +27,7 @@ object ThemeManager {
 
     fun getThemeColor(context: Context): Int {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val colorHex = prefs.getString(KEY_THEME_COLOR, AppTheme.NEON_BLUE.colorHex)
+        val colorHex = prefs.getString(KEY_THEME_COLOR, AppTheme.EMERALD_GREEN.colorHex)
         return Color.parseColor(colorHex)
     }
 
