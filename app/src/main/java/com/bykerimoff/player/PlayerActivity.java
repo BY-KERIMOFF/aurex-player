@@ -50,6 +50,31 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.okhttp.OkHttpDataSource;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
+import com.bumptech.glide.Glide;
+import com.bykerimoff.player.adapters.ArchiveAdapter;
+import com.bykerimoff.player.adapters.CategoryAdapter;
+import com.bykerimoff.player.adapters.ChannelAdapter;
+import com.bykerimoff.player.adapters.TrackAdapter;
+import com.bykerimoff.player.databinding.ActivityPlayerBinding;
+import com.bykerimoff.player.models.Category;
+import com.bykerimoff.player.models.Channel;
+import com.bykerimoff.player.models.EpgProgram;
+import com.bykerimoff.player.models.ResumeItem;
+import com.bykerimoff.player.utils.DataManager;
+import com.bykerimoff.player.utils.M3UParser;
+import com.bykerimoff.player.utils.MacUtils;
+import com.bykerimoff.player.utils.RecentChannelsManager;
+import com.bykerimoff.player.utils.ResumeManager;
+import com.bykerimoff.player.utils.TelegramReporter;
+import com.bykerimoff.player.utils.ThemeManager;
+import com.bykerimoff.player.utils.XMLTVParser;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -125,6 +150,11 @@ public class PlayerActivity extends AppCompatActivity {
                     retryCount++;
                     exoPlayer.prepare();
                 } else {
+                    Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
+                    if (current != null) {
+                        String mac = MacUtils.getMacAddress(PlayerActivity.this);
+                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Buffering Timeout (Long Loading)");
+                    }
                     showTechnicalError();
                 }
             }
@@ -255,6 +285,13 @@ public class PlayerActivity extends AppCompatActivity {
                     // Try smart recovery immediately
                     playChannel(currentIndex, 0, true);
                     return;
+                }
+
+                // If recovery attempt also fails, report to Telegram
+                Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
+                if (current != null) {
+                    String mac = MacUtils.getMacAddress(PlayerActivity.this);
+                    TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, error.getErrorCodeName() + ": " + error.getMessage());
                 }
 
                 if (retryCount < MAX_RETRIES) {
