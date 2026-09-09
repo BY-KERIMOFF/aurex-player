@@ -132,7 +132,7 @@ public class PlayerActivity extends AppCompatActivity {
     private final Runnable volumeInputRunnable = this::processVolumeInput;
     
     private int retryCount = 0;
-    private final int MAX_RETRIES = 5;
+    private final int MAX_RETRIES = 2; // Reduced for faster error reporting
     private String currentPlayingChannelId = "";
     private List<Channel> playbackList = new ArrayList<>(); // Pleyerin real çalğı siyahısı
     private int currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
@@ -146,7 +146,11 @@ public class PlayerActivity extends AppCompatActivity {
         @Override
         public void run() {
             if (exoPlayer != null && (exoPlayer.getPlaybackState() == Player.STATE_BUFFERING)) {
-                if (retryCount < MAX_RETRIES) {
+                if (retryCount == 1 && !isRecoveryAttempt) {
+                    // First timeout: try smart recovery
+                    retryCount++;
+                    playChannel(currentIndex, 0, true);
+                } else if (retryCount < MAX_RETRIES) {
                     retryCount++;
                     exoPlayer.prepare();
                 } else {
@@ -267,7 +271,7 @@ public class PlayerActivity extends AppCompatActivity {
                 if (state == Player.STATE_BUFFERING) {
                     binding.bufferingLayout.setVisibility(View.VISIBLE);
                     osdHandler.removeCallbacks(bufferingTimeoutRunnable);
-                    osdHandler.postDelayed(bufferingTimeoutRunnable, 15000); 
+                    osdHandler.postDelayed(bufferingTimeoutRunnable, 8000); // Reduced to 8s for faster reporting
                 } else {
                     binding.bufferingLayout.setVisibility(View.GONE);
                     osdHandler.removeCallbacks(bufferingTimeoutRunnable);
