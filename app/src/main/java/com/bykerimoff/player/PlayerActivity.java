@@ -132,7 +132,7 @@ public class PlayerActivity extends AppCompatActivity {
     private final Runnable volumeInputRunnable = this::processVolumeInput;
     
     private int retryCount = 0;
-    private final int MAX_RETRIES = 2; // Reduced for faster error reporting
+    private final int MAX_RETRIES = 1; // Simplified for faster reporting
     private String currentPlayingChannelId = "";
     private List<Channel> playbackList = new ArrayList<>(); // Pleyerin real çalğı siyahısı
     private int currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
@@ -146,20 +146,22 @@ public class PlayerActivity extends AppCompatActivity {
         @Override
         public void run() {
             if (exoPlayer != null && (exoPlayer.getPlaybackState() == Player.STATE_BUFFERING)) {
-                if (retryCount == 1 && !isRecoveryAttempt) {
-                    // First timeout: try smart recovery
-                    retryCount++;
-                    playChannel(currentIndex, 0, true);
-                } else if (retryCount < MAX_RETRIES) {
+                if (retryCount < MAX_RETRIES) {
                     retryCount++;
                     exoPlayer.prepare();
                 } else {
-                    Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
-                    if (current != null) {
-                        String mac = MacUtils.getMacAddress(PlayerActivity.this);
-                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Buffering Timeout (Long Loading)");
+                    if (!isRecoveryAttempt) {
+                        // All retries failed for normal mode, try recovery once
+                        playChannel(currentIndex, 0, true);
+                    } else {
+                        // Even recovery attempt hung on buffering. Report and error out.
+                        Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
+                        if (current != null) {
+                            String mac = MacUtils.getMacAddress(PlayerActivity.this);
+                            TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Buffering Hang (16s+)");
+                        }
+                        showTechnicalError();
                     }
-                    showTechnicalError();
                 }
             }
         }
@@ -271,7 +273,7 @@ public class PlayerActivity extends AppCompatActivity {
                 if (state == Player.STATE_BUFFERING) {
                     binding.bufferingLayout.setVisibility(View.VISIBLE);
                     osdHandler.removeCallbacks(bufferingTimeoutRunnable);
-                    osdHandler.postDelayed(bufferingTimeoutRunnable, 8000); // Reduced to 8s for faster reporting
+                    osdHandler.postDelayed(bufferingTimeoutRunnable, 7000); // 7s for deterministic cycles
                 } else {
                     binding.bufferingLayout.setVisibility(View.GONE);
                     osdHandler.removeCallbacks(bufferingTimeoutRunnable);
@@ -285,30 +287,19 @@ public class PlayerActivity extends AppCompatActivity {
 
             @Override
             public void onPlayerError(@NonNull PlaybackException error) {
-                if (!isRecoveryAttempt) {
-                    // Try smart recovery immediately
-                    playChannel(currentIndex, 0, true);
+                // If recovery attempt also fails, or it was already in recovery
+                if (isRecoveryAttempt) {
+                    Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
+                    if (current != null) {
+                        String mac = MacUtils.getMacAddress(PlayerActivity.this);
+                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Error: " + error.getErrorCodeName());
+                    }
+                    showTechnicalError();
                     return;
                 }
 
-                // If recovery attempt also fails, report to Telegram
-                Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
-                if (current != null) {
-                    String mac = MacUtils.getMacAddress(PlayerActivity.this);
-                    TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, error.getErrorCodeName() + ": " + error.getMessage());
-                }
-
-                if (retryCount < MAX_RETRIES) {
-                    retryCount++;
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        if (exoPlayer != null) {
-                            exoPlayer.prepare();
-                            exoPlayer.play();
-                        }
-                    }, 2000);
-                } else {
-                    showTechnicalError();
-                }
+                // If first time error, try recovery
+                playChannel(currentIndex, 0, true);
             }
 
             @Override
@@ -382,6 +373,8 @@ public class PlayerActivity extends AppCompatActivity {
         if (index < 0 || index >= playbackList.size()) return;
         currentIndex = index;
         isRecoveryAttempt = isRecovery;
+        if (!isRecovery) retryCount = 0; // Reset retries only on fresh start
+        
         Channel channel = playbackList.get(currentIndex);
         currentPlayingChannelId = channel.getId();
 

@@ -21,17 +21,17 @@ public class TelegramReporter {
     public static void reportError(String channelName, String category, String mac, String errorMsg) {
         new Thread(() -> {
             try {
-                String message = "⚠️ *KANAL XƏTASI* ⚠️\n\n" +
-                        "📺 *Kanal:* " + channelName + "\n" +
-                        "📂 *Kateqoriya:* " + category + "\n" +
-                        "🆔 *MAC:* `" + mac + "`\n" +
-                        "❌ *Xəta:* " + errorMsg + "\n" +
-                        "🕒 *Vaxt:* " + new Date().toString();
+                String message = "⚠️ <b>KANAL XƏTASI</b> ⚠️\n\n" +
+                        "📺 <b>Kanal:</b> " + channelName + "\n" +
+                        "📂 <b>Kateqoriya:</b> " + category + "\n" +
+                        "🆔 <b>MAC:</b> <code>" + mac + "</code>\n" +
+                        "❌ <b>Xəta:</b> " + errorMsg + "\n" +
+                        "🕒 <b>Vaxt:</b> " + new Date().toString();
 
                 RequestBody formBody = new FormBody.Builder()
                         .add("chat_id", CHAT_ID)
                         .add("text", message)
-                        .add("parse_mode", "Markdown")
+                        .add("parse_mode", "HTML")
                         .build();
 
                 Request request = new Request.Builder()
