@@ -40,6 +40,11 @@ import androidx.media3.common.Tracks;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.TrackSelectionOverride;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Collections;
 import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.media3.ui.CaptionStyleCompat;
@@ -67,6 +72,7 @@ import com.bykerimoff.player.utils.M3UParser;
 import com.bykerimoff.player.utils.MacUtils;
 import com.bykerimoff.player.utils.RecentChannelsManager;
 import com.bykerimoff.player.utils.ResumeManager;
+import com.bykerimoff.player.utils.SecurityUtils;
 import com.bykerimoff.player.utils.TelegramReporter;
 import com.bykerimoff.player.utils.ThemeManager;
 import com.bykerimoff.player.utils.UserAgentManager;
@@ -114,6 +120,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+@OptIn(markerClass = UnstableApi.class)
 public class PlayerActivity extends AppCompatActivity {
 
     private ActivityPlayerBinding binding;
@@ -406,11 +413,20 @@ public class PlayerActivity extends AppCompatActivity {
         if (attemptMode == 1) statusSuffix = " (Bərpa-1...)";
         else if (attemptMode == 2) statusSuffix = " (Bərpa-2...)";
         else if (attemptMode >= 3) statusSuffix = " (Bərpa-3...)";
+        else if (attemptMode == -1) statusSuffix = " (Playlist həll olunur...)";
 
         binding.tvChannelName.setText((currentIndex + 1) + ". " + channel.getName() + statusSuffix);
         Glide.with(this).load(channel.getLogoUrl()).placeholder(R.drawable.default_logo).into(binding.ivChannelLogo);
 
         String url = channel.getStreamUrl();
+        
+        // --- Nested M3U Playlist Resolution (v8.6.2) ---
+        String lowerUrl = url.toLowerCase(Locale.ROOT).trim();
+        if (attemptMode != -1 && lowerUrl.endsWith(".m3u") && !lowerUrl.endsWith(".m3u8")) {
+            resolveAndPlayM3U(url, index, startPosition);
+            return;
+        }
+
         MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(url));
         
         String lower = url.toLowerCase(Locale.ROOT);
@@ -477,6 +493,43 @@ public class PlayerActivity extends AppCompatActivity {
                 current.getStreamUrl(), current.getCategoryName(), pos, dur, System.currentTimeMillis()
             ));
         }
+    }
+
+    private void resolveAndPlayM3U(String m3uUrl, int index, long startPos) {
+        playbackAttemptMode = -1; // Special mode for UI
+        hideTechnicalError();
+        binding.bufferingLayout.setVisibility(View.VISIBLE);
+        
+        new Thread(() -> {
+            try {
+                URL url = new URL(m3uUrl);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(15000);
+                conn.setRequestProperty("User-Agent", "VLC/3.0.21 LibVLC/3.0.21");
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                List<Channel> parsed = M3UParser.parse(reader);
+                reader.close();
+
+                if (!parsed.isEmpty()) {
+                    String realStreamUrl = parsed.get(0).getStreamUrl();
+                    runOnUiThread(() -> {
+                        // Temporarily update the URL for this session and play
+                        Channel original = playbackList.get(index);
+                        Channel updated = new Channel(original.getId(), original.getName(), original.getLogoUrl(), 
+                                                   SecurityUtils.encryptUrl(realStreamUrl),
+                                                   original.getCategoryName(), original.getTvgId(), "", 0, "");
+                        playbackList.set(index, updated);
+                        playChannel(index, startPos, 0); // Start fresh with the real link
+                    });
+                } else {
+                    runOnUiThread(() -> playChannel(index, startPos, 2)); // Fallback to sniffing the original URL
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> playChannel(index, startPos, 2));
+            }
+        }).start();
     }
 
     @Override
