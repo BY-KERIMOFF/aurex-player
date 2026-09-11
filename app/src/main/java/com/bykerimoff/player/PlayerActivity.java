@@ -385,7 +385,7 @@ public class PlayerActivity extends AppCompatActivity {
         playbackAttemptMode = attemptMode;
         retryCount = 0; 
         
-        // --- Hyper-Universal User-Agent Rotation (v8.5.6) ---
+        // --- Hyper-Universal User-Agent Rotation (v8.6.0) ---
         NetworkUtils.setDynamicUserAgent(UserAgentManager.INSTANCE.getBestUserAgent(attemptMode));
         
         Channel channel = playbackList.get(currentIndex);
@@ -405,6 +405,7 @@ public class PlayerActivity extends AppCompatActivity {
         String statusSuffix = "";
         if (attemptMode == 1) statusSuffix = " (Bərpa-1...)";
         else if (attemptMode == 2) statusSuffix = " (Bərpa-2...)";
+        else if (attemptMode >= 3) statusSuffix = " (Bərpa-3...)";
 
         binding.tvChannelName.setText((currentIndex + 1) + ". " + channel.getName() + statusSuffix);
         Glide.with(this).load(channel.getLogoUrl()).placeholder(R.drawable.default_logo).into(binding.ivChannelLogo);
@@ -414,33 +415,30 @@ public class PlayerActivity extends AppCompatActivity {
         
         String lower = url.toLowerCase(Locale.ROOT);
         
-        // --- Triple-Stage Playback Engine (v8.5.9) ---
+        // --- High-Compatibility Playback Engine (v8.6.0) ---
         if (attemptMode == 0) {
-            // Stage 0: Standard detection, but skip for PHP proxies to allow auto-sniffing
-            if (!lower.contains(".php")) {
-                if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
-                    builder.setMimeType(MimeTypes.APPLICATION_M3U8);
-                } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
-                    builder.setMimeType(MimeTypes.APPLICATION_MPD);
-                } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
-                    builder.setMimeType(MimeTypes.APPLICATION_SS);
-                } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
-                    builder.setMimeType(MimeTypes.VIDEO_MP2T);
-                }
+            // Stage 0: Stable v8.3.1 logic
+            if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
+                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+            } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
+                builder.setMimeType(MimeTypes.APPLICATION_MPD);
+            } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
+                builder.setMimeType(MimeTypes.APPLICATION_SS);
+            } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
+                builder.setMimeType(MimeTypes.VIDEO_MP2T);
+            } else if (lower.contains("stream.php") || lower.contains("live.php") || lower.contains("get.php")) {
+                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
             }
-            // If it IS a PHP proxy, we skip setMimeType in Stage 0 now too.
         } else if (attemptMode == 1) {
-            // Stage 1: Force TS Fallback (Fix for fake m3u8 PHP proxies)
+            // Stage 1: Force TS Fallback for fake m3u8 proxies
             if (lower.contains(".m3u8") || lower.contains(".php")) {
                 builder.setMimeType(MimeTypes.VIDEO_MP2T);
             } else {
-                // Not force-able, skip to sniffing
                 playChannel(index, startPosition, 2);
                 return;
             }
         } else {
-            // Stage 2: Deep Sniff (Universal)
-            // No MimeType set
+            // Stage 2/3: Universal Deep Sniff (No MimeType)
         }
 
         exoPlayer.setMediaItem(builder.build());
@@ -456,12 +454,10 @@ public class PlayerActivity extends AppCompatActivity {
         
         RecentChannelsManager.addRecentChannel(this, channel);
         
-        // Save for Resume Playback if VOD
         if (isVod) {
             saveResumePosition();
         }
 
-        // Save the last watched channel URL for auto-start feature
         SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
         prefs.edit()
             .putString("last_channel_url", channel.getStreamUrl())
@@ -475,7 +471,7 @@ public class PlayerActivity extends AppCompatActivity {
         long pos = exoPlayer.getCurrentPosition();
         long dur = exoPlayer.getDuration();
         
-        if (dur > 0 && pos > 0 && pos < dur - 10000) { // Don't save if finished
+        if (dur > 0 && pos > 0 && pos < dur - 10000) {
             ResumeManager.INSTANCE.saveProgress(this, new ResumeItem(
                 current.getId(), current.getName(), current.getLogoUrl(), 
                 current.getStreamUrl(), current.getCategoryName(), pos, dur, System.currentTimeMillis()
