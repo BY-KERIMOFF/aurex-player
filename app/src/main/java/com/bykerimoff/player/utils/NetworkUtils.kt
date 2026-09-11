@@ -123,8 +123,8 @@ object NetworkUtils {
                 val original = chain.request()
                 val requestBuilder = original.newBuilder()
 
-                // Müasir və universal brauzer agenti (VLC IPTV standartı)
-                val globalUserAgent = "VLC/3.0.11 LibVLC/3.0.11"
+                // Müasir və universal brauzer agenti (VLC 3.0.18 - Ən stabil)
+                val globalUserAgent = "VLC/3.0.18 LibVLC/3.0.18"
 
                 if (original.header("User-Agent") == null) {
                     requestBuilder.header("User-Agent", globalUserAgent)
@@ -134,6 +134,9 @@ object NetworkUtils {
                     .header("Accept-Language", "en-US,en;q=0.9,az;q=0.8,ru;q=0.7")
                     .header("Connection", "keep-alive")
                     .header("X-Requested-With", "com.android.vlc")
+                    .header("Icy-MetaData", "1")
+                    .header("Range", "bytes=0-")
+                    .header("Accept-Encoding", "identity") // Server sıxılma xətalarının qarşısını alır
                 
                 // Referer və Origin ayarı (Bot detection-dan yayınmaq üçün)
                 val host = original.url.host

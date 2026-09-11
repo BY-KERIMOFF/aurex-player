@@ -30,6 +30,8 @@ import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.extractor.mp4.Mp4Extractor;
+import androidx.media3.extractor.ts.AdtsExtractor;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.media3.common.C;
@@ -235,7 +237,8 @@ public class PlayerActivity extends AppCompatActivity {
                 .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES 
                                    | DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
                                    | DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM
-                                   | DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS);
+                                   | DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS)
+                .setAdtsExtractorFlags(AdtsExtractor.FLAG_ENABLE_CONSTANT_BITRATE_SEEKING);
 
         // Universal MediaSourceFactory with HLS optimization
         DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory);
