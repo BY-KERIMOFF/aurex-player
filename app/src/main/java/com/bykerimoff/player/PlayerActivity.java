@@ -414,20 +414,21 @@ public class PlayerActivity extends AppCompatActivity {
         
         String lower = url.toLowerCase(Locale.ROOT);
         
-        // --- Triple-Stage Playback Engine (v8.5.3) ---
+        // --- Triple-Stage Playback Engine (v8.5.9) ---
         if (attemptMode == 0) {
-            // Stage 0: Standard fast detection
-            if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
-                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
-            } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
-                builder.setMimeType(MimeTypes.APPLICATION_MPD);
-            } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
-                builder.setMimeType(MimeTypes.APPLICATION_SS);
-            } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
-                builder.setMimeType(MimeTypes.VIDEO_MP2T);
-            } else if (lower.contains("stream.php") || lower.contains("live.php") || lower.contains("get.php")) {
-                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+            // Stage 0: Standard detection, but skip for PHP proxies to allow auto-sniffing
+            if (!lower.contains(".php")) {
+                if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
+                    builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+                } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
+                    builder.setMimeType(MimeTypes.APPLICATION_MPD);
+                } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
+                    builder.setMimeType(MimeTypes.APPLICATION_SS);
+                } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
+                    builder.setMimeType(MimeTypes.VIDEO_MP2T);
+                }
             }
+            // If it IS a PHP proxy, we skip setMimeType in Stage 0 now too.
         } else if (attemptMode == 1) {
             // Stage 1: Force TS Fallback (Fix for fake m3u8 PHP proxies)
             if (lower.contains(".m3u8") || lower.contains(".php")) {

@@ -159,7 +159,6 @@ object NetworkUtils {
                     .header("Accept-Language", "en-US,en;q=0.9,az;q=0.8,ru;q=0.7")
                     .header("Connection", "keep-alive")
                     .header("Icy-MetaData", "1")
-                    .header("Range", "bytes=0-")
                 
                 // Referer və Origin ayarı (Dinamik və stabil)
                 val host = original.url.host
@@ -185,6 +184,6 @@ object NetworkUtils {
     @JvmStatic
     fun getDataSourceFactory(context: Context): OkHttpDataSource.Factory {
         return OkHttpDataSource.Factory(getUnsafeOkHttpClient())
-            .setUserAgent("VLC/3.0.18 LibVLC/3.0.18")
+            .setUserAgent("VLC/3.0.11 LibVLC/3.0.11")
     }
 }
