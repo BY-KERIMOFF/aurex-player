@@ -282,7 +282,7 @@ public class PlayerActivity extends AppCompatActivity {
                 if (state == Player.STATE_BUFFERING) {
                     binding.bufferingLayout.setVisibility(View.VISIBLE);
                     osdHandler.removeCallbacks(bufferingTimeoutRunnable);
-                    osdHandler.postDelayed(bufferingTimeoutRunnable, 7000); // 7s for deterministic cycles
+                    osdHandler.postDelayed(bufferingTimeoutRunnable, 5000); // Fast 5s cycles for v8.5.8
                 } else {
                     binding.bufferingLayout.setVisibility(View.GONE);
                     osdHandler.removeCallbacks(bufferingTimeoutRunnable);

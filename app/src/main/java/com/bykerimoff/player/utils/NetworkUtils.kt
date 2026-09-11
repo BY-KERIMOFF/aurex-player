@@ -42,7 +42,9 @@ object NetworkUtils {
             cookieStore[url.host] = cookies.toMutableList()
         }
         override fun loadForRequest(url: HttpUrl): List<Cookie> {
-            return cookieStore[url.host] ?: emptyList()
+            val cookies = cookieStore[url.host] ?: mutableListOf()
+            // Add cookies from parent domain if necessary or just return exact host match
+            return cookies
         }
     }
 
@@ -156,18 +158,19 @@ object NetworkUtils {
                 requestBuilder.header("Accept", "*/*")
                     .header("Accept-Language", "en-US,en;q=0.9,az;q=0.8,ru;q=0.7")
                     .header("Connection", "keep-alive")
-                    .header("X-Requested-With", "com.android.vlc")
                     .header("Icy-MetaData", "1")
                     .header("Range", "bytes=0-")
-                    .header("Accept-Encoding", "identity") // Server sıxılma xətalarının qarşısını alır
                 
-                // Referer və Origin ayarı (Bot detection-dan yayınmaq üçün)
+                // Referer və Origin ayarı (Dinamik və stabil)
                 val host = original.url.host
+                val scheme = original.url.scheme
+                val baseUrl = "$scheme://$host/"
+                
                 if (original.header("Referer") == null) {
-                    requestBuilder.header("Referer", original.url.scheme + "://" + host + "/")
+                    requestBuilder.header("Referer", baseUrl)
                 }
                 if (original.header("Origin") == null) {
-                    requestBuilder.header("Origin", original.url.scheme + "://" + host)
+                    requestBuilder.header("Origin", "$scheme://$host")
                 }
 
                 chain.proceed(requestBuilder.build())
