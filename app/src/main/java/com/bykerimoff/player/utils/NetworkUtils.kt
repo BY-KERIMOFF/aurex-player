@@ -95,7 +95,7 @@ object NetworkUtils {
                 }
             )
 
-            val sslContext = SSLContext.getInstance("SSL")
+            val sslContext = SSLContext.getInstance("TLS")
             sslContext.init(null, trustAllCerts, SecureRandom())
 
             val builder = OkHttpClient.Builder()

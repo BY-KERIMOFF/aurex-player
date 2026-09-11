@@ -301,12 +301,12 @@ public class PlayerActivity extends AppCompatActivity {
                 } else if (playbackAttemptMode == 1) {
                     playChannel(currentIndex, 0, 2);
                 } else if (playbackAttemptMode == 2) {
-                    playChannel(currentIndex, 0, 3);
+                    playChannel(currentIndex, 0, 4); // Kodi identity
                 } else {
                     Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
                     if (current != null) {
                         String mac = MacUtils.getMacAddress(PlayerActivity.this);
-                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Error Stage Final: " + error.getErrorCodeName());
+                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Error Final Stage: " + error.getErrorCodeName());
                     }
                     showTechnicalError();
                 }
