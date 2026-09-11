@@ -132,12 +132,12 @@ public class PlayerActivity extends AppCompatActivity {
     private final Runnable volumeInputRunnable = this::processVolumeInput;
     
     private int retryCount = 0;
-    private final int MAX_RETRIES = 1; // Simplified for faster reporting
+    private final int MAX_RETRIES = 1; 
     private String currentPlayingChannelId = "";
     private List<Channel> playbackList = new ArrayList<>(); // Pleyerin real çalğı siyahısı
     private int currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
     private boolean isVod = false;
-    private boolean isRecoveryAttempt = false;
+    private int playbackAttemptMode = 0; // 0: Normal, 1: Force TS, 2: Deep Sniff
     private CountDownTimer testCountDownTimer;
     private long lastKeyTime = 0;
     private static final int KEY_DELAY = 30; // ms for snappy feel
@@ -150,15 +150,17 @@ public class PlayerActivity extends AppCompatActivity {
                     retryCount++;
                     exoPlayer.prepare();
                 } else {
-                    if (!isRecoveryAttempt) {
-                        // All retries failed for normal mode, try recovery once
-                        playChannel(currentIndex, 0, true);
+                    // Stage-based auto-recovery
+                    if (playbackAttemptMode == 0) {
+                        playChannel(currentIndex, 0, 1); // Try Force TS
+                    } else if (playbackAttemptMode == 1) {
+                        playChannel(currentIndex, 0, 2); // Try Deep Sniff
                     } else {
-                        // Even recovery attempt hung on buffering. Report and error out.
+                        // All stages failed
                         Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
                         if (current != null) {
                             String mac = MacUtils.getMacAddress(PlayerActivity.this);
-                            TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Buffering Hang (16s+)");
+                            TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Triple-Stage Hang (21s+)");
                         }
                         showTechnicalError();
                     }
@@ -287,19 +289,18 @@ public class PlayerActivity extends AppCompatActivity {
 
             @Override
             public void onPlayerError(@NonNull PlaybackException error) {
-                // If recovery attempt also fails, or it was already in recovery
-                if (isRecoveryAttempt) {
+                if (playbackAttemptMode == 0) {
+                    playChannel(currentIndex, 0, 1);
+                } else if (playbackAttemptMode == 1) {
+                    playChannel(currentIndex, 0, 2);
+                } else {
                     Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
                     if (current != null) {
                         String mac = MacUtils.getMacAddress(PlayerActivity.this);
-                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Error: " + error.getErrorCodeName());
+                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Error Stage 3: " + error.getErrorCodeName());
                     }
                     showTechnicalError();
-                    return;
                 }
-
-                // If first time error, try recovery
-                playChannel(currentIndex, 0, true);
             }
 
             @Override
@@ -362,43 +363,48 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void playChannel(int index) {
-        playChannel(index, 0, false);
+        playChannel(index, 0, 0);
     }
 
     private void playChannel(int index, long startPosition) {
-        playChannel(index, startPosition, false);
+        playChannel(index, startPosition, 0);
     }
 
-    private void playChannel(int index, long startPosition, boolean isRecovery) {
+    private void playChannel(int index, long startPosition, int attemptMode) {
         if (index < 0 || index >= playbackList.size()) return;
         currentIndex = index;
-        isRecoveryAttempt = isRecovery;
-        if (!isRecovery) retryCount = 0; // Reset retries only on fresh start
+        playbackAttemptMode = attemptMode;
+        retryCount = 0; 
         
         Channel channel = playbackList.get(currentIndex);
         currentPlayingChannelId = channel.getId();
 
         hideTechnicalError();
         binding.bufferingLayout.setVisibility(View.VISIBLE);
-        binding.miniInfoLayout.setVisibility(View.GONE); // Hide mini info on channel change
+        binding.miniInfoLayout.setVisibility(View.GONE); 
         
         isVod = M3UParser.isVodChannel(channel.getStreamUrl());
 
-        // Stop current playback before switching to prevent audio overlap
         if (exoPlayer != null) {
             exoPlayer.stop();
             exoPlayer.clearMediaItems();
         }
 
-        binding.tvChannelName.setText((currentIndex + 1) + ". " + channel.getName() + (isRecovery ? " (Bərpa olunur...)" : ""));
+        String statusSuffix = "";
+        if (attemptMode == 1) statusSuffix = " (Bərpa-1...)";
+        else if (attemptMode == 2) statusSuffix = " (Bərpa-2...)";
+
+        binding.tvChannelName.setText((currentIndex + 1) + ". " + channel.getName() + statusSuffix);
         Glide.with(this).load(channel.getLogoUrl()).placeholder(R.drawable.default_logo).into(binding.ivChannelLogo);
 
         String url = channel.getStreamUrl();
         MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(url));
         
-        if (!isRecovery) {
-            String lower = url.toLowerCase(Locale.ROOT);
-            // MimeType detection optimization (v8.3.1 stable logic)
+        String lower = url.toLowerCase(Locale.ROOT);
+        
+        // --- Triple-Stage Playback Engine (v8.5.3) ---
+        if (attemptMode == 0) {
+            // Stage 0: Standard fast detection
             if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
                 builder.setMimeType(MimeTypes.APPLICATION_M3U8);
             } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
@@ -410,8 +416,19 @@ public class PlayerActivity extends AppCompatActivity {
             } else if (lower.contains("stream.php") || lower.contains("live.php") || lower.contains("get.php")) {
                 builder.setMimeType(MimeTypes.APPLICATION_M3U8);
             }
+        } else if (attemptMode == 1) {
+            // Stage 1: Force TS Fallback (Fix for fake m3u8 PHP proxies)
+            if (lower.contains(".m3u8") || lower.contains(".php")) {
+                builder.setMimeType(MimeTypes.VIDEO_MP2T);
+            } else {
+                // Not force-able, skip to sniffing
+                playChannel(index, startPosition, 2);
+                return;
+            }
+        } else {
+            // Stage 2: Deep Sniff (Universal)
+            // No MimeType set
         }
-        // If it's a recovery attempt, NO MimeType is set, triggering ExoPlayer auto-sniffing.
 
         exoPlayer.setMediaItem(builder.build());
         if (startPosition > 0) {
