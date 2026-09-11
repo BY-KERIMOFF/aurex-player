@@ -28,6 +28,12 @@ object NetworkUtils {
 
     private var currentDnsType = "system"
     private var customDnsUrl: String? = null
+    private var dynamicUserAgent: String? = null
+
+    @JvmStatic
+    fun setDynamicUserAgent(ua: String?) {
+        dynamicUserAgent = ua
+    }
 
     private val cookieStore = mutableMapOf<String, MutableList<Cookie>>()
 
@@ -140,10 +146,10 @@ object NetworkUtils {
                 val original = chain.request()
                 val requestBuilder = original.newBuilder()
 
-                // Müasir və universal brauzer agenti (VLC 3.0.18 - Ən stabil)
-                val globalUserAgent = "VLC/3.0.18 LibVLC/3.0.18"
+                // Müasir və universal brauzer agenti (Dinamik və ya VLC 3.0.21)
+                val globalUserAgent = dynamicUserAgent ?: "VLC/3.0.21 LibVLC/3.0.21"
 
-                if (original.header("User-Agent") == null) {
+                if (original.header("User-Agent") == null || dynamicUserAgent != null) {
                     requestBuilder.header("User-Agent", globalUserAgent)
                 }
 

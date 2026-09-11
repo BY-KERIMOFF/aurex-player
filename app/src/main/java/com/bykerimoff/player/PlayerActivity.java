@@ -69,6 +69,7 @@ import com.bykerimoff.player.utils.RecentChannelsManager;
 import com.bykerimoff.player.utils.ResumeManager;
 import com.bykerimoff.player.utils.TelegramReporter;
 import com.bykerimoff.player.utils.ThemeManager;
+import com.bykerimoff.player.utils.UserAgentManager;
 import com.bykerimoff.player.utils.XMLTVParser;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -154,15 +155,17 @@ public class PlayerActivity extends AppCompatActivity {
                 } else {
                     // Stage-based auto-recovery
                     if (playbackAttemptMode == 0) {
-                        playChannel(currentIndex, 0, 1); // Try Force TS
+                        playChannel(currentIndex, 0, 1); // Try TiviMate + Force TS
                     } else if (playbackAttemptMode == 1) {
-                        playChannel(currentIndex, 0, 2); // Try Deep Sniff
+                        playChannel(currentIndex, 0, 2); // Try Chrome + Deep Sniff
+                    } else if (playbackAttemptMode == 2) {
+                        playChannel(currentIndex, 0, 3); // Try iPhone + Deep Sniff
                     } else {
-                        // All stages failed
+                        // All universal stages failed
                         Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
                         if (current != null) {
                             String mac = MacUtils.getMacAddress(PlayerActivity.this);
-                            TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Triple-Stage Hang (21s+)");
+                            TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Hyper-Universal Hang (28s+)");
                         }
                         showTechnicalError();
                     }
@@ -297,11 +300,13 @@ public class PlayerActivity extends AppCompatActivity {
                     playChannel(currentIndex, 0, 1);
                 } else if (playbackAttemptMode == 1) {
                     playChannel(currentIndex, 0, 2);
+                } else if (playbackAttemptMode == 2) {
+                    playChannel(currentIndex, 0, 3);
                 } else {
                     Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
                     if (current != null) {
                         String mac = MacUtils.getMacAddress(PlayerActivity.this);
-                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Error Stage 3: " + error.getErrorCodeName());
+                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Error Stage Final: " + error.getErrorCodeName());
                     }
                     showTechnicalError();
                 }
@@ -379,6 +384,9 @@ public class PlayerActivity extends AppCompatActivity {
         currentIndex = index;
         playbackAttemptMode = attemptMode;
         retryCount = 0; 
+        
+        // --- Hyper-Universal User-Agent Rotation (v8.5.6) ---
+        NetworkUtils.setDynamicUserAgent(UserAgentManager.INSTANCE.getBestUserAgent(attemptMode));
         
         Channel channel = playbackList.get(currentIndex);
         currentPlayingChannelId = channel.getId();
@@ -1201,6 +1209,9 @@ public class PlayerActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        // Reset dynamic User-Agent on exit
+        NetworkUtils.setDynamicUserAgent(null);
+
         if (testCountDownTimer != null) {
             testCountDownTimer.cancel();
         }
