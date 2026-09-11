@@ -17,12 +17,28 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
+import okhttp3.CookieJar
+import okhttp3.Cookie
+import okhttp3.HttpUrl
+import java.net.CookieManager
+import java.net.CookiePolicy
 
 @UnstableApi
 object NetworkUtils {
 
     private var currentDnsType = "system"
     private var customDnsUrl: String? = null
+
+    private val cookieStore = mutableMapOf<String, MutableList<Cookie>>()
+
+    private val globalCookieJar = object : CookieJar {
+        override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+            cookieStore[url.host] = cookies.toMutableList()
+        }
+        override fun loadForRequest(url: HttpUrl): List<Cookie> {
+            return cookieStore[url.host] ?: emptyList()
+        }
+    }
 
     @JvmStatic
     fun setDnsType(type: String, customUrl: String? = null) {
@@ -77,6 +93,7 @@ object NetworkUtils {
             val builder = OkHttpClient.Builder()
             builder.sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
             builder.hostnameVerifier { _, _ -> true }
+            builder.cookieJar(globalCookieJar) // Enable Cookie Persistence (v8.5.5)
 
             // DNS Ayarı
             when (currentDnsType) {
@@ -159,6 +176,6 @@ object NetworkUtils {
     @JvmStatic
     fun getDataSourceFactory(context: Context): OkHttpDataSource.Factory {
         return OkHttpDataSource.Factory(getUnsafeOkHttpClient())
-            .setUserAgent("VLC/3.0.11 LibVLC/3.0.11")
+            .setUserAgent("VLC/3.0.18 LibVLC/3.0.18")
     }
 }
