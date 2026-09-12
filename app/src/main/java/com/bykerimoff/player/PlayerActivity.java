@@ -188,6 +188,7 @@ public class PlayerActivity extends AppCompatActivity {
 
     private void hideTechnicalError() {
         binding.errorLayout.setVisibility(View.GONE);
+        binding.playerView.requestFocus();
     }
 
     @Override
@@ -463,6 +464,9 @@ public class PlayerActivity extends AppCompatActivity {
         }
         exoPlayer.prepare();
         exoPlayer.play();
+        
+        // Force focus on playerView to ensure keys are captured
+        binding.playerView.requestFocus();
 
         showOSD();
         updateEpg(channel);
@@ -715,6 +719,8 @@ public class PlayerActivity extends AppCompatActivity {
                 binding.rvPlayerCategories.getVisibility() == View.VISIBLE ||
                 binding.playerTracksSidebar.getVisibility() == View.VISIBLE ||
                 binding.playerArchiveSidebar.getVisibility() == View.VISIBLE;
+        
+        boolean isErrorVisible = binding.errorLayout.getVisibility() == View.VISIBLE;
 
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_UP:
@@ -727,7 +733,10 @@ public class PlayerActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_CHANNEL_UP:
             case KeyEvent.KEYCODE_PAGE_UP:
                 if (!isSidebarVisible) {
-                    if (event.getRepeatCount() % 3 == 0) playNext();
+                    // Navigation ALWAYS allowed if sidebar is not visible, even if error is shown
+                    if (event.getRepeatCount() == 0 || event.getRepeatCount() % 2 == 0) {
+                        playNext();
+                    }
                     return true;
                 } else {
                     boolean handled = handleCircularFocus(true);
@@ -744,7 +753,9 @@ public class PlayerActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_CHANNEL_DOWN:
             case KeyEvent.KEYCODE_PAGE_DOWN:
                 if (!isSidebarVisible) {
-                    if (event.getRepeatCount() % 3 == 0) playPrevious();
+                    if (event.getRepeatCount() == 0 || event.getRepeatCount() % 2 == 0) {
+                        playPrevious();
+                    }
                     return true;
                 } else {
                     boolean handled = handleCircularFocus(false);
@@ -759,6 +770,11 @@ public class PlayerActivity extends AppCompatActivity {
                 }
             case KeyEvent.KEYCODE_DPAD_LEFT:
                 if (!isSidebarVisible) {
+                    if (isErrorVisible) {
+                        hideTechnicalError();
+                        showCategorySidebar();
+                        return true;
+                    }
                     if (isVod) {
                         exoPlayer.seekTo(Math.max(0, exoPlayer.getCurrentPosition() - 30000));
                         showOSD();
@@ -778,6 +794,11 @@ public class PlayerActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
                 if (!isSidebarVisible) {
+                    if (isErrorVisible) {
+                        hideTechnicalError();
+                        toggleSidebar();
+                        return true;
+                    }
                     if (isVod) {
                         if (exoPlayer.isPlaying()) exoPlayer.pause();
                         else exoPlayer.play();
