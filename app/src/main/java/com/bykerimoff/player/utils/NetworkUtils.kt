@@ -137,7 +137,7 @@ object NetworkUtils {
                 else -> builder.dns(Dns.SYSTEM)
             }
 
-            builder.connectTimeout(30, TimeUnit.SECONDS)
+            builder.connectTimeout(15, TimeUnit.SECONDS) // Turbo Play: Faster handshake
             builder.readTimeout(30, TimeUnit.SECONDS)
             builder.writeTimeout(30, TimeUnit.SECONDS)
             builder.followRedirects(true)

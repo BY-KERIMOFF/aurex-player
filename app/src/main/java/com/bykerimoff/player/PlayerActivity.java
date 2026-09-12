@@ -252,8 +252,9 @@ public class PlayerActivity extends AppCompatActivity {
                                    | DefaultTsPayloadReaderFactory.FLAG_OVERRIDE_CAPTION_DESCRIPTORS)
                 .setAdtsExtractorFlags(AdtsExtractor.FLAG_ENABLE_CONSTANT_BITRATE_SEEKING);
 
-        // Universal MediaSourceFactory with HLS optimization
-        DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory);
+        // Turbo Play MediaSourceFactory (v8.6.4)
+        DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory)
+                .setLiveTargetOffsetMs(500);
         // We can't easily set HLS specific flags on the default factory without custom factories,
         // but the sniffing logic in playChannel will handle the heavy lifting.
 
@@ -261,10 +262,10 @@ public class PlayerActivity extends AppCompatActivity {
         boolean smartBuffer = prefs.getBoolean("smart_buffer_enabled", true);
         int userBufferSec = prefs.getInt("network_buffer_seconds", 5);
         
-        int minBuffer = smartBuffer ? 15000 : userBufferSec * 1000;
-        int maxBuffer = smartBuffer ? 50000 : (userBufferSec * 1000 * 3);
-        int bufferPlayback = smartBuffer ? 2500 : 1000;
-        int bufferRebuffer = smartBuffer ? 5000 : 2000;
+        int minBuffer = smartBuffer ? 10000 : userBufferSec * 1000;
+        int maxBuffer = smartBuffer ? 40000 : (userBufferSec * 1000 * 3);
+        int bufferPlayback = smartBuffer ? 1000 : 1000; // Turbo Play: Start at 1s
+        int bufferRebuffer = smartBuffer ? 1500 : 1500;
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
