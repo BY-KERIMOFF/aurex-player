@@ -73,6 +73,7 @@ import com.bykerimoff.player.utils.MacUtils;
 import com.bykerimoff.player.utils.RecentChannelsManager;
 import com.bykerimoff.player.utils.ResumeManager;
 import com.bykerimoff.player.utils.SecurityUtils;
+import com.bykerimoff.player.utils.StreamResolver;
 import com.bykerimoff.player.utils.TelegramReporter;
 import com.bykerimoff.player.utils.ThemeManager;
 import com.bykerimoff.player.utils.UserAgentManager;
@@ -262,10 +263,11 @@ public class PlayerActivity extends AppCompatActivity {
         boolean smartBuffer = prefs.getBoolean("smart_buffer_enabled", true);
         int userBufferSec = prefs.getInt("network_buffer_seconds", 5);
         
-        int minBuffer = smartBuffer ? 10000 : userBufferSec * 1000;
-        int maxBuffer = smartBuffer ? 40000 : (userBufferSec * 1000 * 3);
-        int bufferPlayback = smartBuffer ? 1000 : 1000; // Turbo Play: Start at 1s
-        int bufferRebuffer = smartBuffer ? 1500 : 1500;
+        // Turbo Play: Minimum buffer-i daha da aşağı çəkərək sürətli açılış (Fast Start)
+        int minBuffer = smartBuffer ? 1500 : userBufferSec * 1000;
+        int maxBuffer = smartBuffer ? 20000 : (userBufferSec * 1000 * 3);
+        int bufferPlayback = smartBuffer ? 500 : 1000;
+        int bufferRebuffer = smartBuffer ? 1000 : 1500;
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
@@ -429,61 +431,49 @@ public class PlayerActivity extends AppCompatActivity {
             return;
         }
 
-        MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(url));
-        
-        String lower = url.toLowerCase(Locale.ROOT);
-        
-        // --- High-Compatibility Playback Engine (v8.6.0) ---
-        if (attemptMode == 0) {
-            // Stage 0: Stable v8.3.1 logic
-            if (lower.contains(".m3u8") || lower.contains("index.m3u8") || lower.contains("type=m3u8") || lower.contains("/hls/")) {
-                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
-            } else if (lower.contains(".mpd") || lower.contains("format=mpd") || lower.contains("/dash/")) {
-                builder.setMimeType(MimeTypes.APPLICATION_MPD);
-            } else if (lower.contains(".ism") || lower.contains("/smoothstream/")) {
-                builder.setMimeType(MimeTypes.APPLICATION_SS);
-            } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts") || lower.contains("type=ts")) {
-                builder.setMimeType(MimeTypes.VIDEO_MP2T);
-            } else if (lower.contains("stream.php") || lower.contains("live.php") || lower.contains("get.php")) {
-                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+        StreamResolver.resolve(url, new StreamResolver.ResolveCallback() {
+            @Override
+            public void onResolved(String resolvedUrl, String mimeType) {
+                if (isDestroyed() || isFinishing()) return;
+
+                MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(resolvedUrl));
+                if (mimeType != null && !mimeType.isEmpty()) {
+                    builder.setMimeType(mimeType);
+                }
+
+                if (exoPlayer != null) {
+                    exoPlayer.setMediaItem(builder.build());
+                    if (startPosition > 0) {
+                        exoPlayer.seekTo(startPosition);
+                    }
+                    exoPlayer.prepare();
+                    exoPlayer.play();
+                }
+
+                binding.playerView.requestFocus();
+                showOSD();
+                updateEpg(channel);
+                updateAnnouncement(channel);
+
+                RecentChannelsManager.addRecentChannel(PlayerActivity.this, channel);
+
+                if (isVod) {
+                    saveResumePosition();
+                }
+
+                SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
+                prefs.edit()
+                    .putString("last_channel_url", channel.getStreamUrl())
+                    .putBoolean("last_is_vod", isVod)
+                    .apply();
             }
-        } else if (attemptMode == 1) {
-            // Stage 1: Force TS Fallback for fake m3u8 proxies
-            if (lower.contains(".m3u8") || lower.contains(".php")) {
-                builder.setMimeType(MimeTypes.VIDEO_MP2T);
-            } else {
-                playChannel(index, startPosition, 2);
-                return;
+
+            @Override
+            public void onError(String errorMessage) {
+                if (isDestroyed() || isFinishing()) return;
+                showTechnicalError();
             }
-        } else {
-            // Stage 2/3: Universal Deep Sniff (No MimeType)
-        }
-
-        exoPlayer.setMediaItem(builder.build());
-        if (startPosition > 0) {
-            exoPlayer.seekTo(startPosition);
-        }
-        exoPlayer.prepare();
-        exoPlayer.play();
-        
-        // Force focus on playerView to ensure keys are captured
-        binding.playerView.requestFocus();
-
-        showOSD();
-        updateEpg(channel);
-        updateAnnouncement(channel);
-        
-        RecentChannelsManager.addRecentChannel(this, channel);
-        
-        if (isVod) {
-            saveResumePosition();
-        }
-
-        SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
-        prefs.edit()
-            .putString("last_channel_url", channel.getStreamUrl())
-            .putBoolean("last_is_vod", isVod)
-            .apply();
+        });
     }
 
     private void saveResumePosition() {

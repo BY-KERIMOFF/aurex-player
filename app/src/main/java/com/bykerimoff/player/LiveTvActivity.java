@@ -56,6 +56,7 @@ import com.bykerimoff.player.utils.M3UParser;
 import com.bykerimoff.player.utils.NetworkUtils;
 import com.bykerimoff.player.utils.PinDialog;
 import com.bykerimoff.player.utils.SecurityUtils;
+import com.bykerimoff.player.utils.StreamResolver;
 import com.bykerimoff.player.utils.ThemeManager;
 import com.bykerimoff.player.utils.WallpaperManager;
 import com.bykerimoff.player.utils.XMLTVParser;
@@ -603,21 +604,29 @@ public class LiveTvActivity extends AppCompatActivity {
                 .into(binding.ivCurrentChannelLogo);
 
         String url = channel.getStreamUrl();
-        MediaItem.Builder builder = new MediaItem.Builder();
-        if (url != null) {
-            builder.setUri(Uri.parse(url));
-            String lower = url.toLowerCase(Locale.ROOT);
-            if (lower.contains("m3u8") || lower.contains("stream.php") || lower.contains(".php") || lower.contains("/hls/")) {
-                builder.setMimeType(MimeTypes.APPLICATION_M3U8);
-            } else if (lower.contains(".ts") || lower.contains("output=ts") || lower.contains("output=mpegts") || lower.contains("/live/") || lower.contains("/mpegts")) {
-                builder.setMimeType(MimeTypes.VIDEO_MP2T);
-            } else if (lower.contains(".mpd")) {
-                builder.setMimeType(MimeTypes.APPLICATION_MPD);
+        StreamResolver.resolve(url, new StreamResolver.ResolveCallback() {
+            @Override
+            public void onResolved(String resolvedUrl, String mimeType) {
+                if (isDestroyed() || isFinishing()) return;
+
+                MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(resolvedUrl));
+                if (mimeType != null && !mimeType.isEmpty()) {
+                    builder.setMimeType(mimeType);
+                }
+
+                if (miniPlayer != null) {
+                    miniPlayer.setMediaItem(builder.build());
+                    miniPlayer.prepare();
+                    miniPlayer.play();
+                }
             }
-        }
-        miniPlayer.setMediaItem(builder.build());
-        miniPlayer.prepare();
-        miniPlayer.play();
+
+            @Override
+            public void onError(String errorMessage) {
+                if (isDestroyed() || isFinishing()) return;
+                binding.tvEpgTitle.setText("Yaxınlaşma xətası");
+            }
+        });
     }
 
     private void openExternalPlayer(Channel channel) {

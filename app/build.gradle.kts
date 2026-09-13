@@ -14,8 +14,8 @@ android {
         applicationId = "com.bykerimoff.player"
         minSdk = 21
         targetSdk = 36
-        versionCode = 322
-        versionName = "8.6.4"
+        versionCode = 364
+        versionName = "9.1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -87,6 +87,7 @@ dependencies {
     
     // Media3 (ExoPlayer)
     implementation(libs.media3.exoplayer)
+    implementation(libs.media3.dash)
     implementation(libs.media3.ui)
     implementation(libs.media3.hls)
     implementation(libs.media3.okhttp)
