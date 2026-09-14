@@ -145,6 +145,7 @@ public class PlayerActivity extends AppCompatActivity {
     private int retryCount = 0;
     private final int MAX_RETRIES = 1; 
     private String currentPlayingChannelId = "";
+    private long currentExecutionId = 0; // Unikal icra ID-si
     private List<Channel> playbackList = new ArrayList<>(); // Pleyerin real çalğı siyahısı
     private int currentAspectRatioMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
     private boolean isVod = false;
@@ -157,26 +158,12 @@ public class PlayerActivity extends AppCompatActivity {
         @Override
         public void run() {
             if (exoPlayer != null && (exoPlayer.getPlaybackState() == Player.STATE_BUFFERING)) {
-                if (retryCount < MAX_RETRIES) {
-                    retryCount++;
-                    exoPlayer.prepare();
+                // 20 saniyə ərzində buffering bitməsə, deməli yayım ilişib və ya yoxdur.
+                // Növbəti bərpa rejiminə keçirik.
+                if (playbackAttemptMode < 3) {
+                    playChannel(currentIndex, 0, playbackAttemptMode + 1);
                 } else {
-                    // Stage-based auto-recovery
-                    if (playbackAttemptMode == 0) {
-                        playChannel(currentIndex, 0, 1); // Try TiviMate + Force TS
-                    } else if (playbackAttemptMode == 1) {
-                        playChannel(currentIndex, 0, 2); // Try Chrome + Deep Sniff
-                    } else if (playbackAttemptMode == 2) {
-                        playChannel(currentIndex, 0, 3); // Try iPhone + Deep Sniff
-                    } else {
-                        // All universal stages failed
-                        Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
-                        if (current != null) {
-                            String mac = MacUtils.getMacAddress(PlayerActivity.this);
-                            TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Hyper-Universal Hang (28s+)");
-                        }
-                        showTechnicalError();
-                    }
+                    showTechnicalError();
                 }
             }
         }
@@ -293,13 +280,20 @@ public class PlayerActivity extends AppCompatActivity {
                 if (state == Player.STATE_BUFFERING) {
                     binding.bufferingLayout.setVisibility(View.VISIBLE);
                     osdHandler.removeCallbacks(bufferingTimeoutRunnable);
-                    osdHandler.postDelayed(bufferingTimeoutRunnable, 5000); // Fast 5s cycles for v8.5.8
+                    // 20 saniyə gözləyirik (İnternet zəif olduqda süni bərpa başlamasın)
+                    osdHandler.postDelayed(bufferingTimeoutRunnable, 20000); 
+                } else if (state == Player.STATE_ENDED) {
+                    if (playbackAttemptMode < 3) {
+                        playChannel(currentIndex, 0, playbackAttemptMode + 1);
+                    } else {
+                        showTechnicalError();
+                    }
                 } else {
                     binding.bufferingLayout.setVisibility(View.GONE);
                     osdHandler.removeCallbacks(bufferingTimeoutRunnable);
                     if (state == Player.STATE_READY) {
                         hideTechnicalError();
-                        retryCount = 0;
+                        playbackAttemptMode = 0; // Uğurlu açıldıqda rejimi sıfırla
                         updateQualityAndFps();
                     }
                 }
@@ -307,20 +301,23 @@ public class PlayerActivity extends AppCompatActivity {
 
             @Override
             public void onPlayerError(@NonNull PlaybackException error) {
-                if (playbackAttemptMode == 0) {
-                    playChannel(currentIndex, 0, 1);
-                } else if (playbackAttemptMode == 1) {
-                    playChannel(currentIndex, 0, 2);
-                } else if (playbackAttemptMode == 2) {
-                    playChannel(currentIndex, 0, 4); // Kodi identity
-                } else {
-                    Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
-                    if (current != null) {
-                        String mac = MacUtils.getMacAddress(PlayerActivity.this);
-                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Error Final Stage: " + error.getErrorCodeName());
+                // Şəbəkə qısa müddətlik qırılarsa dərhal xəta verib bərpa rejimlərini tükətməyək
+                osdHandler.removeCallbacksAndMessages(null);
+                osdHandler.postDelayed(() -> {
+                    if (isDestroyed() || isFinishing()) return;
+                    
+                    if (playbackAttemptMode < 3) {
+                        playChannel(currentIndex, 0, playbackAttemptMode + 1);
+                    } else {
+                        showTechnicalError();
+                        
+                        Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
+                        if (current != null) {
+                            String mac = MacUtils.getMacAddress(PlayerActivity.this);
+                            TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Final Fail: " + error.getErrorCodeName());
+                        }
                     }
-                    showTechnicalError();
-                }
+                }, 2000); // 2 saniyəlik "nəfəs" fasiləsi
             }
 
             @Override
@@ -400,6 +397,8 @@ public class PlayerActivity extends AppCompatActivity {
         NetworkUtils.setDynamicUserAgent(UserAgentManager.INSTANCE.getBestUserAgent(attemptMode));
         
         Channel channel = playbackList.get(currentIndex);
+        final long requestId = System.currentTimeMillis(); // Unikal sorğu zamanı
+        currentExecutionId = requestId;
         currentPlayingChannelId = channel.getId();
 
         hideTechnicalError();
@@ -416,11 +415,18 @@ public class PlayerActivity extends AppCompatActivity {
         String statusSuffix = "";
         if (attemptMode == 1) statusSuffix = " (Bərpa-1...)";
         else if (attemptMode == 2) statusSuffix = " (Bərpa-2...)";
-        else if (attemptMode >= 3) statusSuffix = " (Bərpa-3...)";
+        else if (attemptMode == 3) statusSuffix = " (Bərpa-3...)";
         else if (attemptMode == -1) statusSuffix = " (Playlist həll olunur...)";
 
         binding.tvChannelName.setText((currentIndex + 1) + ". " + channel.getName() + statusSuffix);
         Glide.with(this).load(channel.getLogoUrl()).placeholder(R.drawable.default_logo).into(binding.ivChannelLogo);
+
+        // Bərpa zamanı yazının görünməsi üçün OSD-ni dərhal göstər və müddətini artır
+        if (attemptMode > 0) {
+            binding.osdLayout.setVisibility(View.VISIBLE);
+            osdHandler.removeCallbacksAndMessages(null);
+            osdHandler.postDelayed(() -> binding.osdLayout.setVisibility(View.GONE), 8000);
+        }
 
         String url = channel.getStreamUrl();
         
@@ -435,6 +441,9 @@ public class PlayerActivity extends AppCompatActivity {
             @Override
             public void onResolved(String resolvedUrl, String mimeType) {
                 if (isDestroyed() || isFinishing()) return;
+                
+                // VALIDATION: Əgər istifadəçi artıq başqa kanala keçibsə (yeni playChannel çağırılıbsa), köhnə yayımı açma
+                if (requestId != currentExecutionId) return;
 
                 MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(resolvedUrl));
                 if (mimeType != null && !mimeType.isEmpty()) {
@@ -451,7 +460,10 @@ public class PlayerActivity extends AppCompatActivity {
                 }
 
                 binding.playerView.requestFocus();
-                showOSD();
+                // OSD-ni yalnız normal açılışda göstər (Bərpa zamanı onsuz da yuxarıda göstəririk)
+                if (attemptMode == 0) {
+                    showOSD();
+                }
                 updateEpg(channel);
                 updateAnnouncement(channel);
 
@@ -471,7 +483,13 @@ public class PlayerActivity extends AppCompatActivity {
             @Override
             public void onError(String errorMessage) {
                 if (isDestroyed() || isFinishing()) return;
-                showTechnicalError();
+                
+                // MÜHÜM: StreamResolver xətası halında dərhal texniki xəta göstərmə, bərpa rejiminə keç
+                if (playbackAttemptMode < 3) {
+                    playChannel(currentIndex, 0, playbackAttemptMode + 1);
+                } else {
+                    showTechnicalError();
+                }
             }
         });
     }
