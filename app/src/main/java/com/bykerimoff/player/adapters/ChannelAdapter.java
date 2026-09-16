@@ -142,8 +142,9 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         Glide.with(holder.itemView.getContext())
                 .asBitmap()
                 .load(logoUrl)
-                .format(DecodeFormat.PREFER_RGB_565) // RAM-a 50% qənaət
-                .diskCacheStrategy(DiskCacheStrategy.ALL) // Tam keş
+                .timeout(15000) // Gecikmələrə qarşı
+                .format(DecodeFormat.PREFER_RGB_565)
+                .diskCacheStrategy(DiskCacheStrategy.DATA) // Orijinal şəkli keşlə
                 .placeholder(R.drawable.default_logo)
                 .error(R.drawable.default_logo)
                 .into(holder.ivLogo);
