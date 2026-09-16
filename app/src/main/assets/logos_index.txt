@@ -1,5 +1,5 @@
 ﻿black->.Black HD.png
-red->.Red HD.png
+red->.red.png
 scifi->.Sci-Fi HD.png
 100проеновдеское->100 Процентов Детское HD.png
 100проеновклассика->100 Процентов Классика HD.png
@@ -11,8 +11,8 @@ scifi->.Sci-Fi HD.png
 192tv->192 TV HD.png
 1hdmusic->1HD Music HD.png
 2x2->2X2.png
-360->360 HD.png
 360нoвоси->360 Нoвости HD.png
+360->360.png
 365днейв->365 дней ТВ.png
 4evermusic->4 Ever music HD.png
 4evercinema->4Ever Cinema HD.png
@@ -21,18 +21,18 @@ scifi->.Sci-Fi HD.png
 aimusicchannel->AI Music Channel HD.png
 aiva->AIVA HD.png
 aljazeera->Al Jazeera.png
-amc->AMC HD.png
-amedia1->Amedia 1 HD.png
-amedia2->Amedia 2 HD.png
-amediahit->Amedia Hit HD.png
-amediapremium->Amedia Premium HD.png
+amc->AMC.png
+amedia1->Amedia 1.png
+amedia2->Amedia 2.png
+amediahit->Amedia Hit.png
+amediapremium->Amedia Premium.png
 ammytv2->AM_ MyTV 2.png
 ammytv3->AM_ MyTV 3.png
 ammytvhit->AM_ MyTV Hit.png
 ammytvkids->AM_ MyTV Kids.png
 ammytv->AM_ MyTV.png
 ani->Ani.png
-animalplanet->Animal Planet HD.png
+animalplanet->Animal Planet.png
 asharqnews->Asharq News.png
 azarb24->AZ_ ARB 24.png
 azarbgunes->AZ_ ARB Gunes.png
@@ -90,8 +90,8 @@ bculittle->BCU Little HD.png
 bcumarvel->BCU Marvel HD.png
 bcumedia2hdr->BCU Media 2 HDR.png
 bcumedia3hdr->BCU Media 3 HDR.png
+bcumediaold->BCU Media HD OLD.png
 bcumedia->BCU Media HD.png
-bcumediaold->BCU Media OLD.png
 bcupremiere1->BCU Premiere 1 HD.png
 bcupremiere1hdr->BCU Premiere 1 HDR.png
 bcupremiere2->BCU Premiere 2 HD.png
@@ -102,7 +102,7 @@ bcupremiere->BCU Premiere HD.png
 bcupremierehdr->BCU Premiere HDR.png
 bcupremiereultra->BCU Premiere Ultra 4K.png
 bcureality->BCU Reality HD.png
-bcurealityold->BCU Reality OLD HD.png
+bcurealityold->BCU Reality OLD.png
 bcuromantic->BCU Romantic HD.png
 bcuromanticold->BCU Romantic OLD.png
 bcuruserial->BCU RUSerial HD.png
@@ -117,7 +117,7 @@ bcuvhs->BCU VHS HD.png
 bcuмлсериал->BCU Мультсериал HD.png
 bcuсва->BCU Сваты HD.png
 bcuссср->BCU СССР HD.png
-bigplanet->Big Planet HD.png
+bigplanet->Big Planet.png
 bloombergtv->Bloomberg TV.png
 bollywood->Bollywood HD.png
 boxanime->BOX Anime HD.png
@@ -128,7 +128,7 @@ boxbeonedge2live->Box Be ON Edge 2 Live HD.png
 boxbeonedge->Box Be ON Edge HD.png
 boxbeonedgelive3->Box Be ON Edge Live 3 HD.png
 boxcyber->BOX Cyber HD.png
-boxdocu->BOX Docu. HD.png
+boxdocu->BOX Docu HD.png
 boxfantasy->BOX Fantasy HD.png
 boxfranchise->BOX Franchise HD.png
 boxfranchisehdr->BOX Franchise HDR.png
@@ -165,7 +165,7 @@ boxsportcast6live->Box Sport Cast 6 Live.png
 boxsportcast7live->Box Sport Cast 7 Live.png
 boxsportcast8live->Box Sport Cast 8 Live.png
 boxsportcast9live->Box Sport Cast 9 Live.png
-boxsportcast->Box Sport Cast HD.png
+boxsportcast->BOX SportCast HD.png
 boxspy->BOX Spy HD.png
 boxstories->BOX Stories HD.png
 boxtravel->BOX Travel HD.png
@@ -212,9 +212,9 @@ cartoonito->Cartoonito.png
 cartoons90->Cartoons 90.png
 cartoonsbig->Cartoons Big.png
 cartoonsshort->Cartoons Short.png
-cgtn->CGTN HD.png
 cgtnrussian->CGTN Russian HD.png
-cinema->Cinema UHD.png
+cgtn->CGTN.png
+cinema->cinema.png
 cinemanaction->CineMan Action.png
 cinemanaircrash->CineMan Air Crash.png
 cinemancccp->CineMan CCCP 4K.png
@@ -253,7 +253,7 @@ cnn->CNN.png
 curiositystream->Curiosity Stream HD.png
 davinci->Da Vinci.png
 detectivejam->DetectiveJam HD.png
-discoverychannel->Discovery Channel HD.png
+discoverychannel->Discovery Channel.png
 discoveryscience->Discovery Science HD.png
 dizi->Dizi.png
 docubox->DocuBox HD.png
@@ -309,43 +309,43 @@ euronews->EuroNews.png
 europatv->Europa Plus TV HD.png
 extremesports->Extreme Sports HD.png
 familyjam->FamilyJam HD.png
-fan->Fan HD.png
-fashiontv->Fashion TV HD.png
+fan->FAN.png
+fashiontv->fashion tv  (1080p).png
 filmboxarthouse->FilmBox ArtHouse.png
 flixsnip->FlixSnip HD.png
 fonmusic->FON Music HD.png
-foodnetwork->Food Network HD.png
+foodnetwork->Food Network.png
 foodtime->Foodtime HD.png
 foxnews->FOX News HD.png
 france24->France 24.png
 freshadventure->Fresh Adventure.png
 freshcinema->Fresh Cinema.png
 freshcomedy->Fresh Comedy.png
-freshconcerts->Fresh Concerts.png
-freshdance->Fresh Dance.png
+freshconcerts->FRESH Concerts HD.png
+freshdance->FRESH Dance HD.png
 freshfamily->Fresh Family.png
 freshfantastic->Fresh Fantastic.png
 freshhorror->Fresh Horror.png
 freshkids->Fresh Kids.png
-freshlyrics->Fresh Lyrics.png
+freshlyrics->FRESH Lyrics HD.png
 freshpophits->Fresh Pop Hits.png
 freshpremiere->Fresh Premiere.png
 freshrating->Fresh Rating.png
-freshretro->Fresh Retro.png
-freshrockcovers->Fresh Rock Covers.png
-freshrock->Fresh Rock.png
+freshretro->FRESH Retro HD.png
+freshrockcovers->FRESH Rock Covers HD.png
+freshrock->FRESH Rock HD.png
 freshromantic->Fresh Romantic.png
 freshrussianpop->Fresh Russian Pop.png
-freshrussianrap->Fresh Russian Rap.png
+freshrussianrap->FRESH Russian Rap HD.png
 freshrussian->Fresh Russian.png
-freshsadmusic->Fresh Sad Music.png
+freshsadmusic->FRESH Sad Music HD.png
 freshseries->Fresh Series.png
 freshsoviet->Fresh Soviet.png
 freshthriller->Fresh Thriller.png
 freshvhs->Fresh Vhs.png
-fx->FX HD.png
-fxlife->FX Life HD.png
-galaxy->Galaxy HD.png
+fxlife->FX Life.png
+fx->FX.png
+galaxy->Galaxy.png
 goldlineevidence->Gold Line  Evidence HD.png
 goldlinebrief->Gold Line Brief HD.png
 goldlinechef->Gold Line Chef HD.png
@@ -364,8 +364,8 @@ goldlineдеекив->Gold Line Детектив HD.png
 goldlineневский->Gold Line Невский HD.png
 gulligirl->Gulli Girl.png
 hgtv->HGTV HD.png
-history->History HD.png
-history2->History2 HD.png
+history2->History 2 HD.png
+history->History FHD.png
 hollywood->Hollywood HD.png
 hollywood->Hollywood.png
 home->Home 4K.png
@@ -373,7 +373,7 @@ hustler->Hustler HD.png
 hbcил->HТB Cтиль.png
 iconcerts->iConcerts HD.png
 insight->Insight UHD.png
-investigationdiscovery->Investigation Discovery HD.png
+investigationdiscovery->Investigation Discovery.png
 jimjam->JimJam.png
 kbc100500->KBC +100500.png
 kbcanimals->KBC-Animals HD.png
@@ -457,7 +457,7 @@ kerneltvипидейл->Kernel TV Чип и Дейл.png
 kerneltvкодники->Kernel TV Шкодники.png
 kerneltvенийпарл->Kernel TV Щенячий Патруль.png
 kidstv->Kids TV HD.png
-kinoliving->Kinoliving HD.png
+kinoliving->KinoLiving.png
 kionи->KION Хит HD.png
 kliaction->KLI Action HD.png
 klicomedy->KLI Comedy HD.png
@@ -580,19 +580,19 @@ libertyо->Liberty Шоу FHD.png
 libertyроика->Liberty Эротика FHD.png
 lovenature->Love Nature 4K.png
 maestrotv->Maestro TV HD.png
-magicaction->Magic Action.png
-magicadventure->Magic Adventure.png
-magiccomedy->Magic Comedy.png
-magicdisney->Magic Disney.png
-magicfamily->Magic Family.png
-magicgalaxy->Magic Galaxy.png
-magichorror->Magic Horror.png
-magickarate->Magic Karate.png
-magiclove->Magic Love.png
+magicaction->Magic Action HD.png
+magicadventure->Magic Adventure HD.png
+magiccomedy->Magic Comedy HD.png
+magicdisney->Magic Disney HD.png
+magicfamily->Magic Family HD.png
+magicgalaxy->Magic Galaxy HD.png
+magichorror->Magic Horror HD.png
+magickarate->Magic Karate HD.png
+magiclove->Magic Love HD.png
 magicpremiere->Magic Premiere.png
-magicrussian->Magic Russian.png
-magicthriller->Magic Thriller.png
-magicvhs->Magic VHS.png
+magicrussian->Magic Russian HD.png
+magicthriller->Magic Thriller HD.png
+magicvhs->Magic VHS HD.png
 mcmtop->MCM TOP.png
 melody->Melody.png
 mezzolive->Mezzo Live HD.png
@@ -672,28 +672,28 @@ mmанасика->MM Фантастика HD.png
 mmоби->MM Фобия HD.png
 msanimated->MS Animated HD.png
 mscrime->MS Crime HD.png
-msmagic->MS Magic HD.png
+msmagic->MS Magic 4K.png
 msprisons->MS Prisons HD.png
 mstoons->MS Toons HD.png
 msyoungblood->MS Young Blood HD.png
-mtv00s->MTV 00s HD.png
-mtv80s->MTV 80s HD.png
-mtv90s->MTV 90s HD.png
+mtv00s->MTV 00s.png
+mtv80s->MTV 80s.png
+mtv90s->MTV 90s.png
 mtvbase->MTV Base HD.png
 mtvbrandnew->MTV Brand New HD.png
-mtvclassic->MTV Classic HD.png
-mtvclub->MTV Club HD.png
+mtvclassic->MTV Classic.png
+mtvclub->MTV Club.png
 mtvdance->MTV Dance HD.png
 mtveurope->MTV Europe.png
 mtvgold->MTV Gold HD.png
-mtvhits->MTV Hits HD.png
+mtvhits->MTV Hits.png
 mtvidol->MTV Idol HD.png
 mtvmusic24->MTV Music 24 HD.png
 mtvomg->MTV OMG HD.png
 mtvpulse->MTV Pulse HD.png
 mtvrocks->MTV Rocks HD.png
 mtvshows->MTV Shows HD.png
-museum->Museum UHD.png
+museum->Museum 4K.png
 musicboxclassic->Music Box Classic HD.png
 musicboxdance->Music Box Dance HD.png
 musicboxgold->Music Box Gold.png
@@ -704,8 +704,8 @@ myhits->MyHits.png
 myzen->MyZen 4K.png
 natgeowild->Nat Geo Wild HD.png
 nationalgeographic->National Geographic HD.png
-nickjr->Nick Jr.png
-nickelodeon->Nickelodeon HD.png
+nickjr->Nick Jr..png
+nickelodeon->Nickelodeon.png
 o2tv->O2TV HD.png
 oasisaction->Oasis Action.png
 oasisalienandpredator->Oasis Alien and Predator.png
@@ -767,8 +767,8 @@ penthousegold->Penthouse Gold HD.png
 penthousepassion->Penthouse Passion HD.png
 penthousequickies->Penthouse Quickies HD.png
 pinkx->Pink X.png
-planb->Plan B HD.png
-playboy->Playboy.png
+planb->Plan_B HD.png
+playboy->Playboy Plus.png
 pornboxagirlsknows->Pornbox A Girls Knows.png
 pornboxadrianachechikpornstar->Pornbox Adriana Chechik Pornstar.png
 pornboxadulttime->Pornbox Adult Time.png
@@ -825,14 +825,14 @@ pornboxrileyreidpornstar->Pornbox Riley Reid Pornstar.png
 pornboxslim->Pornbox Slim 4K.png
 pornboxstrokies->Pornbox Strokies.png
 pornboxtrueamatuers->Pornbox True Amatuers.png
-privatetv->Private TV HD.png
+privatetv->Private TV.png
 quadro->Quadro 4K.png
 rt->RT HD.png
 rtd->RTD HD.png
 rtg->RTG HD.png
 rtgtv->RTG TV.png
 rtvi->RTVI.png
-rutv->RU.TV.png
+rutv->RU TV.png
 russianmusicbox->Russian MusicBox HD.png
 saga->Saga HD.png
 scream->Scream HD.png
@@ -902,8 +902,8 @@ skycamсимпсон->SkyCam Симпсоны.png
 skycamжнйпарк->SkyCam Южный Парк.png
 smartzone->Smartzone HD.png
 sochilivetv->SochiLive.TV HD.png
-starfamily->Star Family HD.png
-startair->Start Air HD.png
+starfamily->Star Family.png
+startair->Start Air.png
 startworld->Start World HD.png
 stingraydjazz->Stingray Djazz.png
 stingrayiconcerts->Stingray iConcerts.png
@@ -973,14 +973,14 @@ teamслед->TEAM След.png
 teamпоа60->TEAM Эпоха 60 HD.png
 teamпоа70->TEAM Эпоха 70 HD.png
 teamпоа80->TEAM Эпоха 80 HD.png
-terra->Terra HD.png
+terra->TERRA.png
 theexplorers->The Explorers HD.png
 tiji->TiJi.png
 tlc->TLC HD.png
 traceurban->Trace urban HD.png
 trash->Trash HD.png
+traveladventure->Travel Adventure.png
 travelchannel->Travel Channel HD.png
-traveladventure->Travel+Adventure HD.png
 travelxp->Travelxp 4K.png
 tr360->TR_ 360 HD.png
 trahaber->TR_ A Haber HD.png
@@ -1269,19 +1269,19 @@ vhsкасериал->VHS-ка Сериал HD.png
 viasatkinoaction->Viasat Kino Action HD.png
 viasatkinocomedy->Viasat Kino Comedy HD.png
 viasatkino->Viasat Kino HD.png
-viasatkinoworld->Viasat Kino World HD.png
-vijuexplore->Viju Explore HD.png
-vijuhistory->Viju History `HD.png
-vijunature->Viju Nature HD.png
-vijutv1000action->Viju TV 1000 Action HD.png
-vijutv1000->Viju TV 1000 HD.png
+viasatkinoworld->Viasat Kino World.png
+vijuexplore->viju Explore.png
+vijuhistory->viju History.png
+vijunature->viju Nature.png
+vijucomedy->viju Plus Comedy.png
+vijumegahit->viju Plus Megahit.png
+vijuplanet->viju Plus Planet.png
+vijupremiere->viju Plus Premiere.png
+vijutv1000action->viju TV 1000 Action.png
 vijutv1000рсское->Viju TV 1000 Русское HD.png
+vijutv1000->viju TV 1000.png
 vijutv1000romantica->Viju TV1000 Romantica HD.png
 vijutv1000новелла->Viju TV1000 Новелла HD.png
-vijucomedy->Viju+ Comedy HD.png
-vijumegahit->Viju+ Megahit HD.png
-vijuplanet->Viju+ Planet HD.png
-vijupremiere->Viju+ Premiere HD.png
 vijuserial->Viju+ Serial HD.png
 vividred->Vivid Red HD.png
 vividtouch->Vivid Touch.png
