@@ -69,6 +69,7 @@ import com.bykerimoff.player.models.Channel;
 import com.bykerimoff.player.models.EpgProgram;
 import com.bykerimoff.player.models.ResumeItem;
 import com.bykerimoff.player.utils.DataManager;
+import com.bykerimoff.player.utils.LogoManager;
 import com.bykerimoff.player.utils.M3UParser;
 import com.bykerimoff.player.utils.MacUtils;
 import com.bykerimoff.player.utils.RecentChannelsManager;
@@ -478,7 +479,9 @@ public class PlayerActivity extends AppCompatActivity {
         else if (attemptMode == -1) statusSuffix = " (Playlist həll olunur...)";
 
         binding.tvChannelName.setText((currentIndex + 1) + ". " + channel.getName() + statusSuffix);
-        Glide.with(this).load(channel.getLogoUrl()).placeholder(R.drawable.default_logo).into(binding.ivChannelLogo);
+        
+        String logoUrl = LogoManager.resolveLogo(channel.getLogoUrl(), channel.getId(), channel.getName());
+        Glide.with(this).load(logoUrl).placeholder(R.drawable.default_logo).into(binding.ivChannelLogo);
 
         // Bərpa zamanı yazının görünməsi üçün OSD-ni dərhal solaraq ekrana gətir və müddətini artır
         if (attemptMode > 0) {

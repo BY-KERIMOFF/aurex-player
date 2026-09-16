@@ -52,6 +52,7 @@ import com.bykerimoff.player.utils.ChannelOrderManager;
 import com.bykerimoff.player.utils.DataManager;
 import com.bykerimoff.player.utils.DiskCacheManager;
 import com.bykerimoff.player.utils.FavoriteManager;
+import com.bykerimoff.player.utils.LogoManager;
 import com.bykerimoff.player.utils.M3UParser;
 import com.bykerimoff.player.utils.NetworkUtils;
 import com.bykerimoff.player.utils.PinDialog;
@@ -597,8 +598,9 @@ public class LiveTvActivity extends AppCompatActivity {
         binding.tvCurrentChannel.setText(channel.getName());
         binding.tvEpgTitle.setText("Yüklənir...");
         
+        String logoUrl = LogoManager.resolveLogo(channel.getLogoUrl(), channel.getId(), channel.getName());
         Glide.with(this)
-                .load(channel.getLogoUrl())
+                .load(logoUrl)
                 .placeholder(R.drawable.default_logo)
                 .error(R.drawable.default_logo)
                 .into(binding.ivCurrentChannelLogo);

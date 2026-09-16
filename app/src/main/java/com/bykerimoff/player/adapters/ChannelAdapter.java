@@ -134,12 +134,9 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
             favoriteManager = new FavoriteManager(holder.itemView.getContext());
         }
 
-        String logoUrl = channel.getLogoUrl();
-        if (logoUrl == null || logoUrl.isEmpty()) {
-            logoUrl = LogoManager.INSTANCE.getLogoForChannel(channel.getName());
-            if (logoUrl != null) {
-                channel.setLogoUrl(logoUrl);
-            }
+        String logoUrl = LogoManager.resolveLogo(channel.getLogoUrl(), channel.getId(), channel.getName());
+        if (logoUrl != null && !logoUrl.equals(channel.getLogoUrl())) {
+            channel.setLogoUrl(logoUrl);
         }
 
         Glide.with(holder.itemView.getContext())
