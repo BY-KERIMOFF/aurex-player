@@ -2,10 +2,14 @@ package com.bykerimoff.player.utils
 
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.util.concurrent.Executors
+import android.os.Handler
+import android.os.Looper
 import java.io.BufferedReader
 import java.util.concurrent.ConcurrentHashMap
 
@@ -13,16 +17,17 @@ object LogoManager {
     private const val TAG = "LogoManager"
     private const val LOGO_API_URL = "https://iptv-org.github.io/api/logos.json"
     
-    // GitHub-dakı PNG şəkillərinin olduğu qovluq
+    // GitHub-dakı loqoların əsas qovluğu
     private const val GITHUB_LOGOS_BASE = "https://raw.githubusercontent.com/BY-KERIMOFF/aurex-player/main/logos/"
-    private const val REMOTE_LOGOS_URL = "https://raw.githubusercontent.com/BY-KERIMOFF/aurex-player/main/app/src/main/assets/logos.txt"
     
-    private val customLogoCache = ConcurrentHashMap<String, String>()
-    private val logoCache = ConcurrentHashMap<String, String>()
+    // Lüğət: "aztv" -> "AZ_ AZ TV.png"
+    private val logoIndexMap = ConcurrentHashMap<String, String>()
+    private val globalLogoCache = ConcurrentHashMap<String, String>()
     
     @Volatile
     private var isLoaded = false
 
+    // Silinməli olan IPTV əlavələri
     private val SUFFIX_REGEX = Regex("\\b(hd|sd|fhd|uhd|4k|5k|8k|fullhd|yedek|backup|rezerv|reserve|test|back|plus|\\+\\d|\\(\\d+\\)|1080p|720p|hevc|h265|60fps|50fps)\\b", RegexOption.IGNORE_CASE)
 
     fun loadLogoDatabase(context: Context) {
@@ -30,31 +35,39 @@ object LogoManager {
         
         Executors.newSingleThreadExecutor().execute {
             try {
-                loadFromUrl(REMOTE_LOGOS_URL)
-                loadFromAssets(context)
+                // 1. "Ağıllı İndeks" faylını Assets-dən yüklə
+                loadIndex(context)
+
+                // 2. Qlobal bazanı yüklə (Ehtiyat üçün)
                 loadGlobalLogos()
+
                 isLoaded = true
+                Log.d(TAG, "Logo sistemi hazırlandı: ${logoIndexMap.size} yerli loqo.")
             } catch (e: Exception) {
                 Log.e(TAG, "Logo error: ${e.message}")
             }
         }
     }
 
-    private fun loadFromUrl(urlString: String) {
+    private fun loadIndex(context: Context) {
         try {
-            val url = URL(urlString)
-            val conn = url.openConnection() as HttpURLConnection
-            conn.connectTimeout = 8000
-            if (conn.responseCode == 200) {
-                conn.inputStream.bufferedReader(Charsets.UTF_8).use { parseContent(it) }
+            context.assets.open("logos_index.txt").bufferedReader(Charsets.UTF_8).use { reader ->
+                reader.forEachLine { line ->
+                    if (line.contains("->")) {
+                        val parts = line.split("->")
+                        if (parts.size >= 2) {
+                            val key = parts[0].trim().lowercase()
+                            val filename = parts[1].trim()
+                            if (key.isNotEmpty() && filename.isNotEmpty()) {
+                                logoIndexMap[key] = filename
+                            }
+                        }
+                    }
+                }
             }
-        } catch (e: Exception) {}
-    }
-
-    private fun loadFromAssets(context: Context) {
-        try {
-            context.assets.open("logos.txt").bufferedReader(Charsets.UTF_8).use { parseContent(it) }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            Log.e(TAG, "Index load fail: ${e.message}")
+        }
     }
 
     private fun loadGlobalLogos() {
@@ -66,34 +79,14 @@ object LogoManager {
                 val channelId = item.optString("channel", "")
                 val logoUrl = item.optString("url", "")
                 if (channelId.isNotEmpty() && logoUrl.isNotEmpty()) {
-                    logoCache[getCoreName(channelId)] = logoUrl
+                    globalLogoCache[getCoreName(channelId)] = logoUrl
                 }
             }
         } catch (e: Exception) {}
     }
 
-    private fun parseContent(reader: BufferedReader) {
-        reader.forEachLine { line ->
-            val trimmed = line.trim()
-            if (trimmed.contains("->")) {
-                val parts = trimmed.split("->")
-                if (parts.size >= 2) {
-                    val namePart = parts[0].trim()
-                    val urlPart = parts[1].trim()
-                    if (namePart.isNotEmpty() && urlPart.startsWith("http")) {
-                        customLogoCache[getCoreName(namePart)] = urlPart
-                    }
-                }
-            }
-        }
-    }
-
     /**
-     * Mükəmməl "Kök Ad" Tapıcı:
-     * 1. Hər şeyi kiçik hərf edir.
-     * 2. HD, SD, Yedek kimi sözləri silir.
-     * 3. Boşluqları silir.
-     * 4. Azərbaycan hərflərini (ə -> e, ı -> i) çevirir (fayl adı üçün).
+     * Kanalın Kök Adını Tapır: "AzTV FHD Yedek" -> "aztv"
      */
     private fun getCoreName(name: String?): String {
         if (name == null) return ""
@@ -101,7 +94,7 @@ object LogoManager {
             .replace(SUFFIX_REGEX, "") // HD, SD və s. silinir
             .replace(" ", "")
             
-        // Fayl adı uyğunluğu üçün hərfləri dəyişirik
+        // Hərfləri eyniləşdiririk
         cleaned = cleaned.replace("ə", "e")
             .replace("ı", "i")
             .replace("ö", "o")
@@ -119,14 +112,24 @@ object LogoManager {
 
         val coreName = getCoreName(channelName)
 
-        // 1. ÖNCƏLİK: Sənin GitHub-dakı logos/ qovluğuna baxırıq
-        val githubAutoLogo = "$GITHUB_LOGOS_BASE$coreName.png"
-        
-        // 2. İKİNCİ: Əgər logos.txt-də bu kanal üçün xüsusi link yazmısansa
-        val custom = customLogoCache[coreName]
-        if (custom != null) return custom
+        // 1. ADDIM: "Ağıllı İndeks"-də axtar
+        val filename = logoIndexMap[coreName]
+        if (filename != null) {
+            return try {
+                // Fayl adını URL üçün uyğun formaya salırıq (boşluqları %20 edir)
+                val encodedFile = URLEncoder.encode(filename, "UTF-8").replace("+", "%20")
+                "$GITHUB_LOGOS_BASE$encodedFile"
+            } catch (e: Exception) {
+                "$GITHUB_LOGOS_BASE$filename"
+            }
+        }
 
-        // Ən son çarə olaraq GitHub linkini qaytarırıq
-        return githubAutoLogo
+        // 2. ADDIM: Əgər playlist-də zatən tam link varsa onu istifadə et
+        if (existingLogo != null && (existingLogo.startsWith("http://") || existingLogo.startsWith("https://"))) {
+            return existingLogo
+        }
+
+        // 3. ADDIM: Qlobal baza
+        return globalLogoCache[coreName] ?: existingLogo
     }
 }
