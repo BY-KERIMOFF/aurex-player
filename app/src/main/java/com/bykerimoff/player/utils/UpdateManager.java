@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -21,6 +22,10 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+
+import okhttp3.CacheControl;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class UpdateManager {
     private static final String TAG = "UpdateManager";
@@ -43,17 +48,26 @@ public class UpdateManager {
 
     @androidx.media3.common.util.UnstableApi
     public void checkForUpdates(boolean manual) {
+        if (!manual) {
+            SharedPreferences prefs = context.getSharedPreferences("neoplay_prefs", Context.MODE_PRIVATE);
+            boolean autoUpdatesEnabled = prefs.getBoolean("auto_updates_enabled", true);
+            if (!autoUpdatesEnabled) {
+                isCheckFinished = true;
+                return;
+            }
+        }
+
         isCheckFinished = false;
         isUpdateFound = false;
         new Thread(() -> {
             try {
                 Log.d(TAG, "Checking for updates...");
-                okhttp3.Request request = new okhttp3.Request.Builder()
+                Request request = new Request.Builder()
                         .url(UPDATE_URL)
-                        .cacheControl(new okhttp3.CacheControl.Builder().noCache().noStore().build()) // Keşi ləğv et
+                        .cacheControl(new CacheControl.Builder().noCache().noStore().build()) // Keşi ləğv et
                         .build();
 
-                okhttp3.Response response = NetworkUtils.getSafeOkHttpClient().newCall(request).execute();
+                Response response = NetworkUtils.getSafeOkHttpClient().newCall(request).execute();
                 if (!response.isSuccessful()) {
                     if (manual) showToast("Serverə bağlanmaq mümkün olmadı");
                     return;

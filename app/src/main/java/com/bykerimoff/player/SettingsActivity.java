@@ -2,7 +2,9 @@ package com.bykerimoff.player;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.animation.AnimationUtils;
@@ -139,8 +141,8 @@ public class SettingsActivity extends AppCompatActivity {
         binding.tvMacAddress.setText("MAC: " + MacUtils.getMacAddress(this));
         
         try {
-            android.content.pm.PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
-            String version = pInfo.versionName + " (" + (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P ? pInfo.getLongVersionCode() : pInfo.versionCode) + ")";
+            PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+            String version = pInfo.versionName + " (" + (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? pInfo.getLongVersionCode() : pInfo.versionCode) + ")";
             binding.tvAppVersion.setText("Versiya: " + version);
         } catch (Exception e) {
             binding.tvAppVersion.setText("Versiya: Naməlum");
@@ -195,6 +197,13 @@ public class SettingsActivity extends AppCompatActivity {
         } else {
             binding.rbExo2.setChecked(true);
         }
+
+        boolean autoUpdatesEnabled = prefs.getBoolean("auto_updates_enabled", true);
+        if (autoUpdatesEnabled) {
+            binding.btnToggleAutoUpdate.setText("AVTOMATİK YENİLƏMƏ: AKTİVDİR");
+        } else {
+            binding.btnToggleAutoUpdate.setText("AVTOMATİK YENİLƏMƏ: BAĞLIDIR");
+        }
     }
 
     @OptIn(markerClass = UnstableApi.class)
@@ -232,6 +241,7 @@ public class SettingsActivity extends AppCompatActivity {
         
         setupFocusEffect(binding.tvAppVersion);
         setupFocusEffect(binding.btnCheckUpdate);
+        setupFocusEffect(binding.btnToggleAutoUpdate);
         
         setupFocusEffect(binding.cbAppLock);
         setupFocusEffect(binding.btnChangePin);
@@ -390,6 +400,19 @@ public class SettingsActivity extends AppCompatActivity {
         binding.btnCheckUpdate.setOnClickListener(v -> {
             Toast.makeText(this, "Yeniləmə yoxlanılır...", Toast.LENGTH_SHORT).show();
             new UpdateManager(this).checkForUpdates(true);
+        });
+
+        binding.btnToggleAutoUpdate.setOnClickListener(v -> {
+            boolean currentVal = prefs.getBoolean("auto_updates_enabled", true);
+            boolean newVal = !currentVal;
+            prefs.edit().putBoolean("auto_updates_enabled", newVal).apply();
+            if (newVal) {
+                binding.btnToggleAutoUpdate.setText("AVTOMATİK YENİLƏMƏ: AKTİVDİR");
+                Toast.makeText(this, "Avtomatik yeniləmə aktiv edildi", Toast.LENGTH_SHORT).show();
+            } else {
+                binding.btnToggleAutoUpdate.setText("AVTOMATİK YENİLƏMƏ: BAĞLIDIR");
+                Toast.makeText(this, "Avtomatik yeniləmə söndürüldü", Toast.LENGTH_SHORT).show();
+            }
         });
 
         binding.btnTimerOff.setOnClickListener(v -> setSleepTimer(0));

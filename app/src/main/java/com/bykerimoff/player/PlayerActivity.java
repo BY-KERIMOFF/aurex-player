@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.media.AudioManager;
+import android.net.TrafficStats;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -153,6 +154,39 @@ public class PlayerActivity extends AppCompatActivity {
     private CountDownTimer testCountDownTimer;
     private long lastKeyTime = 0;
     private static final int KEY_DELAY = 30; // ms for snappy feel
+    
+    // Anlıq Sürət Göstəricisi üçün dəyişənlər
+    private final Handler speedHandler = new Handler(Looper.getMainLooper());
+    private long lastRxBytes = 0;
+    private long lastSpeedTime = 0;
+    private final Runnable speedRunnable = new Runnable() {
+        @Override
+        public void run() {
+            long currentRxBytes = TrafficStats.getTotalRxBytes();
+            long currentTime = System.currentTimeMillis();
+            if (lastRxBytes > 0 && currentTime > lastSpeedTime) {
+                long bytesRx = currentRxBytes - lastRxBytes;
+                double speed = (bytesRx * 1000.0) / (currentTime - lastSpeedTime); // bytes/sec
+                
+                String speedText;
+                if (speed >= 1024 * 1024) {
+                    speedText = String.format(Locale.ROOT, "%.1f MB/s", speed / (1024.0 * 1024.0));
+                } else {
+                    speedText = String.format(Locale.ROOT, "%.1f KB/s", speed / 1024.0);
+                }
+                
+                if (binding.tvNetworkSpeed != null) {
+                    binding.tvNetworkSpeed.setText(speedText);
+                }
+            }
+            lastRxBytes = currentRxBytes;
+            lastSpeedTime = currentTime;
+            
+            if (binding.bufferingLayout.getVisibility() == View.VISIBLE) {
+                speedHandler.postDelayed(this, 1000); // Hər saniyə yenilə
+            }
+        }
+    };
 
     private final Runnable bufferingTimeoutRunnable = new Runnable() {
         @Override
@@ -164,6 +198,13 @@ public class PlayerActivity extends AppCompatActivity {
                     playChannel(currentIndex, 0, playbackAttemptMode + 1);
                 } else {
                     showTechnicalError();
+                    
+                    // Donma (Hang) halında da Telegram-a xəbər ver
+                    Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
+                    if (current != null) {
+                        String mac = MacUtils.getMacAddress(PlayerActivity.this);
+                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Stream Hang (20s+ Buffering)");
+                    }
                 }
             }
         }
@@ -172,6 +213,7 @@ public class PlayerActivity extends AppCompatActivity {
     private void showTechnicalError() {
         binding.errorLayout.setVisibility(View.VISIBLE);
         binding.bufferingLayout.setVisibility(View.GONE);
+        speedHandler.removeCallbacks(speedRunnable); // Xəta ekranında sürət taymerini dayandır
     }
 
     private void hideTechnicalError() {
@@ -250,11 +292,11 @@ public class PlayerActivity extends AppCompatActivity {
         boolean smartBuffer = prefs.getBoolean("smart_buffer_enabled", true);
         int userBufferSec = prefs.getInt("network_buffer_seconds", 5);
         
-        // Turbo Play: Minimum buffer-i daha da aşağı çəkərək sürətli açılış (Fast Start)
-        int minBuffer = smartBuffer ? 1500 : userBufferSec * 1000;
-        int maxBuffer = smartBuffer ? 20000 : (userBufferSec * 1000 * 3);
-        int bufferPlayback = smartBuffer ? 500 : 1000;
-        int bufferRebuffer = smartBuffer ? 1000 : 1500;
+        // Ultra-Turbo Play + 40 Saniyəlik Güclü Arxa Fon Buferi (İnternet kəsilmələrinə qarşı divar)
+        int minBuffer = smartBuffer ? 500 : userBufferSec * 1000;
+        int maxBuffer = smartBuffer ? 40000 : (userBufferSec * 1000 * 3); // 10 saniyə 40 saniyəyə (`40000ms`) qaldırıldı
+        int bufferPlayback = smartBuffer ? 200 : 500;
+        int bufferRebuffer = smartBuffer ? 500 : 1000;
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
@@ -279,6 +321,14 @@ public class PlayerActivity extends AppCompatActivity {
             public void onPlaybackStateChanged(int state) {
                 if (state == Player.STATE_BUFFERING) {
                     binding.bufferingLayout.setVisibility(View.VISIBLE);
+                    
+                    // Sürət hesablayıcını işə salırıq
+                    lastRxBytes = TrafficStats.getTotalRxBytes();
+                    lastSpeedTime = System.currentTimeMillis();
+                    binding.tvNetworkSpeed.setText("0.0 KB/s");
+                    speedHandler.removeCallbacks(speedRunnable);
+                    speedHandler.post(speedRunnable);
+                    
                     osdHandler.removeCallbacks(bufferingTimeoutRunnable);
                     // 20 saniyə gözləyirik (İnternet zəif olduqda süni bərpa başlamasın)
                     osdHandler.postDelayed(bufferingTimeoutRunnable, 20000); 
@@ -290,6 +340,8 @@ public class PlayerActivity extends AppCompatActivity {
                     }
                 } else {
                     binding.bufferingLayout.setVisibility(View.GONE);
+                    speedHandler.removeCallbacks(speedRunnable); // Sürət yenilənməsini dayandır
+                    
                     osdHandler.removeCallbacks(bufferingTimeoutRunnable);
                     if (state == Player.STATE_READY) {
                         hideTechnicalError();
@@ -405,6 +457,13 @@ public class PlayerActivity extends AppCompatActivity {
         binding.bufferingLayout.setVisibility(View.VISIBLE);
         binding.miniInfoLayout.setVisibility(View.GONE); 
         
+        // playChannel çağırılanda da sürət hesablayıcını dərhal başladırıq
+        lastRxBytes = TrafficStats.getTotalRxBytes();
+        lastSpeedTime = System.currentTimeMillis();
+        binding.tvNetworkSpeed.setText("0.0 KB/s");
+        speedHandler.removeCallbacks(speedRunnable);
+        speedHandler.post(speedRunnable);
+        
         isVod = M3UParser.isVodChannel(channel.getStreamUrl());
 
         if (exoPlayer != null) {
@@ -421,11 +480,9 @@ public class PlayerActivity extends AppCompatActivity {
         binding.tvChannelName.setText((currentIndex + 1) + ". " + channel.getName() + statusSuffix);
         Glide.with(this).load(channel.getLogoUrl()).placeholder(R.drawable.default_logo).into(binding.ivChannelLogo);
 
-        // Bərpa zamanı yazının görünməsi üçün OSD-ni dərhal göstər və müddətini artır
+        // Bərpa zamanı yazının görünməsi üçün OSD-ni dərhal solaraq ekrana gətir və müddətini artır
         if (attemptMode > 0) {
-            binding.osdLayout.setVisibility(View.VISIBLE);
-            osdHandler.removeCallbacksAndMessages(null);
-            osdHandler.postDelayed(() -> binding.osdLayout.setVisibility(View.GONE), 8000);
+            showOSD(8000);
         }
 
         String url = channel.getStreamUrl();
@@ -489,6 +546,13 @@ public class PlayerActivity extends AppCompatActivity {
                     playChannel(currentIndex, 0, playbackAttemptMode + 1);
                 } else {
                     showTechnicalError();
+                    
+                    // Donma (Hang) halında da Telegram-a xəbər ver
+                    Channel current = (playbackList != null && currentIndex < playbackList.size()) ? playbackList.get(currentIndex) : null;
+                    if (current != null) {
+                        String mac = MacUtils.getMacAddress(PlayerActivity.this);
+                        TelegramReporter.reportError(current.getName(), current.getCategoryName(), mac, "Stream Hang (20s+ Buffering)");
+                    }
                 }
             }
         });
@@ -630,12 +694,27 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void showOSD() {
-        binding.osdLayout.setVisibility(View.VISIBLE);
+        showOSD(5000);
+    }
+
+    private void showOSD(int durationMs) {
         binding.miniInfoLayout.setVisibility(View.GONE);
         osdHandler.removeCallbacksAndMessages(null);
+        
+        if (binding.osdLayout.getVisibility() != View.VISIBLE) {
+            binding.osdLayout.setVisibility(View.VISIBLE);
+            binding.osdLayout.setAlpha(0f);
+            binding.osdLayout.animate().alpha(1f).setDuration(300).start();
+        } else {
+            binding.osdLayout.animate().cancel();
+            binding.osdLayout.setAlpha(1f);
+        }
+        
         osdHandler.postDelayed(() -> {
-            binding.osdLayout.setVisibility(View.GONE);
-        }, 5000);
+            binding.osdLayout.animate().alpha(0f).setDuration(500).withEndAction(() -> {
+                binding.osdLayout.setVisibility(View.GONE);
+            }).start();
+        }, durationMs);
     }
 
     private void setupSidebars() {

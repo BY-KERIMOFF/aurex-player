@@ -39,17 +39,19 @@
             android:text="Aurex Player" />
     </FrameLayout>
 
-    <!-- Modernized OSD -->
+    <!-- Modernized Floating Premium OSD -->
     <LinearLayout
         android:id="@+id/osdLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="@drawable/osd_gradient"
+        android:layout_marginHorizontal="32dp"
+        android:layout_marginBottom="32dp"
+        android:background="@drawable/bg_premium_osd"
         android:orientation="vertical"
-        android:paddingHorizontal="36dp"
-        android:paddingTop="24dp"
-        android:paddingBottom="28dp"
+        android:paddingHorizontal="32dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="24dp"
         android:elevation="50dp"
         android:visibility="gone">
 
@@ -493,6 +495,19 @@
             android:shadowDx="2"
             android:shadowDy="2"
             android:shadowRadius="4" />
+
+        <TextView
+            android:id="@+id/tvNetworkSpeed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="0.0 KB/s"
+            android:textColor="#E0FFFFFF"
+            android:textSize="14sp"
+            android:shadowColor="#000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
     </LinearLayout>
 
     <!-- Texniki Nasazlıq Ekranı -->
