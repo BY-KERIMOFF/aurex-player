@@ -162,12 +162,11 @@ public class SettingsActivity extends AppCompatActivity {
         binding.cbSmartBuffer.setChecked(prefs.getBoolean("smart_buffer_enabled", true));
         binding.cbHideSensitive.setChecked(prefs.getBoolean("hide_sensitive_categories", false));
         
-        int bufferSec = prefs.getInt("network_buffer_seconds", 10);
+        int bufferSec = prefs.getInt("network_buffer_seconds", 5);
         if (bufferSec == 0) binding.rbBuffer0.setChecked(true);
-        else if (bufferSec == 5) binding.rbBuffer5.setChecked(true);
-        else if (bufferSec == 25) binding.rbBuffer25.setChecked(true);
+        else if (bufferSec == 10) binding.rbBuffer10.setChecked(true);
         else if (bufferSec == 30) binding.rbBuffer30.setChecked(true);
-        else binding.rbBuffer10.setChecked(true);
+        else binding.rbBuffer5.setChecked(true);
 
         binding.etEpgUrl.setText(prefs.getString("manual_epg_url", ""));
 
@@ -264,7 +263,6 @@ public class SettingsActivity extends AppCompatActivity {
         setupFocusEffect(binding.rbBuffer0);
         setupFocusEffect(binding.rbBuffer5);
         setupFocusEffect(binding.rbBuffer10);
-        setupFocusEffect(binding.rbBuffer25);
         setupFocusEffect(binding.rbBuffer30);
         
         setupFocusEffect(binding.rbSortDefault);
@@ -362,10 +360,9 @@ public class SettingsActivity extends AppCompatActivity {
         });
 
         binding.rgBufferChoice.setOnCheckedChangeListener((group, checkedId) -> {
-            int seconds = 10;
+            int seconds = 5;
             if (checkedId == R.id.rbBuffer0) seconds = 0;
-            else if (checkedId == R.id.rbBuffer5) seconds = 5;
-            else if (checkedId == R.id.rbBuffer25) seconds = 25;
+            else if (checkedId == R.id.rbBuffer10) seconds = 10;
             else if (checkedId == R.id.rbBuffer30) seconds = 30;
             
             prefs.edit().putInt("network_buffer_seconds", seconds).apply();
