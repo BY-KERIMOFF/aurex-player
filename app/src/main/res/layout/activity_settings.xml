@@ -337,7 +337,8 @@
                         <RadioButton android:id="@+id/rbBuffer0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0 saniyə (Gecikməsiz - Sürətli internet)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
                         <RadioButton android:id="@+id/rbBuffer5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5 saniyə (Normal)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
                         <RadioButton android:id="@+id/rbBuffer10" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="10 saniyə (Stabil - Orta internet)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
-                        <RadioButton android:id="@+id/rbBuffer30" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="30 saniyə (Maksimum - Zəif internet)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbBuffer25" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="25 saniyə (Güclü bufer - Zəif internet)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
+                        <RadioButton android:id="@+id/rbBuffer30" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="30 saniyə (Maksimum - Çox zəif internet)" android:textColor="@color/white" android:buttonTint="@color/gold_primary" />
                     </RadioGroup>
 
                     <CheckBox

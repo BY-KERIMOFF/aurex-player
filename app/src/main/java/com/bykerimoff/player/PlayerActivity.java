@@ -291,13 +291,13 @@ public class PlayerActivity extends AppCompatActivity {
 
         SharedPreferences prefs = getSharedPreferences("neoplay_prefs", MODE_PRIVATE);
         boolean smartBuffer = prefs.getBoolean("smart_buffer_enabled", true);
-        int userBufferSec = prefs.getInt("network_buffer_seconds", 5);
+        int userBufferSec = prefs.getInt("network_buffer_seconds", 10);
         
-        // Ultra-Turbo Play + 40 Saniyəlik Güclü Arxa Fon Buferi (İnternet kəsilmələrinə qarşı divar)
-        int minBuffer = smartBuffer ? 500 : userBufferSec * 1000;
-        int maxBuffer = smartBuffer ? 40000 : (userBufferSec * 1000 * 3); // 10 saniyə 40 saniyəyə (`40000ms`) qaldırıldı
-        int bufferPlayback = smartBuffer ? 200 : 500;
-        int bufferRebuffer = smartBuffer ? 500 : 1000;
+        // Avtomatik 10 Saniyəlik İlkin Bufer + 60 Saniyəlik Max Arxa Fon Buferi
+        int minBuffer = smartBuffer ? 10000 : userBufferSec * 1000;
+        int maxBuffer = smartBuffer ? 60000 : Math.max(userBufferSec * 1000 * 3, 60000); 
+        int bufferPlayback = 1000;
+        int bufferRebuffer = 2500;
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
@@ -307,6 +307,7 @@ public class PlayerActivity extends AppCompatActivity {
                         bufferRebuffer
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
+                .setBackBuffer(15000, true)
                 .build();
 
         exoPlayer = new ExoPlayer.Builder(this, renderersFactory)

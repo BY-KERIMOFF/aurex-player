@@ -394,15 +394,16 @@ public class LiveTvActivity extends AppCompatActivity {
                 .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
                 .setEnableDecoderFallback(true);
 
-        // Daha mükəmməl buferləmə ayarları (50-60 FPS üçün)
+        // Donmasız və sürətli buferləmə tənzimləmələri (10 Saniyəlik İlkin Bufer, 60 Saniyəlik Max Arxa Fon Buferi)
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                        5000,  // minBufferMs (20000 -> 5000)
-                        15000, // maxBufferMs (60000 -> 15000)
-                        1000,  // bufferForPlaybackMs (2000 -> 1000)
-                        2000   // bufferForPlaybackAfterRebufferMs (5000 -> 2000)
+                        10000, // minBufferMs (10 saniyəlik ilkin bufer)
+                        60000, // maxBufferMs (60 saniyəlik arxa fon buferi)
+                        1000,  // bufferForPlaybackMs
+                        2500   // bufferForPlaybackAfterRebufferMs
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
+                .setBackBuffer(15000, true)
                 .build();
 
         miniPlayer = new ExoPlayer.Builder(this, renderersFactory)
