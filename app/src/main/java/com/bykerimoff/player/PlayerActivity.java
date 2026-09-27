@@ -293,11 +293,11 @@ public class PlayerActivity extends AppCompatActivity {
         boolean smartBuffer = prefs.getBoolean("smart_buffer_enabled", true);
         int userBufferSec = prefs.getInt("network_buffer_seconds", 5);
         
-        // Avtomatik 5 Saniyəlik İlkin Bufer + 40 Saniyəlik Max Arxa Fon Buferi
-        int minBuffer = smartBuffer ? 5000 : userBufferSec * 1000;
-        int maxBuffer = smartBuffer ? 40000 : (userBufferSec * 1000 * 3);
+        // IPTV üçün Optimal Bufer (2s min, 30s max, 1s rebuffer - Donub qalmağın qarşısını alır)
+        int minBuffer = smartBuffer ? 2000 : userBufferSec * 1000;
+        int maxBuffer = smartBuffer ? 30000 : Math.max(userBufferSec * 1000 * 3, 30000);
         int bufferPlayback = 500;
-        int bufferRebuffer = 1500;
+        int bufferRebuffer = 1000;
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(

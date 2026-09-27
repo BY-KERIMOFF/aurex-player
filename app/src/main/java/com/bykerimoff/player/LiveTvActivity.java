@@ -394,13 +394,13 @@ public class LiveTvActivity extends AppCompatActivity {
                 .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
                 .setEnableDecoderFallback(true);
 
-        // Avtomatik 5 Saniyəlik Bufer Tənzimləməsi
+        // IPTV üçün Optimal Bufer (2s min, 30s max, 1s rebuffer - Donub qalmağın qarşısını alır)
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                        5000,  // minBufferMs (5 saniyə)
-                        40000, // maxBufferMs (40 saniyə)
-                        1000,  // bufferForPlaybackMs
-                        2000   // bufferForPlaybackAfterRebufferMs
+                        2000,  // minBufferMs (2 saniyə)
+                        30000, // maxBufferMs (30 saniyə)
+                        500,   // bufferForPlaybackMs
+                        1000   // bufferForPlaybackAfterRebufferMs
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build();
