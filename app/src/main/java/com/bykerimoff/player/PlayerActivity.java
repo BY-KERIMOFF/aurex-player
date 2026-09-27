@@ -283,9 +283,9 @@ public class PlayerActivity extends AppCompatActivity {
                                    | DefaultTsPayloadReaderFactory.FLAG_OVERRIDE_CAPTION_DESCRIPTORS)
                 .setAdtsExtractorFlags(AdtsExtractor.FLAG_ENABLE_CONSTANT_BITRATE_SEEKING);
 
-        // Turbo Play MediaSourceFactory (v8.6.4)
+        // Turbo Play MediaSourceFactory (v8.6.4) - Canlı yayım tənzimləməsi (Live Offset 3s - Dəyişkən internetə qarşı)
         DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory)
-                .setLiveTargetOffsetMs(500);
+                .setLiveTargetOffsetMs(3000);
         // We can't easily set HLS specific flags on the default factory without custom factories,
         // but the sniffing logic in playChannel will handle the heavy lifting.
 
@@ -293,11 +293,11 @@ public class PlayerActivity extends AppCompatActivity {
         boolean smartBuffer = prefs.getBoolean("smart_buffer_enabled", true);
         int userBufferSec = prefs.getInt("network_buffer_seconds", 5);
         
-        // IPTV üçün Optimal Bufer (2s min, 30s max, 1s rebuffer - Donub qalmağın qarşısını alır)
-        int minBuffer = smartBuffer ? 2000 : userBufferSec * 1000;
-        int maxBuffer = smartBuffer ? 30000 : Math.max(userBufferSec * 1000 * 3, 30000);
-        int bufferPlayback = 500;
-        int bufferRebuffer = 1000;
+        // IPTV üçün Qızıl Standart Bufer (10s min, 50s max, 3s rebuffer - Sonsuz "Yenidən yüklənir" dövrünü tamamilə aradan qaldırır)
+        int minBuffer = smartBuffer ? 10000 : userBufferSec * 1000;
+        int maxBuffer = smartBuffer ? 50000 : Math.max(userBufferSec * 1000 * 3, 50000);
+        int bufferPlayback = 2000;
+        int bufferRebuffer = 3000;
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(

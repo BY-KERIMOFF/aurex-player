@@ -379,7 +379,8 @@ public class LiveTvActivity extends AppCompatActivity {
                                    | DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM
                                    | DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS);
 
-        DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory);
+        DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory)
+                .setLiveTargetOffsetMs(3000);
 
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(this);
         trackSelector.setParameters(trackSelector.buildUponParameters()
@@ -394,13 +395,13 @@ public class LiveTvActivity extends AppCompatActivity {
                 .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
                 .setEnableDecoderFallback(true);
 
-        // IPTV üçün Optimal Bufer (2s min, 30s max, 1s rebuffer - Donub qalmağın qarşısını alır)
+        // IPTV üçün Qızıl Standart Bufer (10s min, 50s max, 3s rebuffer - Sonsuz dövrü aradan qaldırır)
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                        2000,  // minBufferMs (2 saniyə)
-                        30000, // maxBufferMs (30 saniyə)
-                        500,   // bufferForPlaybackMs
-                        1000   // bufferForPlaybackAfterRebufferMs
+                        10000, // minBufferMs (10 saniyə)
+                        50000, // maxBufferMs (50 saniyə)
+                        2000,  // bufferForPlaybackMs (2 saniyə)
+                        3000   // bufferForPlaybackAfterRebufferMs (3 saniyə)
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build();
